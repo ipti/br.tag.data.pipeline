@@ -1,0 +1,13 @@
+{
+	"name": "DB_rubelita",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlRubelita",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

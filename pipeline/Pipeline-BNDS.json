@@ -1,0 +1,324 @@
+{
+	"name": "Pipeline-BNDS",
+	"properties": {
+		"activities": [
+			{
+				"name": "DeleteFromAtt",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "delete from [data-warehouse-tag].dbo.BNDES"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "CopyBNDES",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "DeleteFromAtt",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "MySqlSource",
+						"query": "(select  \"GradeDeNotas\", replace('cristalia.tag.ong.br', '.tag.ong.br', '') as \"CityName\" ,si.id as 'id_fault' ,c.school_year, g.grade, gr.grade_1 \nfrom `cristalia.tag.ong.br`.student_identification si \njoin `cristalia.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `cristalia.tag.ong.br`.classroom c on se.classroom_fk = c.id \nleft join `cristalia.tag.ong.br`.grade g on si.id = g.id \nleft join `cristalia.tag.ong.br`.grade_results gr on se.id = gr.enrollment_fk \nwhere c.school_year = 2024 and (g.grade is not null or gr.grade_1 is not null)\nlimit 1)\n\nunion\n\n(select  \"Faltas\", replace('cristalia.tag.ong.br', '.tag.ong.br', '') as \"CityName\" , cf.id as 'id_fault' , c.school_year , cf.fkid , cf.justification \nfrom `cristalia.tag.ong.br`.student_identification si \njoin `cristalia.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `cristalia.tag.ong.br`.classroom c on se.classroom_fk = c.id \njoin `cristalia.tag.ong.br`.class_faults cf on se.student_fk = cf.student_fk \nwhere c.school_year = 2024 and cf.id is not null\nlimit 1)\n\nunion\n\n\n(select  \"GradeDeNotas\", replace('carmopolis.tag.ong.br', '.tag.ong.br', '') as \"CityName\" ,si.id as 'id_fault' ,c.school_year, g.grade, gr.grade_1 \nfrom `carmopolis.tag.ong.br`.student_identification si \njoin `carmopolis.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `carmopolis.tag.ong.br`.classroom c on se.classroom_fk = c.id \nleft join `carmopolis.tag.ong.br`.grade g on si.id = g.id \nleft join `carmopolis.tag.ong.br`.grade_results gr on se.id = gr.enrollment_fk \nwhere c.school_year = 2024 and (g.grade is not null or gr.grade_1 is not null)\nlimit 1)\n\nunion\n\n(select  \"Faltas\", replace('carmopolis.tag.ong.br', '.tag.ong.br', '') as \"CityName\" , cf.id as 'id_fault' , c.school_year , cf.fkid , cf.justification \nfrom `carmopolis.tag.ong.br`.student_identification si \njoin `carmopolis.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `carmopolis.tag.ong.br`.classroom c on se.classroom_fk = c.id \njoin `carmopolis.tag.ong.br`.class_faults cf on se.student_fk = cf.student_fk \nwhere c.school_year = 2024 and cf.id is not null\nlimit 1)\n\nunion\n\n\n(select  \"GradeDeNotas\", replace('humbertodecampos.tag.ong.br', '.tag.ong.br', '') as \"CityName\" ,si.id as 'id_fault' ,c.school_year, g.grade, gr.grade_1 \nfrom `humbertodecampos.tag.ong.br`.student_identification si \njoin `humbertodecampos.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `humbertodecampos.tag.ong.br`.classroom c on se.classroom_fk = c.id \nleft join `humbertodecampos.tag.ong.br`.grade g on si.id = g.id \nleft join `humbertodecampos.tag.ong.br`.grade_results gr on se.id = gr.enrollment_fk \nwhere c.school_year = 2024 and (g.grade is not null or gr.grade_1 is not null)\nlimit 1)\n\nunion\n\n(select  \"Faltas\", replace('humbertodecampos.tag.ong.br', '.tag.ong.br', '') as \"CityName\" , cf.id as 'id_fault' , c.school_year , cf.fkid , cf.justification \nfrom `humbertodecampos.tag.ong.br`.student_identification si \njoin `humbertodecampos.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `humbertodecampos.tag.ong.br`.classroom c on se.classroom_fk = c.id \njoin `humbertodecampos.tag.ong.br`.class_faults cf on se.student_fk = cf.student_fk \nwhere c.school_year = 2024 and cf.id is not null\nlimit 1)\n\nunion\n\n\n(select  \"GradeDeNotas\", replace('uirauna.tag.ong.br', '.tag.ong.br', '') as \"CityName\" ,si.id as 'id_fault' ,c.school_year, g.grade, gr.grade_1 \nfrom `uirauna.tag.ong.br`.student_identification si \njoin `uirauna.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `uirauna.tag.ong.br`.classroom c on se.classroom_fk = c.id \nleft join `uirauna.tag.ong.br`.grade g on si.id = g.id \nleft join `uirauna.tag.ong.br`.grade_results gr on se.id = gr.enrollment_fk \nwhere c.school_year = 2024 and (g.grade is not null or gr.grade_1 is not null)\nlimit 1)\n\nunion\n\n(select  \"Faltas\", replace('uirauna.tag.ong.br', '.tag.ong.br', '') as \"CityName\" , cf.id as 'id_fault' , c.school_year , cf.fkid , cf.justification \nfrom `uirauna.tag.ong.br`.student_identification si \njoin `uirauna.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `uirauna.tag.ong.br`.classroom c on se.classroom_fk = c.id \njoin `uirauna.tag.ong.br`.class_faults cf on se.student_fk = cf.student_fk \nwhere c.school_year = 2024 and cf.id is not null\nlimit 1)\n\nunion\n\n\n(select  \"GradeDeNotas\", replace('axixa.tag.ong.br', '.tag.ong.br', '') as \"CityName\" ,si.id as 'id_fault' ,c.school_year, g.grade, gr.grade_1 \nfrom `axixa.tag.ong.br`.student_identification si \njoin `axixa.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `axixa.tag.ong.br`.classroom c on se.classroom_fk = c.id \nleft join `axixa.tag.ong.br`.grade g on si.id = g.id \nleft join `axixa.tag.ong.br`.grade_results gr on se.id = gr.enrollment_fk \nwhere c.school_year = 2024 and (g.grade is not null or gr.grade_1 is not null)\nlimit 1)\n\nunion\n\n(select  \"Faltas\", replace('axixa.tag.ong.br', '.tag.ong.br', '') as \"CityName\" , cf.id as 'id_fault' , c.school_year , cf.fkid , cf.justification \nfrom `axixa.tag.ong.br`.student_identification si \njoin `axixa.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `axixa.tag.ong.br`.classroom c on se.classroom_fk = c.id \njoin `axixa.tag.ong.br`.class_faults cf on se.student_fk = cf.student_fk \nwhere c.school_year = 2024 and cf.id is not null\nlimit 1)\n\nunion\n\n\n(select  \"GradeDeNotas\", replace('rubelita.tag.ong.br', '.tag.ong.br', '') as \"CityName\" ,si.id as 'id_fault' ,c.school_year, g.grade, gr.grade_1 \nfrom `rubelita.tag.ong.br`.student_identification si \njoin `rubelita.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `rubelita.tag.ong.br`.classroom c on se.classroom_fk = c.id \nleft join `rubelita.tag.ong.br`.grade g on si.id = g.id \nleft join `rubelita.tag.ong.br`.grade_results gr on se.id = gr.enrollment_fk \nwhere c.school_year = 2024 and (g.grade is not null or gr.grade_1 is not null)\nlimit 1)\n\nunion\n\n(select  \"Faltas\", replace('rubelita.tag.ong.br', '.tag.ong.br', '') as \"CityName\" , cf.id as 'id_fault' , c.school_year , cf.fkid , cf.justification \nfrom `rubelita.tag.ong.br`.student_identification si \njoin `rubelita.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `rubelita.tag.ong.br`.classroom c on se.classroom_fk = c.id \njoin `rubelita.tag.ong.br`.class_faults cf on se.student_fk = cf.student_fk \nwhere c.school_year = 2024 and cf.id is not null\nlimit 1)\n\nunion\n\n\n(select  \"GradeDeNotas\", replace('pocodantas.tag.ong.br', '.tag.ong.br', '') as \"CityName\" ,si.id as 'id_fault' ,c.school_year, g.grade, gr.grade_1 \nfrom `pocodantas.tag.ong.br`.student_identification si \njoin `pocodantas.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `pocodantas.tag.ong.br`.classroom c on se.classroom_fk = c.id \nleft join `pocodantas.tag.ong.br`.grade g on si.id = g.id \nleft join `pocodantas.tag.ong.br`.grade_results gr on se.id = gr.enrollment_fk \nwhere c.school_year = 2024 and (g.grade is not null or gr.grade_1 is not null)\nlimit 1)\n\nunion\n\n(select  \"Faltas\", replace('pocodantas.tag.ong.br', '.tag.ong.br', '') as \"CityName\" , cf.id as 'id_fault' , c.school_year , cf.fkid , cf.justification \nfrom `pocodantas.tag.ong.br`.student_identification si \njoin `pocodantas.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `pocodantas.tag.ong.br`.classroom c on se.classroom_fk = c.id \njoin `pocodantas.tag.ong.br`.class_faults cf on se.student_fk = cf.student_fk \nwhere c.school_year = 2024 and cf.id is not null\nlimit 1)\n\nunion\n\n\n(select  \"GradeDeNotas\", replace('nossasenhoradagloria.tag.ong.br', '.tag.ong.br', '') as \"CityName\" ,si.id as 'id_fault' ,c.school_year, g.grade, gr.grade_1 \nfrom `nossasenhoradagloria.tag.ong.br`.student_identification si \njoin `nossasenhoradagloria.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `nossasenhoradagloria.tag.ong.br`.classroom c on se.classroom_fk = c.id \nleft join `nossasenhoradagloria.tag.ong.br`.grade g on si.id = g.id \nleft join `nossasenhoradagloria.tag.ong.br`.grade_results gr on se.id = gr.enrollment_fk \nwhere c.school_year = 2024 and (g.grade is not null or gr.grade_1 is not null)\nlimit 1)\n\nunion\n\n(select  \"Faltas\", replace('nossasenhoradagloria.tag.ong.br', '.tag.ong.br', '') as \"CityName\" , cf.id as 'id_fault' , c.school_year , cf.fkid , cf.justification \nfrom `nossasenhoradagloria.tag.ong.br`.student_identification si \njoin `nossasenhoradagloria.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `nossasenhoradagloria.tag.ong.br`.classroom c on se.classroom_fk = c.id \njoin `nossasenhoradagloria.tag.ong.br`.class_faults cf on se.student_fk = cf.student_fk \nwhere c.school_year = 2024 and cf.id is not null\nlimit 1)\n\nunion\n\n\n(select  \"GradeDeNotas\", replace('feiranova.tag.ong.br', '.tag.ong.br', '') as \"CityName\" ,si.id as 'id_fault' ,c.school_year, g.grade, gr.grade_1 \nfrom `feiranova.tag.ong.br`.student_identification si \njoin `feiranova.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `feiranova.tag.ong.br`.classroom c on se.classroom_fk = c.id \nleft join `feiranova.tag.ong.br`.grade g on si.id = g.id \nleft join `feiranova.tag.ong.br`.grade_results gr on se.id = gr.enrollment_fk \nwhere c.school_year = 2024 and (g.grade is not null or gr.grade_1 is not null)\nlimit 1)\n\nunion\n\n(select  \"Faltas\", replace('feiranova.tag.ong.br', '.tag.ong.br', '') as \"CityName\" , cf.id as 'id_fault' , c.school_year , cf.fkid , cf.justification \nfrom `feiranova.tag.ong.br`.student_identification si \njoin `feiranova.tag.ong.br`.student_enrollment se on si.id = se.student_fk \njoin `feiranova.tag.ong.br`.classroom c on se.classroom_fk = c.id \njoin `feiranova.tag.ong.br`.class_faults cf on se.student_fk = cf.student_fk \nwhere c.school_year = 2024 and cf.id is not null\nlimit 1)"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "GradeDeNotas"
+								},
+								"sink": {
+									"name": "Utilizam",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CityName"
+								},
+								"sink": {
+									"name": "Cidade",
+									"type": "varchar"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DB_cluster",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DBbndes",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "CopyDataEducaCenso",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "DeleteFromAtt_EducaCenso",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "MySqlSource",
+						"query": "\nSELECT \nreplace('axixa.tag.ong.br', '.tag.ong.br', '') as cityName,\n    si.name as 'school Name', \n    MAX(CASE WHEN l.crud = 'E' THEN 'E' ELSE NULL END) AS crud\nFROM  `axixa.tag.ong.br`.school_identification si\nLEFT JOIN  `axixa.tag.ong.br`.log l ON si.inep_id = l.school_fk \nGROUP BY  si.name\nunion\n\n\nSELECT \nreplace('carmopolis.tag.ong.br', '.tag.ong.br', '') as cityName,\n    si.name as 'school Name', \n    MAX(CASE WHEN l.crud = 'E' THEN 'E' ELSE NULL END) AS crud\nFROM  `carmopolis.tag.ong.br`.school_identification si\nLEFT JOIN  `carmopolis.tag.ong.br`.log l ON si.inep_id = l.school_fk \nGROUP BY  si.name\nunion\n\n\nSELECT \nreplace('cristalia.tag.ong.br', '.tag.ong.br', '') as cityName,\n    si.name as 'school Name', \n    MAX(CASE WHEN l.crud = 'E' THEN 'E' ELSE NULL END) AS crud\nFROM  `cristalia.tag.ong.br`.school_identification si\nLEFT JOIN  `cristalia.tag.ong.br`.log l ON si.inep_id = l.school_fk \nGROUP BY  si.name\nunion\n\n\nSELECT \nreplace('feiranova.tag.ong.br', '.tag.ong.br', '') as cityName,\n    si.name as 'school Name', \n    MAX(CASE WHEN l.crud = 'E' THEN 'E' ELSE NULL END) AS crud\nFROM  `feiranova.tag.ong.br`.school_identification si\nLEFT JOIN  `feiranova.tag.ong.br`.log l ON si.inep_id = l.school_fk \nGROUP BY  si.name\nunion\n\n\nSELECT \nreplace('humbertodecampos.tag.ong.br', '.tag.ong.br', '') as cityName,\n    si.name as 'school Name', \n    MAX(CASE WHEN l.crud = 'E' THEN 'E' ELSE NULL END) AS crud\nFROM  `humbertodecampos.tag.ong.br`.school_identification si\nLEFT JOIN  `humbertodecampos.tag.ong.br`.log l ON si.inep_id = l.school_fk \nGROUP BY  si.name\nunion\n\n\nSELECT \nreplace('nossasenhoradagloria.tag.ong.br', '.tag.ong.br', '') as cityName,\n    si.name as 'school Name', \n    MAX(CASE WHEN l.crud = 'E' THEN 'E' ELSE NULL END) AS crud\nFROM  `nossasenhoradagloria.tag.ong.br`.school_identification si\nLEFT JOIN  `nossasenhoradagloria.tag.ong.br`.log l ON si.inep_id = l.school_fk \nGROUP BY  si.name\nunion\n\n\nSELECT \nreplace('pocodantas.tag.ong.br', '.tag.ong.br', '') as cityName,\n    si.name as 'school Name', \n    MAX(CASE WHEN l.crud = 'E' THEN 'E' ELSE NULL END) AS crud\nFROM  `pocodantas.tag.ong.br`.school_identification si\nLEFT JOIN  `pocodantas.tag.ong.br`.log l ON si.inep_id = l.school_fk \nGROUP BY  si.name\nunion\n\n\nSELECT \nreplace('rubelita.tag.ong.br', '.tag.ong.br', '') as cityName,\n    si.name as 'school Name', \n    MAX(CASE WHEN l.crud = 'E' THEN 'E' ELSE NULL END) AS crud\nFROM  `rubelita.tag.ong.br`.school_identification si\nLEFT JOIN  `rubelita.tag.ong.br`.log l ON si.inep_id = l.school_fk \nGROUP BY  si.name\nunion\n\n\nSELECT \nreplace('uirauna.tag.ong.br', '.tag.ong.br', '') as cityName,\n    si.name as 'school Name', \n    MAX(CASE WHEN l.crud = 'E' THEN 'E' ELSE NULL END) AS crud\nFROM  `uirauna.tag.ong.br`.school_identification si\nLEFT JOIN  `uirauna.tag.ong.br`.log l ON si.inep_id = l.school_fk \nGROUP BY  si.name\n\n"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "cityName"
+								},
+								"sink": {
+									"name": "City_name"
+								}
+							},
+							{
+								"source": {
+									"name": "school Name"
+								},
+								"sink": {
+									"name": "School_name"
+								}
+							},
+							{
+								"source": {
+									"name": "crud"
+								},
+								"sink": {
+									"name": "Crud_utilizam"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DB_cluster",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DB_educaCenso",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "DeleteFromAtt_EducaCenso",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "delete from [data-warehouse-tag].dbo.BNDES_EducaCenso"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "CopyDataEducaCenso_BndsAtt",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "DeleteFromAtt_BndsAtt",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "MySqlSource",
+						"query": "\nselect si.name, max(g.grade) as 'Utiliza_Notas', max(cf.student_fk) as 'Utiliza_Falta', replace('axixa.tag.ong.br', '.tag.ong.br', '') as `city_name`\nfrom `axixa.tag.ong.br`.school_identification si\nleft join `axixa.tag.ong.br`.student_enrollment se on se.school_inep_id_fk = si.inep_id\nleft join `axixa.tag.ong.br`.grade g on g.enrollment_fk = se.id\nleft join `axixa.tag.ong.br`.class_faults cf on cf.student_fk  = se.student_fk \nleft join `axixa.tag.ong.br`.classroom c on se.classroom_fk  = c.id\nwhere c.school_year = 2024\ngroup by si.name\nunion \n\n\nselect si.name, max(g.grade) as 'Utiliza_Notas', max(cf.student_fk) as 'Utiliza_Falta', replace('carmopolis.tag.ong.br', '.tag.ong.br', '') as `city_name`\nfrom `carmopolis.tag.ong.br`.school_identification si\nleft join `carmopolis.tag.ong.br`.student_enrollment se on se.school_inep_id_fk = si.inep_id\nleft join `carmopolis.tag.ong.br`.grade g on g.enrollment_fk = se.id\nleft join `carmopolis.tag.ong.br`.class_faults cf on cf.student_fk  = se.student_fk \nleft join `carmopolis.tag.ong.br`.classroom c on se.classroom_fk  = c.id\nwhere c.school_year = 2024\ngroup by si.name\nunion \n\n\nselect si.name, max(g.grade) as 'Utiliza_Notas', max(cf.student_fk) as 'Utiliza_Falta', replace('cristalia.tag.ong.br', '.tag.ong.br', '') as `city_name`\nfrom `cristalia.tag.ong.br`.school_identification si\nleft join `cristalia.tag.ong.br`.student_enrollment se on se.school_inep_id_fk = si.inep_id\nleft join `cristalia.tag.ong.br`.grade g on g.enrollment_fk = se.id\nleft join `cristalia.tag.ong.br`.class_faults cf on cf.student_fk  = se.student_fk \nleft join `cristalia.tag.ong.br`.classroom c on se.classroom_fk  = c.id\nwhere c.school_year = 2024\ngroup by si.name\nunion \n\n\nselect si.name, max(g.grade) as 'Utiliza_Notas', max(cf.student_fk) as 'Utiliza_Falta', replace('feiranova.tag.ong.br', '.tag.ong.br', '') as `city_name`\nfrom `feiranova.tag.ong.br`.school_identification si\nleft join `feiranova.tag.ong.br`.student_enrollment se on se.school_inep_id_fk = si.inep_id\nleft join `feiranova.tag.ong.br`.grade g on g.enrollment_fk = se.id\nleft join `feiranova.tag.ong.br`.class_faults cf on cf.student_fk  = se.student_fk \nleft join `feiranova.tag.ong.br`.classroom c on se.classroom_fk  = c.id\nwhere c.school_year = 2024\ngroup by si.name\nunion \n\n\nselect si.name, max(g.grade) as 'Utiliza_Notas', max(cf.student_fk) as 'Utiliza_Falta', replace('humbertodecampos.tag.ong.br', '.tag.ong.br', '') as `city_name`\nfrom `humbertodecampos.tag.ong.br`.school_identification si\nleft join `humbertodecampos.tag.ong.br`.student_enrollment se on se.school_inep_id_fk = si.inep_id\nleft join `humbertodecampos.tag.ong.br`.grade g on g.enrollment_fk = se.id\nleft join `humbertodecampos.tag.ong.br`.class_faults cf on cf.student_fk  = se.student_fk \nleft join `humbertodecampos.tag.ong.br`.classroom c on se.classroom_fk  = c.id\nwhere c.school_year = 2024\ngroup by si.name\nunion \n\n\nselect si.name, max(g.grade) as 'Utiliza_Notas', max(cf.student_fk) as 'Utiliza_Falta', replace('nossasenhoradagloria.tag.ong.br', '.tag.ong.br', '') as `city_name`\nfrom `nossasenhoradagloria.tag.ong.br`.school_identification si\nleft join `nossasenhoradagloria.tag.ong.br`.student_enrollment se on se.school_inep_id_fk = si.inep_id\nleft join `nossasenhoradagloria.tag.ong.br`.grade g on g.enrollment_fk = se.id\nleft join `nossasenhoradagloria.tag.ong.br`.class_faults cf on cf.student_fk  = se.student_fk \nleft join `nossasenhoradagloria.tag.ong.br`.classroom c on se.classroom_fk  = c.id\nwhere c.school_year = 2024\ngroup by si.name\nunion \n\n\nselect si.name, max(g.grade) as 'Utiliza_Notas', max(cf.student_fk) as 'Utiliza_Falta', replace('pocodantas.tag.ong.br', '.tag.ong.br', '') as `city_name`\nfrom `pocodantas.tag.ong.br`.school_identification si\nleft join `pocodantas.tag.ong.br`.student_enrollment se on se.school_inep_id_fk = si.inep_id\nleft join `pocodantas.tag.ong.br`.grade g on g.enrollment_fk = se.id\nleft join `pocodantas.tag.ong.br`.class_faults cf on cf.student_fk  = se.student_fk \nleft join `pocodantas.tag.ong.br`.classroom c on se.classroom_fk  = c.id\nwhere c.school_year = 2024\ngroup by si.name\nunion \n\n\nselect si.name, max(g.grade) as 'Utiliza_Notas', max(cf.student_fk) as 'Utiliza_Falta', replace('rubelita.tag.ong.br', '.tag.ong.br', '') as `city_name`\nfrom `rubelita.tag.ong.br`.school_identification si\nleft join `rubelita.tag.ong.br`.student_enrollment se on se.school_inep_id_fk = si.inep_id\nleft join `rubelita.tag.ong.br`.grade g on g.enrollment_fk = se.id\nleft join `rubelita.tag.ong.br`.class_faults cf on cf.student_fk  = se.student_fk \nleft join `rubelita.tag.ong.br`.classroom c on se.classroom_fk  = c.id\nwhere c.school_year = 2024\ngroup by si.name\nunion \n\n\nselect si.name, max(g.grade) as 'Utiliza_Notas', max(cf.student_fk) as 'Utiliza_Falta', replace('uirauna.tag.ong.br', '.tag.ong.br', '') as `city_name`\nfrom `uirauna.tag.ong.br`.school_identification si\nleft join `uirauna.tag.ong.br`.student_enrollment se on se.school_inep_id_fk = si.inep_id\nleft join `uirauna.tag.ong.br`.grade g on g.enrollment_fk = se.id\nleft join `uirauna.tag.ong.br`.class_faults cf on cf.student_fk  = se.student_fk \nleft join `uirauna.tag.ong.br`.classroom c on se.classroom_fk  = c.id\nwhere c.school_year = 2024\ngroup by si.name \n\n"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "Utiliza_Notas"
+								},
+								"sink": {
+									"name": "Utiliza_notas"
+								}
+							},
+							{
+								"source": {
+									"name": "Utiliza_Falta"
+								},
+								"sink": {
+									"name": "Utiliza_faltas"
+								}
+							},
+							{
+								"source": {
+									"name": "city_name"
+								},
+								"sink": {
+									"name": "Cidade"
+								}
+							},
+							{
+								"source": {
+									"name": "name"
+								},
+								"sink": {
+									"name": "School_name"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DB_cluster",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DB_bndsAtt",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "DeleteFromAtt_BndsAtt",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "delete from [data-warehouse-tag].dbo.BNDES_City"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2024-06-19T19:54:56Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

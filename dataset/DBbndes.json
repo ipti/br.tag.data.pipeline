@@ -1,0 +1,26 @@
+{
+	"name": "DBbndes",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Utilizam",
+				"type": "varchar"
+			},
+			{
+				"name": "Cidade",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "BNDES"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

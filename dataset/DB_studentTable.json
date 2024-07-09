@@ -1,0 +1,97 @@
+{
+	"name": "DB_studentTable",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "F_HASH",
+				"type": "varchar"
+			},
+			{
+				"name": "Student_ID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "Name",
+				"type": "varchar"
+			},
+			{
+				"name": "Street_address",
+				"type": "varchar"
+			},
+			{
+				"name": "Bolsa_familia_participator",
+				"type": "bit"
+			},
+			{
+				"name": "Gender",
+				"type": "varchar"
+			},
+			{
+				"name": "Ethnicity",
+				"type": "varchar"
+			},
+			{
+				"name": "Birth_city",
+				"type": "varchar"
+			},
+			{
+				"name": "Deficiency",
+				"type": "varchar"
+			},
+			{
+				"name": "Birthday",
+				"type": "varchar"
+			},
+			{
+				"name": "Neighborhood_address",
+				"type": "varchar"
+			},
+			{
+				"name": "CEP",
+				"type": "varchar"
+			},
+			{
+				"name": "Public_transport",
+				"type": "varchar"
+			},
+			{
+				"name": "City_address",
+				"type": "varchar"
+			},
+			{
+				"name": "Mother_name",
+				"type": "varchar"
+			},
+			{
+				"name": "Father_name",
+				"type": "varchar"
+			},
+			{
+				"name": "Residence_zone",
+				"type": "varchar"
+			},
+			{
+				"name": "School_id_fk",
+				"type": "varchar"
+			},
+			{
+				"name": "Log_lineage",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "F_Student"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

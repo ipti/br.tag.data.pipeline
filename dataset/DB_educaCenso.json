@@ -1,0 +1,30 @@
+{
+	"name": "DB_educaCenso",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "City_name",
+				"type": "varchar"
+			},
+			{
+				"name": "School_name",
+				"type": "varchar"
+			},
+			{
+				"name": "Crud_utilizam",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "BNDES_EducaCenso"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

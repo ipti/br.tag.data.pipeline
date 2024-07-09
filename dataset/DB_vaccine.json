@@ -1,0 +1,32 @@
+{
+	"name": "DB_vaccine",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "F_HASH",
+				"type": "varchar"
+			},
+			{
+				"name": "Vaccine_name",
+				"type": "varchar"
+			},
+			{
+				"name": "LogDate",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "D_Student_vaccine"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

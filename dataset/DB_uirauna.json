@@ -1,0 +1,13 @@
+{
+	"name": "DB_uirauna",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlUirauna",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

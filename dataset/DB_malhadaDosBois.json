@@ -1,0 +1,13 @@
+{
+	"name": "DB_malhadaDosBois",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlMalhadaDosBois",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

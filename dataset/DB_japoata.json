@@ -1,0 +1,13 @@
+{
+	"name": "DB_japoata",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlJapoata",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

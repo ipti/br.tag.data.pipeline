@@ -1,0 +1,13 @@
+{
+	"name": "DB_icatu",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlIcatu",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

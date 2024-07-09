@@ -1,0 +1,13 @@
+{
+	"name": "DB_carmopolis",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlCarmopolis",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

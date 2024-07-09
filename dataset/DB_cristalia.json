@@ -1,0 +1,13 @@
+{
+	"name": "DB_cristalia",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlCristalia",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

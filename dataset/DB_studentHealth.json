@@ -1,0 +1,64 @@
+{
+	"name": "DB_studentHealth",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "F_HASH",
+				"type": "varchar"
+			},
+			{
+				"name": "Celiac_desease",
+				"type": "varchar"
+			},
+			{
+				"name": "Diabetes_desase",
+				"type": "varchar"
+			},
+			{
+				"name": "Iron_deficiency_anemia_desease",
+				"type": "varchar"
+			},
+			{
+				"name": "Sickle_cell_anemia_desease",
+				"type": "varchar"
+			},
+			{
+				"name": "Lactose_Intolerance_desease",
+				"type": "varchar"
+			},
+			{
+				"name": "Malnutrition_desease",
+				"type": "varchar"
+			},
+			{
+				"name": "Hypertension_desease",
+				"type": "varchar"
+			},
+			{
+				"name": "Obesity_desease",
+				"type": "varchar"
+			},
+			{
+				"name": "Other_health_problem",
+				"type": "varchar"
+			},
+			{
+				"name": "LogDate",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "D_Student_health"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

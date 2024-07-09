@@ -1,0 +1,13 @@
+{
+	"name": "DB_feiraNova",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlFeiraNova",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

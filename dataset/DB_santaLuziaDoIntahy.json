@@ -1,0 +1,13 @@
+{
+	"name": "DB_santaLuziaDoIntahy",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlSantaLuzia",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

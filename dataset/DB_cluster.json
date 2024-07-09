@@ -1,0 +1,13 @@
+{
+	"name": "DB_cluster",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Banco_cluster_TIA",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

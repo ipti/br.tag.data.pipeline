@@ -1,0 +1,13 @@
+{
+	"name": "DB_propria",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlPropria",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

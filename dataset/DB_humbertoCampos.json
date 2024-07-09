@@ -1,0 +1,13 @@
+{
+	"name": "DB_humbertoCampos",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlHumbertoCampos",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

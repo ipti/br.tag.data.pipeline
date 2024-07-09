@@ -1,0 +1,13 @@
+{
+	"name": "DB_axixa",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlAxixa",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

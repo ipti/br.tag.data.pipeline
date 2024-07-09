@@ -1,0 +1,13 @@
+{
+	"name": "DB_pocoDantas",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlPocoDantas",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

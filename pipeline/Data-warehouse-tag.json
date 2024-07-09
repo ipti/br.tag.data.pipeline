@@ -1,0 +1,916 @@
+{
+	"name": "Data-warehouse-tag",
+	"properties": {
+		"activities": [
+			{
+				"name": "CopyDataStudentTable",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "WITH CTE AS (\n    SELECT *,\n           ROW_NUMBER() OVER (PARTITION BY HASH ORDER BY ClasssYear DESC) AS RowNum\n    FROM Accumulated_Data\n)\nSELECT HASH,ID  ,StudentName , StudentStreet , StudentBolsaFamilia , StudentGender , StudentColor , StudentDeficiency , StudentBirthday , StudentNeighborhood ,\nStudentCep , StudentBus , StudentAddressCity , StudentMotherName, StudentFatherName , StudentLocality , SchoolId , LogDate \nFROM CTE\nLEFT JOIN F_Student sf\nON CTE.HASH = sf.F_HASH\nWHERE CTE.RowNum = 1 AND sf.F_HASH IS NULL;",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false
+					},
+					"enableStaging": false,
+					"dataIntegrationUnits": 2,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "HASH",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "F_HASH",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ID",
+									"type": "int",
+									"physicalType": "int",
+									"precision": 10
+								},
+								"sink": {
+									"name": "Student_ID",
+									"type": "int",
+									"precision": 10
+								}
+							},
+							{
+								"source": {
+									"name": "StudentName",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Name",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentStreet",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Street_address",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentBolsaFamilia",
+									"type": "bit",
+									"physicalType": "bit"
+								},
+								"sink": {
+									"name": "Bolsa_familia_participator",
+									"type": "bit"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentGender",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Gender",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentColor",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Ethnicity",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentDeficiency",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Deficiency",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentBirthday",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Birthday",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentNeighborhood",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Neighborhood_address",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentCep",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "CEP",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentAddressCity",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "City_address",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentMotherName",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Mother_name",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentFatherName",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Father_name",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentLocality",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Residence_zone",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SchoolId",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "School_id_fk",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "LogDate",
+									"type": "datetime",
+									"physicalType": "datetime",
+									"scale": 3,
+									"precision": 23
+								},
+								"sink": {
+									"name": "Log_lineage",
+									"type": "datetime",
+									"scale": 3,
+									"precision": 23
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Accumulated_data",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DB_studentTable",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "CopyDataSchoolTable",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "CopyDataStudentTable",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "WITH CTE AS (\n    SELECT *,\n           ROW_NUMBER() OVER (PARTITION BY SchoolName ORDER BY (SELECT NULL)) AS RowNum\n    FROM Accumulated_Data\n)\nSELECT SchoolId, SchoolName ,SchoolAddress ,SchoolNumber , SchoolCep , SchoolComplementAddress , SchoolComplementNeigborhood  ,SchoolLatitude , SchoolLongitude  \nFROM CTE\nLEFT JOIN D_School dc on CTE.SchoolId = dc.ID  \nWHERE RowNum = 1 AND dc.ID IS NULL ;",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false
+					},
+					"enableStaging": false,
+					"dataIntegrationUnits": 2,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "SchoolId",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "ID",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SchoolName",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Name",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SchoolAddress",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Address",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SchoolNumber",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Number_address",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SchoolCep",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "CEP",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SchoolComplementAddress",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Address_complement",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SchoolComplementNeigborhood",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Address_neighborhood",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SchoolLatitude",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Latitude",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SchoolLongitude",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Longitude",
+									"type": "varchar"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Accumulated_data",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DB_school",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "CopyDataClassroomTable",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "CopyDataSchoolTable",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "  SELECT ad.HASH, ad.Class, ad.StudentStage, ad.StudentSerie, ad.ClasssYear, ad.StudentStatus\n  FROM Accumulated_Data ad\n  EXCEPT\n  SELECT dc.F_HASH, dc.Name, dc.Stage, dc.Serie, dc.Class_year, dc.Status\n  FROM D_Classroom dc",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"dataIntegrationUnits": 2,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "HASH",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "F_HASH",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Class",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Name",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentStage",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Stage",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentSerie",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Serie",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ClasssYear",
+									"type": "int",
+									"physicalType": "int",
+									"precision": 10
+								},
+								"sink": {
+									"name": "Class_year",
+									"type": "int",
+									"precision": 10
+								}
+							},
+							{
+								"source": {
+									"name": "StudentStatus",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Status",
+									"type": "varchar"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Accumulated_data",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DB_classroom",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "CopyDataHealthTable",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "CopyDataClassroomTable",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT \n    ad.HASH,\n    ad.StudentHasCeliac,\n    ad.StudentHasDiabetes,\n    ad.StudentHasHypertension,\n    ad.StudentHasIronDeficiencyAnemia,\n    ad.StudentHasSickleCellAnemia,\n    ad.StudentHasLactoseIntolerance,\n    ad.StudentHasMalnutrition,\n    ad.StudentHasObesity,\n    ad.StudentDiferentHealthProblems,\n    DATEADD(HOUR, -3, SYSDATETIME()) AS LogDate\nFROM \n    Accumulated_Data ad\nJOIN \n    D_Student_health dsh ON ad.HASH = dsh.F_HASH\nWHERE \n    (ad.StudentHasCeliac IS NOT NULL\n    OR ad.StudentHasDiabetes IS NOT NULL\n    OR ad.StudentHasHypertension IS NOT NULL\n    OR ad.StudentHasIronDeficiencyAnemia IS NOT NULL\n    OR ad.StudentHasSickleCellAnemia IS NOT NULL\n    OR ad.StudentHasLactoseIntolerance IS NOT NULL\n    OR ad.StudentHasMalnutrition IS NOT NULL\n    OR ad.StudentHasObesity IS NOT NULL\n    OR (ad.StudentDiferentHealthProblems IS NOT NULL AND TRIM(ad.StudentDiferentHealthProblems) <> ''))\n    AND ad.LogDate > (\n        SELECT MAX(dsh_inner.LogDate)\n        FROM D_Student_health dsh_inner\n        WHERE dsh_inner.F_HASH = ad.HASH\n    )\nGROUP BY \n    ad.HASH,\n    ad.StudentHasCeliac,\n    ad.StudentHasDiabetes,\n    ad.StudentHasHypertension,\n    ad.StudentHasIronDeficiencyAnemia,\n    ad.StudentHasSickleCellAnemia,\n    ad.StudentHasLactoseIntolerance,\n    ad.StudentHasMalnutrition,\n    ad.StudentHasObesity,\n    ad.StudentDiferentHealthProblems;\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false
+					},
+					"enableStaging": false,
+					"dataIntegrationUnits": 2,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "HASH",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "F_HASH",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentHasCeliac",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Celiac_desease",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentHasDiabetes",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Diabetes_desase",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentHasHypertension",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Hypertension_desease",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentHasIronDeficiencyAnemia",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Iron_deficiency_anemia_desease",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentHasSickleCellAnemia",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Sickle_cell_anemia_desease",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentHasLactoseIntolerance",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Lactose_Intolerance_desease",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentHasMalnutrition",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Malnutrition_desease",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentHasObesity",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Obesity_desease",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentDiferentHealthProblems",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Other_health_problem",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "LogDate",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "LogDate",
+									"type": "datetime",
+									"scale": 3,
+									"precision": 23
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Accumulated_data",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DB_studentHealth",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "CopyDataStudentVaccine",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "CopyDataHealthTable",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select ad.HASH,ad.StudentVaccine, DATEADD(HOUR, -3, SYSDATETIME()) AS LogDate  \nfrom Accumulated_Data ad\nwhere Vaccine_id is not null and\nad.LogDate > (\n        SELECT MAX(dsv.LogDate)\n        FROM D_Student_vaccine dsv \n        WHERE dsv.F_HASH = ad.HASH\n    )\ngroup by HASH, StudentVaccine;",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "HASH",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "F_HASH",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StudentVaccine",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Vaccine_name",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "LogDate",
+									"type": "datetime",
+									"physicalType": "datetime",
+									"scale": 3,
+									"precision": 23
+								},
+								"sink": {
+									"name": "LogDate",
+									"type": "datetime",
+									"scale": 3,
+									"precision": 23
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Accumulated_data",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DB_vaccine",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "CopyDataRegistration",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "CopyDataStudentVaccine",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select ad.HASH, ad.DataLineageIngestion, ad.LogDate , ad.Database_name   \nfrom Accumulated_Data ad \nwhere ad.LogDate > (\nselect max(dr.LogDate)\nfrom D_Registration dr \nWHERE dr.F_HASH = ad.HASH\n)\ngroup by HASH, LogDate, Database_name  ,DataLineageIngestion;",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false
+					},
+					"enableStaging": false,
+					"dataIntegrationUnits": 2,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "HASH",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "F_HASH",
+									"type": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "DataLineageIngestion",
+									"type": "datetime",
+									"physicalType": "datetime",
+									"scale": 3,
+									"precision": 23
+								},
+								"sink": {
+									"name": "DataIngestionTime",
+									"type": "datetime",
+									"scale": 3,
+									"precision": 23
+								}
+							},
+							{
+								"source": {
+									"name": "LogDate",
+									"type": "datetime",
+									"physicalType": "datetime",
+									"scale": 3,
+									"precision": 23
+								},
+								"sink": {
+									"name": "LogDate",
+									"type": "datetime",
+									"scale": 3,
+									"precision": 23
+								}
+							},
+							{
+								"source": {
+									"name": "Database_name",
+									"type": "varchar",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Database_name",
+									"type": "varchar"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Accumulated_data",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DB_registration",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2024-06-06T19:33:16Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

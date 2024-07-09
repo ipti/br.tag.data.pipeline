@@ -1,0 +1,24 @@
+{
+	"name": "Trigger-data-warehouse-tag",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "Data-warehouse-tag",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Hour",
+				"interval": 24,
+				"startTime": "2024-06-07T02:00:00",
+				"timeZone": "E. South America Standard Time"
+			}
+		}
+	}
+}

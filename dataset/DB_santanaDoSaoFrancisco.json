@@ -1,0 +1,13 @@
+{
+	"name": "DB_santanaDoSaoFrancisco",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlSantanaDoSaoFrancisco",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

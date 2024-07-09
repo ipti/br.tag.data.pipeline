@@ -1,0 +1,54 @@
+{
+	"name": "DB_school",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "ID",
+				"type": "varchar"
+			},
+			{
+				"name": "Latitude",
+				"type": "varchar"
+			},
+			{
+				"name": "Longitude",
+				"type": "varchar"
+			},
+			{
+				"name": "Name",
+				"type": "varchar"
+			},
+			{
+				"name": "Address",
+				"type": "varchar"
+			},
+			{
+				"name": "Number_address",
+				"type": "varchar"
+			},
+			{
+				"name": "CEP",
+				"type": "varchar"
+			},
+			{
+				"name": "Address_complement",
+				"type": "varchar"
+			},
+			{
+				"name": "Address_neighborhood",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "D_School"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

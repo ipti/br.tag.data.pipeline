@@ -1,0 +1,13 @@
+{
+	"name": "DB_campoDoBrito",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlCampoDoBrito",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

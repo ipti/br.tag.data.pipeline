@@ -1,0 +1,9 @@
+{
+	"name": "tia-etl-dashboard",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "7acfbf72-f67b-40ca-a6b9-90409dcef27c",
+		"tenantId": "c21ae94d-b7e3-4b02-a736-a09f553ba882"
+	}
+}

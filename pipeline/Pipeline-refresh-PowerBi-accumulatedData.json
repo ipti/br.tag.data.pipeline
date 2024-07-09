@@ -1,0 +1,159 @@
+{
+	"name": "Pipeline-refresh-PowerBi-accumulatedData",
+	"properties": {
+		"activities": [
+			{
+				"name": "Refresh_accumulatedData",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "SetAccessToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "POST",
+					"headers": {
+						"Authorization": {
+							"value": "Bearer @{variables('accessToken')}",
+							"type": "Expression"
+						},
+						"Content-Type": {
+							"value": "application/json",
+							"type": "Expression"
+						}
+					},
+					"url": "https://api.powerbi.com/v1.0/myorg/datasets/21fa7616-c26e-41d6-a86e-f5efbc17101a/refreshes",
+					"body": {
+						"Refresh for api ADF": "ADF Refresh"
+					}
+				}
+			},
+			{
+				"name": "GetAccessToken",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "POST",
+					"headers": {
+						"Content-Type": "application/x-www-form-urlencoded"
+					},
+					"url": "https://login.windows.net/common/oauth2/token",
+					"body": {
+						"value": "@concat('grant_type=password&client_id=', pipeline().parameters.client_id, '&resource=https://analysis.windows.net/powerbi/api&scope=openid&username=', pipeline().parameters.username, '&password=', pipeline().parameters.password)\n",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "SetAccessToken",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "GetAccessToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "accessToken",
+					"value": {
+						"value": "@activity('GetAccessToken').output.access_token",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Refresh_TagReport",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "SetAccessToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "POST",
+					"headers": {
+						"Authorization": {
+							"value": "Bearer @{variables('accessToken')}",
+							"type": "Expression"
+						},
+						"Content-Type": {
+							"value": "application/json",
+							"type": "Expression"
+						}
+					},
+					"url": "https://api.powerbi.com/v1.0/myorg/datasets/58710fc3-8f85-4d5d-9876-2a36a04b0ab5/refreshes",
+					"body": {
+						"Refresh for api ADF": "ADF Refresh"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"grant_type": {
+				"type": "string",
+				"defaultValue": "password"
+			},
+			"username": {
+				"type": "string",
+				"defaultValue": "ti.pauloh@ipti.org.br"
+			},
+			"password": {
+				"type": "string",
+				"defaultValue": "81260235Ph."
+			},
+			"client_id": {
+				"type": "string",
+				"defaultValue": "fdc41ef1-199b-475a-adfd-408fb1a53937"
+			},
+			"client_secret": {
+				"type": "string",
+				"defaultValue": "4Vf8Q~~nGb_B71bzCIDbnbXaFZapkfFZLp-7UcYE"
+			}
+		},
+		"variables": {
+			"accessToken": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2024-07-03T23:03:01Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

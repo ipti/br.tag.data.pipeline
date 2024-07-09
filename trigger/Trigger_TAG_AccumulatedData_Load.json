@@ -1,0 +1,24 @@
+{
+	"name": "Trigger_TAG_AccumulatedData_Load",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "Pipeline-TAG-AccumulatedData-Load",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Hour",
+				"interval": 24,
+				"startTime": "2024-05-20T23:59:00",
+				"timeZone": "E. South America Standard Time"
+			}
+		}
+	}
+}

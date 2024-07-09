@@ -1,0 +1,38 @@
+{
+	"name": "DB_registration",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "F_HASH",
+				"type": "varchar"
+			},
+			{
+				"name": "DataIngestionTime",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "LogDate",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "Database_name",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "D_Registration"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,222 @@
+{
+	"name": "Accumulated_data",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "HASH",
+				"type": "varchar"
+			},
+			{
+				"name": "LogDate",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "Database_name",
+				"type": "varchar"
+			},
+			{
+				"name": "CityName",
+				"type": "varchar"
+			},
+			{
+				"name": "ID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "Class",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentName",
+				"type": "varchar"
+			},
+			{
+				"name": "SchoolName",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentNeighborhood",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentStatus",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentAddress",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentBolsaFamiliaChar",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentBolsaFamilia",
+				"type": "bit"
+			},
+			{
+				"name": "StudentStage",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentGender",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentColor",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentDeficiency",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentBirthCity",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentBirthday",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentStreet",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentAddressCity",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentCep",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentBus",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentMotherName",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentFatherName",
+				"type": "varchar"
+			},
+			{
+				"name": "ClasssYear",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "StudentLocality",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentHasCeliac",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentHasDiabetes",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentHasHypertension",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentHasIronDeficiencyAnemia",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentHasSickleCellAnemia",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentHasLactoseIntolerance",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentHasMalnutrition",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentHasObesity",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentDiferentHealthProblems",
+				"type": "varchar"
+			},
+			{
+				"name": "StudentVaccine",
+				"type": "varchar"
+			},
+			{
+				"name": "SchoolLatitude",
+				"type": "varchar"
+			},
+			{
+				"name": "SchoolLongitude",
+				"type": "varchar"
+			},
+			{
+				"name": "SchoolAddress",
+				"type": "varchar"
+			},
+			{
+				"name": "SchoolNumber",
+				"type": "varchar"
+			},
+			{
+				"name": "SchoolComplementAddress",
+				"type": "varchar"
+			},
+			{
+				"name": "SchoolComplementNeigborhood",
+				"type": "varchar"
+			},
+			{
+				"name": "SchoolCep",
+				"type": "varchar"
+			},
+			{
+				"name": "SchoolId",
+				"type": "varchar"
+			},
+			{
+				"name": "DataLineageIngestion",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "StudentSerie",
+				"type": "varchar"
+			},
+			{
+				"name": "School_id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "Vaccine_id",
+				"type": "int",
+				"precision": 10
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "Accumulated_Data"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

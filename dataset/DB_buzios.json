@@ -1,0 +1,13 @@
+{
+	"name": "DB_buzios",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlBuzios",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

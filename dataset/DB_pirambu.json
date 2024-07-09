@@ -1,0 +1,13 @@
+{
+	"name": "DB_pirambu",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlPirambu",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
