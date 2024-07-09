@@ -1,0 +1,998 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Nome do Data Factory",
+			"defaultValue": "tia-etl-dashboard"
+		},
+		"AzureSqlDatabase1_connectionString": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureSqlDatabase1'"
+		},
+		"Banco_cluster_TIA_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'Banco_cluster_TIA'"
+		},
+		"FileServer1_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'FileServer1'"
+		},
+		"MySqlAltoDoRodrigues_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlAltoDoRodrigues'"
+		},
+		"MySqlAxixa_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlAxixa'"
+		},
+		"MySqlBoquim_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlBoquim'"
+		},
+		"MySqlBuzios_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlBuzios'"
+		},
+		"MySqlCaicaraDoNorte_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlCaicaraDoNorte'"
+		},
+		"MySqlCampoDoBrito_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlCampoDoBrito'"
+		},
+		"MySqlCarmopolis_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlCarmopolis'"
+		},
+		"MySqlCristalia_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlCristalia'"
+		},
+		"MySqlFeiraNova_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlFeiraNova'"
+		},
+		"MySqlGeneralMaynard_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlGeneralMaynard'"
+		},
+		"MySqlGloria_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlGloria'"
+		},
+		"MySqlGrachoCardoso_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlGrachoCardoso'"
+		},
+		"MySqlHumbertoCampos_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlHumbertoCampos'"
+		},
+		"MySqlIcatu_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlIcatu'"
+		},
+		"MySqlItapemirim_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlItapemirim'"
+		},
+		"MySqlJaparatuba_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJaparatuba'"
+		},
+		"MySqlJapoata_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJapoata'"
+		},
+		"MySqlMalhadaDosBois_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlMalhadaDosBois'"
+		},
+		"MySqlPirambu_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPirambu'"
+		},
+		"MySqlPocoDantas_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPocoDantas'"
+		},
+		"MySqlPropria_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPropria'"
+		},
+		"MySqlRubelita_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlRubelita'"
+		},
+		"MySqlSantaLuzia_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantaLuzia'"
+		},
+		"MySqlSantaRosaDeLima_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantaRosaDeLima'"
+		},
+		"MySqlSantanaDoSaoFrancisco_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantanaDoSaoFrancisco'"
+		},
+		"MySqlSaoJoaoDaBarra_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSaoJoaoDaBarra'"
+		},
+		"MySqlUbatuba_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUbatuba'"
+		},
+		"MySqlUirauna_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUirauna'"
+		},
+		"MySqlUmari_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUmari'"
+		},
+		"MySqlitabi_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlitabi'"
+		},
+		"Banco_cluster_TIA_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"Banco_cluster_TIA_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "cluster.data.tag.ong.br"
+		},
+		"Banco_cluster_TIA_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"FileServer1_properties_typeProperties_host": {
+			"type": "string",
+			"defaultValue": "C:/Users/Paulo/Downloads/arquivo_modificado.csv"
+		},
+		"FileServer1_properties_typeProperties_userId": {
+			"type": "string",
+			"defaultValue": "root"
+		},
+		"MySqlAltoDoRodrigues_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlAltoDoRodrigues_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "altodorodrigues.tag.ong.br"
+		},
+		"MySqlAltoDoRodrigues_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlAxixa_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlAxixa_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "axixa.tag.ong.br"
+		},
+		"MySqlAxixa_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlBoquim_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlBoquim_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "boquim.tag.ong.br"
+		},
+		"MySqlBoquim_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlBuzios_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlBuzios_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "buzios.tag.ong.br"
+		},
+		"MySqlBuzios_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlCaicaraDoNorte_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlCaicaraDoNorte_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "caicaradonorte.tag.ong.br"
+		},
+		"MySqlCaicaraDoNorte_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlCampoDoBrito_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlCampoDoBrito_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "campodobrito.tag.ong.br"
+		},
+		"MySqlCampoDoBrito_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlCarmopolis_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlCarmopolis_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "carmopolis.tag.ong.br"
+		},
+		"MySqlCarmopolis_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlCristalia_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlCristalia_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "cristalia.tag.ong.br"
+		},
+		"MySqlCristalia_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlFeiraNova_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlFeiraNova_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "feiranova.tag.ong.br "
+		},
+		"MySqlFeiraNova_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlGeneralMaynard_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlGeneralMaynard_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "generalmaynard.tag.ong.br"
+		},
+		"MySqlGeneralMaynard_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlGloria_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlGloria_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "nossasenhoradagloria.tag.ong.br"
+		},
+		"MySqlGloria_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlGrachoCardoso_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlGrachoCardoso_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "gracchocardoso.tag.ong.br"
+		},
+		"MySqlGrachoCardoso_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlHumbertoCampos_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlHumbertoCampos_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "humbertodecampos.tag.ong.br"
+		},
+		"MySqlHumbertoCampos_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlIcatu_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlIcatu_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "icatu.tag.ong.br"
+		},
+		"MySqlIcatu_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlItapemirim_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlItapemirim_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "itapemirim.tag.ong.br"
+		},
+		"MySqlItapemirim_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlJaparatuba_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlJaparatuba_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "japaratuba.tag.ong.br"
+		},
+		"MySqlJaparatuba_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlJapoata_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlJapoata_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "japoata.tag.ong.br"
+		},
+		"MySqlJapoata_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlMalhadaDosBois_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlMalhadaDosBois_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "malhada.tag.ong.br"
+		},
+		"MySqlMalhadaDosBois_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlPirambu_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlPirambu_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "pirambu.tag.ong.br"
+		},
+		"MySqlPirambu_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlPocoDantas_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlPocoDantas_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "pocodantas.tag.ong.br"
+		},
+		"MySqlPocoDantas_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlPropria_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlPropria_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "propria.tag.ong.br"
+		},
+		"MySqlPropria_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlRubelita_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlRubelita_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "rubelita.tag.ong.br"
+		},
+		"MySqlRubelita_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlSantaLuzia_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlSantaLuzia_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "santaluzia.tag.ong.br"
+		},
+		"MySqlSantaLuzia_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlSantaRosaDeLima_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlSantaRosaDeLima_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "santarosadelima.tag.ong.br"
+		},
+		"MySqlSantaRosaDeLima_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlSantanaDoSaoFrancisco_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlSantanaDoSaoFrancisco_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "santanadosaofrancisco.tag.ong.br"
+		},
+		"MySqlSantanaDoSaoFrancisco_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlSaoJoaoDaBarra_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlSaoJoaoDaBarra_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "saojoaodabarra.tag.ong.br"
+		},
+		"MySqlSaoJoaoDaBarra_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlUbatuba_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlUbatuba_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "ubatuba.tag.ong.br"
+		},
+		"MySqlUbatuba_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlUirauna_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlUirauna_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "uirauna.tag.ong.br"
+		},
+		"MySqlUirauna_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlUmari_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlUmari_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "umari.tag.ong.br"
+		},
+		"MySqlUmari_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlitabi_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlitabi_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "itabi.tag.ong.br"
+		},
+		"MySqlitabi_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"containerUri": {
+			"type": "string",
+			"metadata": "URI para a conta de armazenamento contendo os modelos do ARM vinculados"
+		},
+		"containerSasToken": {
+			"type": "string",
+			"metadata": "Token SAS para a conta de armazenamento contendo modelos do ARM vinculados"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "tia-etl-dashboard_ArmTemplate_0",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_0.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"AzureSqlDatabase1_connectionString": {
+						"value": "[parameters('AzureSqlDatabase1_connectionString')]"
+					},
+					"Banco_cluster_TIA_password": {
+						"value": "[parameters('Banco_cluster_TIA_password')]"
+					},
+					"FileServer1_password": {
+						"value": "[parameters('FileServer1_password')]"
+					},
+					"MySqlAltoDoRodrigues_password": {
+						"value": "[parameters('MySqlAltoDoRodrigues_password')]"
+					},
+					"MySqlAxixa_password": {
+						"value": "[parameters('MySqlAxixa_password')]"
+					},
+					"MySqlBoquim_password": {
+						"value": "[parameters('MySqlBoquim_password')]"
+					},
+					"MySqlBuzios_password": {
+						"value": "[parameters('MySqlBuzios_password')]"
+					},
+					"MySqlCaicaraDoNorte_password": {
+						"value": "[parameters('MySqlCaicaraDoNorte_password')]"
+					},
+					"MySqlCampoDoBrito_password": {
+						"value": "[parameters('MySqlCampoDoBrito_password')]"
+					},
+					"MySqlCarmopolis_password": {
+						"value": "[parameters('MySqlCarmopolis_password')]"
+					},
+					"MySqlCristalia_password": {
+						"value": "[parameters('MySqlCristalia_password')]"
+					},
+					"MySqlFeiraNova_password": {
+						"value": "[parameters('MySqlFeiraNova_password')]"
+					},
+					"MySqlGeneralMaynard_password": {
+						"value": "[parameters('MySqlGeneralMaynard_password')]"
+					},
+					"MySqlGloria_password": {
+						"value": "[parameters('MySqlGloria_password')]"
+					},
+					"MySqlGrachoCardoso_password": {
+						"value": "[parameters('MySqlGrachoCardoso_password')]"
+					},
+					"MySqlHumbertoCampos_password": {
+						"value": "[parameters('MySqlHumbertoCampos_password')]"
+					},
+					"MySqlIcatu_password": {
+						"value": "[parameters('MySqlIcatu_password')]"
+					},
+					"MySqlItapemirim_password": {
+						"value": "[parameters('MySqlItapemirim_password')]"
+					},
+					"MySqlJaparatuba_password": {
+						"value": "[parameters('MySqlJaparatuba_password')]"
+					},
+					"Banco_cluster_TIA_properties_typeProperties_server": {
+						"value": "[parameters('Banco_cluster_TIA_properties_typeProperties_server')]"
+					},
+					"Banco_cluster_TIA_properties_typeProperties_database": {
+						"value": "[parameters('Banco_cluster_TIA_properties_typeProperties_database')]"
+					},
+					"Banco_cluster_TIA_properties_typeProperties_username": {
+						"value": "[parameters('Banco_cluster_TIA_properties_typeProperties_username')]"
+					},
+					"FileServer1_properties_typeProperties_host": {
+						"value": "[parameters('FileServer1_properties_typeProperties_host')]"
+					},
+					"FileServer1_properties_typeProperties_userId": {
+						"value": "[parameters('FileServer1_properties_typeProperties_userId')]"
+					},
+					"MySqlAltoDoRodrigues_properties_typeProperties_server": {
+						"value": "[parameters('MySqlAltoDoRodrigues_properties_typeProperties_server')]"
+					},
+					"MySqlAltoDoRodrigues_properties_typeProperties_database": {
+						"value": "[parameters('MySqlAltoDoRodrigues_properties_typeProperties_database')]"
+					},
+					"MySqlAltoDoRodrigues_properties_typeProperties_username": {
+						"value": "[parameters('MySqlAltoDoRodrigues_properties_typeProperties_username')]"
+					},
+					"MySqlAxixa_properties_typeProperties_server": {
+						"value": "[parameters('MySqlAxixa_properties_typeProperties_server')]"
+					},
+					"MySqlAxixa_properties_typeProperties_database": {
+						"value": "[parameters('MySqlAxixa_properties_typeProperties_database')]"
+					},
+					"MySqlAxixa_properties_typeProperties_username": {
+						"value": "[parameters('MySqlAxixa_properties_typeProperties_username')]"
+					},
+					"MySqlBoquim_properties_typeProperties_server": {
+						"value": "[parameters('MySqlBoquim_properties_typeProperties_server')]"
+					},
+					"MySqlBoquim_properties_typeProperties_database": {
+						"value": "[parameters('MySqlBoquim_properties_typeProperties_database')]"
+					},
+					"MySqlBoquim_properties_typeProperties_username": {
+						"value": "[parameters('MySqlBoquim_properties_typeProperties_username')]"
+					},
+					"MySqlBuzios_properties_typeProperties_server": {
+						"value": "[parameters('MySqlBuzios_properties_typeProperties_server')]"
+					},
+					"MySqlBuzios_properties_typeProperties_database": {
+						"value": "[parameters('MySqlBuzios_properties_typeProperties_database')]"
+					},
+					"MySqlBuzios_properties_typeProperties_username": {
+						"value": "[parameters('MySqlBuzios_properties_typeProperties_username')]"
+					},
+					"MySqlCaicaraDoNorte_properties_typeProperties_server": {
+						"value": "[parameters('MySqlCaicaraDoNorte_properties_typeProperties_server')]"
+					},
+					"MySqlCaicaraDoNorte_properties_typeProperties_database": {
+						"value": "[parameters('MySqlCaicaraDoNorte_properties_typeProperties_database')]"
+					},
+					"MySqlCaicaraDoNorte_properties_typeProperties_username": {
+						"value": "[parameters('MySqlCaicaraDoNorte_properties_typeProperties_username')]"
+					},
+					"MySqlCampoDoBrito_properties_typeProperties_server": {
+						"value": "[parameters('MySqlCampoDoBrito_properties_typeProperties_server')]"
+					},
+					"MySqlCampoDoBrito_properties_typeProperties_database": {
+						"value": "[parameters('MySqlCampoDoBrito_properties_typeProperties_database')]"
+					},
+					"MySqlCampoDoBrito_properties_typeProperties_username": {
+						"value": "[parameters('MySqlCampoDoBrito_properties_typeProperties_username')]"
+					},
+					"MySqlCarmopolis_properties_typeProperties_server": {
+						"value": "[parameters('MySqlCarmopolis_properties_typeProperties_server')]"
+					},
+					"MySqlCarmopolis_properties_typeProperties_database": {
+						"value": "[parameters('MySqlCarmopolis_properties_typeProperties_database')]"
+					},
+					"MySqlCarmopolis_properties_typeProperties_username": {
+						"value": "[parameters('MySqlCarmopolis_properties_typeProperties_username')]"
+					},
+					"MySqlCristalia_properties_typeProperties_server": {
+						"value": "[parameters('MySqlCristalia_properties_typeProperties_server')]"
+					},
+					"MySqlCristalia_properties_typeProperties_database": {
+						"value": "[parameters('MySqlCristalia_properties_typeProperties_database')]"
+					},
+					"MySqlCristalia_properties_typeProperties_username": {
+						"value": "[parameters('MySqlCristalia_properties_typeProperties_username')]"
+					},
+					"MySqlFeiraNova_properties_typeProperties_server": {
+						"value": "[parameters('MySqlFeiraNova_properties_typeProperties_server')]"
+					},
+					"MySqlFeiraNova_properties_typeProperties_database": {
+						"value": "[parameters('MySqlFeiraNova_properties_typeProperties_database')]"
+					},
+					"MySqlFeiraNova_properties_typeProperties_username": {
+						"value": "[parameters('MySqlFeiraNova_properties_typeProperties_username')]"
+					},
+					"MySqlGeneralMaynard_properties_typeProperties_server": {
+						"value": "[parameters('MySqlGeneralMaynard_properties_typeProperties_server')]"
+					},
+					"MySqlGeneralMaynard_properties_typeProperties_database": {
+						"value": "[parameters('MySqlGeneralMaynard_properties_typeProperties_database')]"
+					},
+					"MySqlGeneralMaynard_properties_typeProperties_username": {
+						"value": "[parameters('MySqlGeneralMaynard_properties_typeProperties_username')]"
+					},
+					"MySqlGloria_properties_typeProperties_server": {
+						"value": "[parameters('MySqlGloria_properties_typeProperties_server')]"
+					},
+					"MySqlGloria_properties_typeProperties_database": {
+						"value": "[parameters('MySqlGloria_properties_typeProperties_database')]"
+					},
+					"MySqlGloria_properties_typeProperties_username": {
+						"value": "[parameters('MySqlGloria_properties_typeProperties_username')]"
+					},
+					"MySqlGrachoCardoso_properties_typeProperties_server": {
+						"value": "[parameters('MySqlGrachoCardoso_properties_typeProperties_server')]"
+					},
+					"MySqlGrachoCardoso_properties_typeProperties_database": {
+						"value": "[parameters('MySqlGrachoCardoso_properties_typeProperties_database')]"
+					},
+					"MySqlGrachoCardoso_properties_typeProperties_username": {
+						"value": "[parameters('MySqlGrachoCardoso_properties_typeProperties_username')]"
+					},
+					"MySqlHumbertoCampos_properties_typeProperties_server": {
+						"value": "[parameters('MySqlHumbertoCampos_properties_typeProperties_server')]"
+					},
+					"MySqlHumbertoCampos_properties_typeProperties_database": {
+						"value": "[parameters('MySqlHumbertoCampos_properties_typeProperties_database')]"
+					},
+					"MySqlHumbertoCampos_properties_typeProperties_username": {
+						"value": "[parameters('MySqlHumbertoCampos_properties_typeProperties_username')]"
+					},
+					"MySqlIcatu_properties_typeProperties_server": {
+						"value": "[parameters('MySqlIcatu_properties_typeProperties_server')]"
+					},
+					"MySqlIcatu_properties_typeProperties_database": {
+						"value": "[parameters('MySqlIcatu_properties_typeProperties_database')]"
+					},
+					"MySqlIcatu_properties_typeProperties_username": {
+						"value": "[parameters('MySqlIcatu_properties_typeProperties_username')]"
+					},
+					"MySqlItapemirim_properties_typeProperties_server": {
+						"value": "[parameters('MySqlItapemirim_properties_typeProperties_server')]"
+					},
+					"MySqlItapemirim_properties_typeProperties_database": {
+						"value": "[parameters('MySqlItapemirim_properties_typeProperties_database')]"
+					},
+					"MySqlItapemirim_properties_typeProperties_username": {
+						"value": "[parameters('MySqlItapemirim_properties_typeProperties_username')]"
+					},
+					"MySqlJaparatuba_properties_typeProperties_server": {
+						"value": "[parameters('MySqlJaparatuba_properties_typeProperties_server')]"
+					},
+					"MySqlJaparatuba_properties_typeProperties_database": {
+						"value": "[parameters('MySqlJaparatuba_properties_typeProperties_database')]"
+					},
+					"MySqlJaparatuba_properties_typeProperties_username": {
+						"value": "[parameters('MySqlJaparatuba_properties_typeProperties_username')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "tia-etl-dashboard_ArmTemplate_1",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_1.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"MySqlJapoata_password": {
+						"value": "[parameters('MySqlJapoata_password')]"
+					},
+					"MySqlMalhadaDosBois_password": {
+						"value": "[parameters('MySqlMalhadaDosBois_password')]"
+					},
+					"MySqlPirambu_password": {
+						"value": "[parameters('MySqlPirambu_password')]"
+					},
+					"MySqlPocoDantas_password": {
+						"value": "[parameters('MySqlPocoDantas_password')]"
+					},
+					"MySqlPropria_password": {
+						"value": "[parameters('MySqlPropria_password')]"
+					},
+					"MySqlRubelita_password": {
+						"value": "[parameters('MySqlRubelita_password')]"
+					},
+					"MySqlSantaLuzia_password": {
+						"value": "[parameters('MySqlSantaLuzia_password')]"
+					},
+					"MySqlSantaRosaDeLima_password": {
+						"value": "[parameters('MySqlSantaRosaDeLima_password')]"
+					},
+					"MySqlSantanaDoSaoFrancisco_password": {
+						"value": "[parameters('MySqlSantanaDoSaoFrancisco_password')]"
+					},
+					"MySqlSaoJoaoDaBarra_password": {
+						"value": "[parameters('MySqlSaoJoaoDaBarra_password')]"
+					},
+					"MySqlUbatuba_password": {
+						"value": "[parameters('MySqlUbatuba_password')]"
+					},
+					"MySqlUirauna_password": {
+						"value": "[parameters('MySqlUirauna_password')]"
+					},
+					"MySqlUmari_password": {
+						"value": "[parameters('MySqlUmari_password')]"
+					},
+					"MySqlitabi_password": {
+						"value": "[parameters('MySqlitabi_password')]"
+					},
+					"MySqlJapoata_properties_typeProperties_server": {
+						"value": "[parameters('MySqlJapoata_properties_typeProperties_server')]"
+					},
+					"MySqlJapoata_properties_typeProperties_database": {
+						"value": "[parameters('MySqlJapoata_properties_typeProperties_database')]"
+					},
+					"MySqlJapoata_properties_typeProperties_username": {
+						"value": "[parameters('MySqlJapoata_properties_typeProperties_username')]"
+					},
+					"MySqlMalhadaDosBois_properties_typeProperties_server": {
+						"value": "[parameters('MySqlMalhadaDosBois_properties_typeProperties_server')]"
+					},
+					"MySqlMalhadaDosBois_properties_typeProperties_database": {
+						"value": "[parameters('MySqlMalhadaDosBois_properties_typeProperties_database')]"
+					},
+					"MySqlMalhadaDosBois_properties_typeProperties_username": {
+						"value": "[parameters('MySqlMalhadaDosBois_properties_typeProperties_username')]"
+					},
+					"MySqlPirambu_properties_typeProperties_server": {
+						"value": "[parameters('MySqlPirambu_properties_typeProperties_server')]"
+					},
+					"MySqlPirambu_properties_typeProperties_database": {
+						"value": "[parameters('MySqlPirambu_properties_typeProperties_database')]"
+					},
+					"MySqlPirambu_properties_typeProperties_username": {
+						"value": "[parameters('MySqlPirambu_properties_typeProperties_username')]"
+					},
+					"MySqlPocoDantas_properties_typeProperties_server": {
+						"value": "[parameters('MySqlPocoDantas_properties_typeProperties_server')]"
+					},
+					"MySqlPocoDantas_properties_typeProperties_database": {
+						"value": "[parameters('MySqlPocoDantas_properties_typeProperties_database')]"
+					},
+					"MySqlPocoDantas_properties_typeProperties_username": {
+						"value": "[parameters('MySqlPocoDantas_properties_typeProperties_username')]"
+					},
+					"MySqlPropria_properties_typeProperties_server": {
+						"value": "[parameters('MySqlPropria_properties_typeProperties_server')]"
+					},
+					"MySqlPropria_properties_typeProperties_database": {
+						"value": "[parameters('MySqlPropria_properties_typeProperties_database')]"
+					},
+					"MySqlPropria_properties_typeProperties_username": {
+						"value": "[parameters('MySqlPropria_properties_typeProperties_username')]"
+					},
+					"MySqlRubelita_properties_typeProperties_server": {
+						"value": "[parameters('MySqlRubelita_properties_typeProperties_server')]"
+					},
+					"MySqlRubelita_properties_typeProperties_database": {
+						"value": "[parameters('MySqlRubelita_properties_typeProperties_database')]"
+					},
+					"MySqlRubelita_properties_typeProperties_username": {
+						"value": "[parameters('MySqlRubelita_properties_typeProperties_username')]"
+					},
+					"MySqlSantaLuzia_properties_typeProperties_server": {
+						"value": "[parameters('MySqlSantaLuzia_properties_typeProperties_server')]"
+					},
+					"MySqlSantaLuzia_properties_typeProperties_database": {
+						"value": "[parameters('MySqlSantaLuzia_properties_typeProperties_database')]"
+					},
+					"MySqlSantaLuzia_properties_typeProperties_username": {
+						"value": "[parameters('MySqlSantaLuzia_properties_typeProperties_username')]"
+					},
+					"MySqlSantaRosaDeLima_properties_typeProperties_server": {
+						"value": "[parameters('MySqlSantaRosaDeLima_properties_typeProperties_server')]"
+					},
+					"MySqlSantaRosaDeLima_properties_typeProperties_database": {
+						"value": "[parameters('MySqlSantaRosaDeLima_properties_typeProperties_database')]"
+					},
+					"MySqlSantaRosaDeLima_properties_typeProperties_username": {
+						"value": "[parameters('MySqlSantaRosaDeLima_properties_typeProperties_username')]"
+					},
+					"MySqlSantanaDoSaoFrancisco_properties_typeProperties_server": {
+						"value": "[parameters('MySqlSantanaDoSaoFrancisco_properties_typeProperties_server')]"
+					},
+					"MySqlSantanaDoSaoFrancisco_properties_typeProperties_database": {
+						"value": "[parameters('MySqlSantanaDoSaoFrancisco_properties_typeProperties_database')]"
+					},
+					"MySqlSantanaDoSaoFrancisco_properties_typeProperties_username": {
+						"value": "[parameters('MySqlSantanaDoSaoFrancisco_properties_typeProperties_username')]"
+					},
+					"MySqlSaoJoaoDaBarra_properties_typeProperties_server": {
+						"value": "[parameters('MySqlSaoJoaoDaBarra_properties_typeProperties_server')]"
+					},
+					"MySqlSaoJoaoDaBarra_properties_typeProperties_database": {
+						"value": "[parameters('MySqlSaoJoaoDaBarra_properties_typeProperties_database')]"
+					},
+					"MySqlSaoJoaoDaBarra_properties_typeProperties_username": {
+						"value": "[parameters('MySqlSaoJoaoDaBarra_properties_typeProperties_username')]"
+					},
+					"MySqlUbatuba_properties_typeProperties_server": {
+						"value": "[parameters('MySqlUbatuba_properties_typeProperties_server')]"
+					},
+					"MySqlUbatuba_properties_typeProperties_database": {
+						"value": "[parameters('MySqlUbatuba_properties_typeProperties_database')]"
+					},
+					"MySqlUbatuba_properties_typeProperties_username": {
+						"value": "[parameters('MySqlUbatuba_properties_typeProperties_username')]"
+					},
+					"MySqlUirauna_properties_typeProperties_server": {
+						"value": "[parameters('MySqlUirauna_properties_typeProperties_server')]"
+					},
+					"MySqlUirauna_properties_typeProperties_database": {
+						"value": "[parameters('MySqlUirauna_properties_typeProperties_database')]"
+					},
+					"MySqlUirauna_properties_typeProperties_username": {
+						"value": "[parameters('MySqlUirauna_properties_typeProperties_username')]"
+					},
+					"MySqlUmari_properties_typeProperties_server": {
+						"value": "[parameters('MySqlUmari_properties_typeProperties_server')]"
+					},
+					"MySqlUmari_properties_typeProperties_database": {
+						"value": "[parameters('MySqlUmari_properties_typeProperties_database')]"
+					},
+					"MySqlUmari_properties_typeProperties_username": {
+						"value": "[parameters('MySqlUmari_properties_typeProperties_username')]"
+					},
+					"MySqlitabi_properties_typeProperties_server": {
+						"value": "[parameters('MySqlitabi_properties_typeProperties_server')]"
+					},
+					"MySqlitabi_properties_typeProperties_database": {
+						"value": "[parameters('MySqlitabi_properties_typeProperties_database')]"
+					},
+					"MySqlitabi_properties_typeProperties_username": {
+						"value": "[parameters('MySqlitabi_properties_typeProperties_username')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[resourceId('Microsoft.Resources/deployments', 'tia-etl-dashboard_ArmTemplate_0')]"
+			]
+		},
+		{
+			"name": "tia-etl-dashboard_ArmTemplate_2",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_2.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[resourceId('Microsoft.Resources/deployments', 'tia-etl-dashboard_ArmTemplate_1')]"
+			]
+		},
+		{
+			"name": "tia-etl-dashboard_ArmTemplate_3",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_3.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[resourceId('Microsoft.Resources/deployments', 'tia-etl-dashboard_ArmTemplate_2')]"
+			]
+		}
+	]
+}

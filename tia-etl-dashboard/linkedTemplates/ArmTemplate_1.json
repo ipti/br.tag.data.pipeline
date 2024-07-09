@@ -1,0 +1,869 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Nome do Data Factory",
+			"defaultValue": "tia-etl-dashboard"
+		},
+		"MySqlJapoata_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJapoata'"
+		},
+		"MySqlMalhadaDosBois_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlMalhadaDosBois'"
+		},
+		"MySqlPirambu_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPirambu'"
+		},
+		"MySqlPocoDantas_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPocoDantas'"
+		},
+		"MySqlPropria_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPropria'"
+		},
+		"MySqlRubelita_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlRubelita'"
+		},
+		"MySqlSantaLuzia_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantaLuzia'"
+		},
+		"MySqlSantaRosaDeLima_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantaRosaDeLima'"
+		},
+		"MySqlSantanaDoSaoFrancisco_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantanaDoSaoFrancisco'"
+		},
+		"MySqlSaoJoaoDaBarra_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSaoJoaoDaBarra'"
+		},
+		"MySqlUbatuba_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUbatuba'"
+		},
+		"MySqlUirauna_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUirauna'"
+		},
+		"MySqlUmari_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUmari'"
+		},
+		"MySqlitabi_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlitabi'"
+		},
+		"MySqlJapoata_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlJapoata_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "japoata.tag.ong.br"
+		},
+		"MySqlJapoata_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlMalhadaDosBois_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlMalhadaDosBois_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "malhada.tag.ong.br"
+		},
+		"MySqlMalhadaDosBois_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlPirambu_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlPirambu_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "pirambu.tag.ong.br"
+		},
+		"MySqlPirambu_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlPocoDantas_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlPocoDantas_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "pocodantas.tag.ong.br"
+		},
+		"MySqlPocoDantas_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlPropria_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlPropria_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "propria.tag.ong.br"
+		},
+		"MySqlPropria_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlRubelita_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlRubelita_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "rubelita.tag.ong.br"
+		},
+		"MySqlRubelita_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlSantaLuzia_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlSantaLuzia_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "santaluzia.tag.ong.br"
+		},
+		"MySqlSantaLuzia_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlSantaRosaDeLima_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlSantaRosaDeLima_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "santarosadelima.tag.ong.br"
+		},
+		"MySqlSantaRosaDeLima_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlSantanaDoSaoFrancisco_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlSantanaDoSaoFrancisco_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "santanadosaofrancisco.tag.ong.br"
+		},
+		"MySqlSantanaDoSaoFrancisco_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlSaoJoaoDaBarra_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlSaoJoaoDaBarra_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "saojoaodabarra.tag.ong.br"
+		},
+		"MySqlSaoJoaoDaBarra_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlUbatuba_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlUbatuba_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "ubatuba.tag.ong.br"
+		},
+		"MySqlUbatuba_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlUirauna_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlUirauna_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "uirauna.tag.ong.br"
+		},
+		"MySqlUirauna_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlUmari_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlUmari_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "umari.tag.ong.br"
+		},
+		"MySqlUmari_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlitabi_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlitabi_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "itabi.tag.ong.br"
+		},
+		"MySqlitabi_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlJapoata')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlJapoata_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlJapoata_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlJapoata_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlJapoata_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlMalhadaDosBois')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlMalhadaDosBois_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlMalhadaDosBois_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlMalhadaDosBois_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlMalhadaDosBois_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlPirambu')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlPirambu_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlPirambu_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlPirambu_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlPirambu_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlPocoDantas')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlPocoDantas_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlPocoDantas_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlPocoDantas_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlPocoDantas_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlPropria')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlPropria_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlPropria_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlPropria_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlPropria_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlRubelita')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlRubelita_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlRubelita_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlRubelita_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlRubelita_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlSantaLuzia')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlSantaLuzia_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlSantaLuzia_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlSantaLuzia_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlSantaLuzia_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlSantaRosaDeLima')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlSantaRosaDeLima_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlSantaRosaDeLima_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlSantaRosaDeLima_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlSantaRosaDeLima_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlSantanaDoSaoFrancisco')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlSantanaDoSaoFrancisco_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlSantanaDoSaoFrancisco_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlSantanaDoSaoFrancisco_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlSantanaDoSaoFrancisco_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlSaoJoaoDaBarra')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlSaoJoaoDaBarra_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlSaoJoaoDaBarra_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlSaoJoaoDaBarra_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlSaoJoaoDaBarra_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlUbatuba')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlUbatuba_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlUbatuba_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlUbatuba_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlUbatuba_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlUirauna')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlUirauna_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlUirauna_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlUirauna_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlUirauna_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlUmari')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlUmari_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlUmari_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlUmari_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlUmari_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlitabi')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlitabi_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlitabi_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlitabi_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlitabi_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Accumulated_data')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "HASH",
+						"type": "varchar"
+					},
+					{
+						"name": "LogDate",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "Database_name",
+						"type": "varchar"
+					},
+					{
+						"name": "CityName",
+						"type": "varchar"
+					},
+					{
+						"name": "ID",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Class",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentName",
+						"type": "varchar"
+					},
+					{
+						"name": "SchoolName",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentNeighborhood",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentStatus",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentAddress",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentBolsaFamiliaChar",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentBolsaFamilia",
+						"type": "bit"
+					},
+					{
+						"name": "StudentStage",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentGender",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentColor",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentDeficiency",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentBirthCity",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentBirthday",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentStreet",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentAddressCity",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentCep",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentBus",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentMotherName",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentFatherName",
+						"type": "varchar"
+					},
+					{
+						"name": "ClasssYear",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "StudentLocality",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentHasCeliac",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentHasDiabetes",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentHasHypertension",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentHasIronDeficiencyAnemia",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentHasSickleCellAnemia",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentHasLactoseIntolerance",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentHasMalnutrition",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentHasObesity",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentDiferentHealthProblems",
+						"type": "varchar"
+					},
+					{
+						"name": "StudentVaccine",
+						"type": "varchar"
+					},
+					{
+						"name": "SchoolLatitude",
+						"type": "varchar"
+					},
+					{
+						"name": "SchoolLongitude",
+						"type": "varchar"
+					},
+					{
+						"name": "SchoolAddress",
+						"type": "varchar"
+					},
+					{
+						"name": "SchoolNumber",
+						"type": "varchar"
+					},
+					{
+						"name": "SchoolComplementAddress",
+						"type": "varchar"
+					},
+					{
+						"name": "SchoolComplementNeigborhood",
+						"type": "varchar"
+					},
+					{
+						"name": "SchoolCep",
+						"type": "varchar"
+					},
+					{
+						"name": "SchoolId",
+						"type": "varchar"
+					},
+					{
+						"name": "DataLineageIngestion",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "StudentSerie",
+						"type": "varchar"
+					},
+					{
+						"name": "School_id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Vaccine_id",
+						"type": "int",
+						"precision": 10
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Accumulated_Data"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DB_axixa')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlAxixa",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DB_bndsAtt')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "BNDES_City"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DB_boquim')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlBoquim",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DB_buzios')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlBuzios",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DB_campoDoBrito')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlCampoDoBrito",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		}
+	]
+}
