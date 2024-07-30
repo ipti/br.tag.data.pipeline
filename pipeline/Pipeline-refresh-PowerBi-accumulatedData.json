@@ -131,7 +131,7 @@
 			},
 			"username": {
 				"type": "String",
-				"defaultValue": "ti.pauloh@ipti.org.br"
+				"defaultValue": "ti.pauloh@thp.org.br"
 			},
 			"password": {
 				"type": "String",
