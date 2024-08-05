@@ -58,7 +58,7 @@
 					},
 					"url": "https://login.windows.net/common/oauth2/token",
 					"body": {
-						"value": "@concat('grant_type=password&client_id=', variables('client_id'), '&resource=https://analysis.windows.net/powerbi/api&scope=openid&username=', variables('username'), '&password=', variables('password'))\n",
+						"value": "@concat('grant_type=password&client_id=', variables('client_id'), '&resource=https://analysis.windows.net/powerbi/api&scope=openid&username=', variables('NewUsername'), '&password=', variables('password'))\n",
 						"type": "Expression"
 					}
 				}
@@ -140,6 +140,10 @@
 			"client_id": {
 				"type": "String",
 				"defaultValue": "fdc41ef1-199b-475a-adfd-408fb1a53937"
+			},
+			"NewUsername": {
+				"type": "String",
+				"defaultValue": "ti.pauloh@thp.org.br"
 			}
 		},
 		"annotations": [],
