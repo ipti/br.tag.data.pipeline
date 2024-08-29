@@ -16,7 +16,7 @@
 			"recurrence": {
 				"frequency": "Hour",
 				"interval": 24,
-				"startTime": "2024-05-24T01:00:00",
+				"startTime": "2024-08-30T00:00:00",
 				"timeZone": "E. South America Standard Time"
 			}
 		}
