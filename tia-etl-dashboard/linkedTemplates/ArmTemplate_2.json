@@ -13,6 +13,22 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/DB_campoDoBrito')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlCampoDoBrito",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/DB_carmopolis')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -358,46 +374,6 @@
 				"type": "MySqlTable",
 				"schema": [],
 				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_registration')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "F_HASH",
-						"type": "varchar"
-					},
-					{
-						"name": "DataIngestionTime",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "LogDate",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "Database_name",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "D_Registration"
-				}
 			},
 			"dependsOn": []
 		}

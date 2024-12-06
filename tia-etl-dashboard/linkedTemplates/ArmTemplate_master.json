@@ -7,6 +7,10 @@
 			"metadata": "Nome do Data Factory",
 			"defaultValue": "tia-etl-dashboard"
 		},
+		"AzureBlobStorageBUF_connectionString": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureBlobStorageBUF'"
+		},
 		"AzureSqlDatabase1_connectionString": {
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureSqlDatabase1'"
@@ -535,7 +539,7 @@
 		{
 			"name": "tia-etl-dashboard_ArmTemplate_0",
 			"type": "Microsoft.Resources/deployments",
-			"apiVersion": "2018-02-01",
+			"apiVersion": "2024-03-01",
 			"properties": {
 				"mode": "incremental",
 				"templateLink": {
@@ -545,6 +549,9 @@
 				"parameters": {
 					"factoryName": {
 						"value": "[parameters('factoryName')]"
+					},
+					"AzureBlobStorageBUF_connectionString": {
+						"value": "[parameters('AzureBlobStorageBUF_connectionString')]"
 					},
 					"AzureSqlDatabase1_connectionString": {
 						"value": "[parameters('AzureSqlDatabase1_connectionString')]"
@@ -599,9 +606,6 @@
 					},
 					"MySqlItapemirim_password": {
 						"value": "[parameters('MySqlItapemirim_password')]"
-					},
-					"MySqlJaparatuba_password": {
-						"value": "[parameters('MySqlJaparatuba_password')]"
 					},
 					"Banco_cluster_TIA_properties_typeProperties_server": {
 						"value": "[parameters('Banco_cluster_TIA_properties_typeProperties_server')]"
@@ -752,15 +756,6 @@
 					},
 					"MySqlItapemirim_properties_typeProperties_username": {
 						"value": "[parameters('MySqlItapemirim_properties_typeProperties_username')]"
-					},
-					"MySqlJaparatuba_properties_typeProperties_server": {
-						"value": "[parameters('MySqlJaparatuba_properties_typeProperties_server')]"
-					},
-					"MySqlJaparatuba_properties_typeProperties_database": {
-						"value": "[parameters('MySqlJaparatuba_properties_typeProperties_database')]"
-					},
-					"MySqlJaparatuba_properties_typeProperties_username": {
-						"value": "[parameters('MySqlJaparatuba_properties_typeProperties_username')]"
 					}
 				}
 			},
@@ -769,7 +764,7 @@
 		{
 			"name": "tia-etl-dashboard_ArmTemplate_1",
 			"type": "Microsoft.Resources/deployments",
-			"apiVersion": "2018-02-01",
+			"apiVersion": "2024-03-01",
 			"properties": {
 				"mode": "incremental",
 				"templateLink": {
@@ -779,6 +774,9 @@
 				"parameters": {
 					"factoryName": {
 						"value": "[parameters('factoryName')]"
+					},
+					"MySqlJaparatuba_password": {
+						"value": "[parameters('MySqlJaparatuba_password')]"
 					},
 					"MySqlJapoata_password": {
 						"value": "[parameters('MySqlJapoata_password')]"
@@ -821,6 +819,15 @@
 					},
 					"MySqlitabi_password": {
 						"value": "[parameters('MySqlitabi_password')]"
+					},
+					"MySqlJaparatuba_properties_typeProperties_server": {
+						"value": "[parameters('MySqlJaparatuba_properties_typeProperties_server')]"
+					},
+					"MySqlJaparatuba_properties_typeProperties_database": {
+						"value": "[parameters('MySqlJaparatuba_properties_typeProperties_database')]"
+					},
+					"MySqlJaparatuba_properties_typeProperties_username": {
+						"value": "[parameters('MySqlJaparatuba_properties_typeProperties_username')]"
 					},
 					"MySqlJapoata_properties_typeProperties_server": {
 						"value": "[parameters('MySqlJapoata_properties_typeProperties_server')]"
@@ -957,7 +964,7 @@
 		{
 			"name": "tia-etl-dashboard_ArmTemplate_2",
 			"type": "Microsoft.Resources/deployments",
-			"apiVersion": "2018-02-01",
+			"apiVersion": "2024-03-01",
 			"properties": {
 				"mode": "incremental",
 				"templateLink": {
@@ -977,7 +984,7 @@
 		{
 			"name": "tia-etl-dashboard_ArmTemplate_3",
 			"type": "Microsoft.Resources/deployments",
-			"apiVersion": "2018-02-01",
+			"apiVersion": "2024-03-01",
 			"properties": {
 				"mode": "incremental",
 				"templateLink": {

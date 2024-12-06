@@ -7,6 +7,10 @@
 			"metadata": "Nome do Data Factory",
 			"defaultValue": "tia-etl-dashboard"
 		},
+		"MySqlJaparatuba_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJaparatuba'"
+		},
 		"MySqlJapoata_password": {
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJapoata'"
@@ -62,6 +66,18 @@
 		"MySqlitabi_password": {
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlitabi'"
+		},
+		"MySqlJaparatuba_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlJaparatuba_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "japaratuba.tag.ong.br"
+		},
+		"MySqlJaparatuba_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
 		},
 		"MySqlJapoata_properties_typeProperties_server": {
 			"type": "string",
@@ -236,6 +252,29 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlJaparatuba')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlJaparatuba_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlJaparatuba_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlJaparatuba_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlJaparatuba_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/MySqlJapoata')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -840,22 +879,6 @@
 			"properties": {
 				"linkedServiceName": {
 					"referenceName": "MySqlBuzios",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_campoDoBrito')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlCampoDoBrito",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],

@@ -7,6 +7,10 @@
 			"metadata": "Nome do Data Factory",
 			"defaultValue": "tia-etl-dashboard"
 		},
+		"AzureBlobStorageBUF_connectionString": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureBlobStorageBUF'"
+		},
 		"AzureSqlDatabase1_connectionString": {
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureSqlDatabase1'"
@@ -78,10 +82,6 @@
 		"MySqlItapemirim_password": {
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlItapemirim'"
-		},
-		"MySqlJaparatuba_password": {
-			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJaparatuba'"
 		},
 		"Banco_cluster_TIA_properties_typeProperties_server": {
 			"type": "string",
@@ -282,18 +282,6 @@
 		"MySqlItapemirim_properties_typeProperties_username": {
 			"type": "string",
 			"defaultValue": "tagdata"
-		},
-		"MySqlJaparatuba_properties_typeProperties_server": {
-			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
-		},
-		"MySqlJaparatuba_properties_typeProperties_database": {
-			"type": "string",
-			"defaultValue": "japaratuba.tag.ong.br"
-		},
-		"MySqlJaparatuba_properties_typeProperties_username": {
-			"type": "string",
-			"defaultValue": "tagdata"
 		}
 	},
 	"variables": {
@@ -455,6 +443,19 @@
 				},
 				"annotations": [],
 				"lastPublishTime": "2024-07-03T23:03:01Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureBlobStorageBUF')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureBlobStorageBUF_connectionString')]"
+				}
 			},
 			"dependsOn": []
 		},
@@ -855,29 +856,6 @@
 					"password": {
 						"type": "SecureString",
 						"value": "[parameters('MySqlItapemirim_password')]"
-					},
-					"driverVersion": "v2"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/MySqlJaparatuba')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "MySql",
-				"typeProperties": {
-					"server": "[parameters('MySqlJaparatuba_properties_typeProperties_server')]",
-					"port": 3306,
-					"database": "[parameters('MySqlJaparatuba_properties_typeProperties_database')]",
-					"username": "[parameters('MySqlJaparatuba_properties_typeProperties_username')]",
-					"sslMode": 1,
-					"useSystemTrustStore": 0,
-					"password": {
-						"type": "SecureString",
-						"value": "[parameters('MySqlJaparatuba_password')]"
 					},
 					"driverVersion": "v2"
 				}

@@ -5,6 +5,9 @@
 		"factoryName": {
 			"value": "tia-etl-dashboard"
 		},
+		"AzureBlobStorageBUF_connectionString": {
+			"value": ""
+		},
 		"AzureSqlDatabase1_connectionString": {
 			"value": ""
 		},
