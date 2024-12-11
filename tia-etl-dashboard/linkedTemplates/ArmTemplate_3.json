@@ -13,6 +13,22 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/DB_propria')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlPropria",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/DB_registration')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -471,6 +487,139 @@
 						"startTime": "2024-08-30T00:00:00",
 						"timeZone": "E. South America Standard Time"
 					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DB_financeiro')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlFinanceiro",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlFinanceiroComOrdem')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CONTRATO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "FORNECEDOR",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TIPO DE CONTRATO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "REPRESENTANTE LEGAL",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RUBRICA",
+						"type": "nvarchar"
+					},
+					{
+						"name": "PARCELAS",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "DATA INICIAL",
+						"type": "date"
+					},
+					{
+						"name": "DATA FINAL",
+						"type": "date"
+					},
+					{
+						"name": "VALOR TOTAL",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "QUANTIDADE DE HORAS",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "VALOR UNITÁRIO",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "APOIADOR",
+						"type": "nvarchar"
+					},
+					{
+						"name": "VALOR TOTAL DOADO PELO APOIADOR",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "ORIGEM PUBLICA",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "Categoria Dos Gastos",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RUBRICA_FORNECEDORES_ORDEM",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "FORNECEDOR_CNPJ",
+						"type": "char"
+					},
+					{
+						"name": "FORNECEDOR_CPF",
+						"type": "char"
+					},
+					{
+						"name": "ordem",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "DataDePagamentoDaOrdem",
+						"type": "date"
+					},
+					{
+						"name": "ValorPagoNaOrdem",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					}
+				],
+				"typeProperties": {
+					"schema": "Financeiro",
+					"table": "contratosComOrdem"
 				}
 			},
 			"dependsOn": []
@@ -20134,6 +20283,7 @@
 				"lastPublishTime": "2024-06-25T00:36:37Z"
 			},
 			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DB_propria')]",
 				"[concat(variables('factoryId'), '/datasets/DB_rubelita')]",
 				"[concat(variables('factoryId'), '/datasets/DB_santaLuziaDoIntahy')]",
 				"[concat(variables('factoryId'), '/datasets/DB_santanaDoSaoFrancisco')]",
@@ -20141,96 +20291,6 @@
 				"[concat(variables('factoryId'), '/datasets/DB_saoJoaoDaBarra')]",
 				"[concat(variables('factoryId'), '/datasets/DB_uirauna')]",
 				"[concat(variables('factoryId'), '/datasets/DB_umari')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Trigger-data-warehouse-tag')]",
-			"type": "Microsoft.DataFactory/factories/triggers",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"runtimeState": "Started",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "Data-warehouse-tag",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					}
-				],
-				"type": "ScheduleTrigger",
-				"typeProperties": {
-					"recurrence": {
-						"frequency": "Hour",
-						"interval": 24,
-						"startTime": "2024-12-05T00:00:00",
-						"timeZone": "E. South America Standard Time"
-					}
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Data-warehouse-tag')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Trigger_BNDES')]",
-			"type": "Microsoft.DataFactory/factories/triggers",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"runtimeState": "Started",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "Pipeline-BNDS",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					}
-				],
-				"type": "ScheduleTrigger",
-				"typeProperties": {
-					"recurrence": {
-						"frequency": "Hour",
-						"interval": 48,
-						"startTime": "2024-08-30T00:00:00Z",
-						"timeZone": "UTC"
-					}
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Pipeline-BNDS')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Trigger_TAG_AccumulatedData_Load')]",
-			"type": "Microsoft.DataFactory/factories/triggers",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"runtimeState": "Started",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "Pipeline-TAG-AccumulatedData-Load",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					}
-				],
-				"type": "ScheduleTrigger",
-				"typeProperties": {
-					"recurrence": {
-						"frequency": "Hour",
-						"interval": 24,
-						"startTime": "2024-08-27T23:59:00",
-						"timeZone": "E. South America Standard Time"
-					}
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Pipeline-TAG-AccumulatedData-Load')]"
 			]
 		}
 	]

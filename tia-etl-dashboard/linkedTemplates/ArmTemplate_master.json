@@ -59,6 +59,10 @@
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlFeiraNova'"
 		},
+		"MySqlFinanceiro_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlFinanceiro'"
+		},
 		"MySqlGeneralMaynard_password": {
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlGeneralMaynard'"
@@ -268,6 +272,18 @@
 			"defaultValue": "feiranova.tag.ong.br "
 		},
 		"MySqlFeiraNova_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"MySqlFinanceiro_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlFinanceiro_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "br.org.ipti.financeiro"
+		},
+		"MySqlFinanceiro_properties_typeProperties_username": {
 			"type": "string",
 			"defaultValue": "tagdata"
 		},
@@ -589,6 +605,9 @@
 					"MySqlFeiraNova_password": {
 						"value": "[parameters('MySqlFeiraNova_password')]"
 					},
+					"MySqlFinanceiro_password": {
+						"value": "[parameters('MySqlFinanceiro_password')]"
+					},
 					"MySqlGeneralMaynard_password": {
 						"value": "[parameters('MySqlGeneralMaynard_password')]"
 					},
@@ -603,9 +622,6 @@
 					},
 					"MySqlIcatu_password": {
 						"value": "[parameters('MySqlIcatu_password')]"
-					},
-					"MySqlItapemirim_password": {
-						"value": "[parameters('MySqlItapemirim_password')]"
 					},
 					"Banco_cluster_TIA_properties_typeProperties_server": {
 						"value": "[parameters('Banco_cluster_TIA_properties_typeProperties_server')]"
@@ -703,6 +719,15 @@
 					"MySqlFeiraNova_properties_typeProperties_username": {
 						"value": "[parameters('MySqlFeiraNova_properties_typeProperties_username')]"
 					},
+					"MySqlFinanceiro_properties_typeProperties_server": {
+						"value": "[parameters('MySqlFinanceiro_properties_typeProperties_server')]"
+					},
+					"MySqlFinanceiro_properties_typeProperties_database": {
+						"value": "[parameters('MySqlFinanceiro_properties_typeProperties_database')]"
+					},
+					"MySqlFinanceiro_properties_typeProperties_username": {
+						"value": "[parameters('MySqlFinanceiro_properties_typeProperties_username')]"
+					},
 					"MySqlGeneralMaynard_properties_typeProperties_server": {
 						"value": "[parameters('MySqlGeneralMaynard_properties_typeProperties_server')]"
 					},
@@ -747,15 +772,6 @@
 					},
 					"MySqlIcatu_properties_typeProperties_username": {
 						"value": "[parameters('MySqlIcatu_properties_typeProperties_username')]"
-					},
-					"MySqlItapemirim_properties_typeProperties_server": {
-						"value": "[parameters('MySqlItapemirim_properties_typeProperties_server')]"
-					},
-					"MySqlItapemirim_properties_typeProperties_database": {
-						"value": "[parameters('MySqlItapemirim_properties_typeProperties_database')]"
-					},
-					"MySqlItapemirim_properties_typeProperties_username": {
-						"value": "[parameters('MySqlItapemirim_properties_typeProperties_username')]"
 					}
 				}
 			},
@@ -774,6 +790,9 @@
 				"parameters": {
 					"factoryName": {
 						"value": "[parameters('factoryName')]"
+					},
+					"MySqlItapemirim_password": {
+						"value": "[parameters('MySqlItapemirim_password')]"
 					},
 					"MySqlJaparatuba_password": {
 						"value": "[parameters('MySqlJaparatuba_password')]"
@@ -819,6 +838,15 @@
 					},
 					"MySqlitabi_password": {
 						"value": "[parameters('MySqlitabi_password')]"
+					},
+					"MySqlItapemirim_properties_typeProperties_server": {
+						"value": "[parameters('MySqlItapemirim_properties_typeProperties_server')]"
+					},
+					"MySqlItapemirim_properties_typeProperties_database": {
+						"value": "[parameters('MySqlItapemirim_properties_typeProperties_database')]"
+					},
+					"MySqlItapemirim_properties_typeProperties_username": {
+						"value": "[parameters('MySqlItapemirim_properties_typeProperties_username')]"
 					},
 					"MySqlJaparatuba_properties_typeProperties_server": {
 						"value": "[parameters('MySqlJaparatuba_properties_typeProperties_server')]"
@@ -999,6 +1027,26 @@
 			},
 			"dependsOn": [
 				"[resourceId('Microsoft.Resources/deployments', 'tia-etl-dashboard_ArmTemplate_2')]"
+			]
+		},
+		{
+			"name": "tia-etl-dashboard_ArmTemplate_4",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2024-03-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_4.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[resourceId('Microsoft.Resources/deployments', 'tia-etl-dashboard_ArmTemplate_3')]"
 			]
 		}
 	]

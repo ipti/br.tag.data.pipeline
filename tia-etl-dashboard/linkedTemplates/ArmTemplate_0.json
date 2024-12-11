@@ -59,6 +59,10 @@
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlFeiraNova'"
 		},
+		"MySqlFinanceiro_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlFinanceiro'"
+		},
 		"MySqlGeneralMaynard_password": {
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlGeneralMaynard'"
@@ -78,10 +82,6 @@
 		"MySqlIcatu_password": {
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlIcatu'"
-		},
-		"MySqlItapemirim_password": {
-			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlItapemirim'"
 		},
 		"Banco_cluster_TIA_properties_typeProperties_server": {
 			"type": "string",
@@ -211,6 +211,18 @@
 			"type": "string",
 			"defaultValue": "tagdata"
 		},
+		"MySqlFinanceiro_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlFinanceiro_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "br.org.ipti.financeiro"
+		},
+		"MySqlFinanceiro_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
 		"MySqlGeneralMaynard_properties_typeProperties_server": {
 			"type": "string",
 			"defaultValue": "br-ong-tag.mysql.database.azure.com"
@@ -268,18 +280,6 @@
 			"defaultValue": "icatu.tag.ong.br"
 		},
 		"MySqlIcatu_properties_typeProperties_username": {
-			"type": "string",
-			"defaultValue": "tagdata"
-		},
-		"MySqlItapemirim_properties_typeProperties_server": {
-			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
-		},
-		"MySqlItapemirim_properties_typeProperties_database": {
-			"type": "string",
-			"defaultValue": "itapemirim.tag.ong.br"
-		},
-		"MySqlItapemirim_properties_typeProperties_username": {
 			"type": "string",
 			"defaultValue": "tagdata"
 		}
@@ -724,6 +724,29 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/MySqlFinanceiro')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlFinanceiro_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlFinanceiro_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlFinanceiro_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlFinanceiro_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/MySqlGeneralMaynard')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
 			"apiVersion": "2018-06-01",
@@ -833,29 +856,6 @@
 					"password": {
 						"type": "SecureString",
 						"value": "[parameters('MySqlIcatu_password')]"
-					},
-					"driverVersion": "v2"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/MySqlItapemirim')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "MySql",
-				"typeProperties": {
-					"server": "[parameters('MySqlItapemirim_properties_typeProperties_server')]",
-					"port": 3306,
-					"database": "[parameters('MySqlItapemirim_properties_typeProperties_database')]",
-					"username": "[parameters('MySqlItapemirim_properties_typeProperties_username')]",
-					"sslMode": 1,
-					"useSystemTrustStore": 0,
-					"password": {
-						"type": "SecureString",
-						"value": "[parameters('MySqlItapemirim_password')]"
 					},
 					"driverVersion": "v2"
 				}

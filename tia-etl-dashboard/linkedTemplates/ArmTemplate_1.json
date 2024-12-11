@@ -7,6 +7,10 @@
 			"metadata": "Nome do Data Factory",
 			"defaultValue": "tia-etl-dashboard"
 		},
+		"MySqlItapemirim_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlItapemirim'"
+		},
 		"MySqlJaparatuba_password": {
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJaparatuba'"
@@ -66,6 +70,18 @@
 		"MySqlitabi_password": {
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlitabi'"
+		},
+		"MySqlItapemirim_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlItapemirim_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "itapemirim.tag.ong.br"
+		},
+		"MySqlItapemirim_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
 		},
 		"MySqlJaparatuba_properties_typeProperties_server": {
 			"type": "string",
@@ -252,6 +268,29 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/MySqlItapemirim')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"server": "[parameters('MySqlItapemirim_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('MySqlItapemirim_properties_typeProperties_database')]",
+					"username": "[parameters('MySqlItapemirim_properties_typeProperties_username')]",
+					"sslMode": 1,
+					"useSystemTrustStore": 0,
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('MySqlItapemirim_password')]"
+					},
+					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/MySqlJaparatuba')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -863,22 +902,6 @@
 			"properties": {
 				"linkedServiceName": {
 					"referenceName": "MySqlBoquim",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_buzios')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlBuzios",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],

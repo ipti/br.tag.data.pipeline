@@ -1,0 +1,486 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Nome do Data Factory",
+			"defaultValue": "tia-etl-dashboard"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Financeiro-RH')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Financeiro-ComParcelasPagas",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "DeleteFinanceiroParcelas",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "MySqlSource",
+								"query": "select\n\tc2.nome as CONTRATO,\n\tf.nome as FORNECEDOR,\n\ttdc.nome as \"TIPO DE CONTRATO\",\n\tF.respresentante_legal as \"REPRESENTANTE LEGAL\",\n\tr.descricao as RUBRICA,\n\trf.parcelas as PARCELAS,\n\tRF.data_inicial as `DATA INICIAL`,\n\tRF.data_final as `DATA FINAL`,\n\trf.valor_total as \"VALOR TOTAL\",\n\trf.workload as \"QUANTIDADE DE HORAS\",\n\trf.unitary_value as \"VALOR UNITÁRIO\",\n\tc2.apoiadora as 'APOIADOR',\n\tcdc.valor_total as 'VALOR TOTAL DOADO PELO APOIADOR',\n\tc2.origem_publica as 'ORIGEM PUBLICA',\n\tc.nome as 'Categoria Dos Gastos',\n\trf.ordem as RUBRICA_FORNECEDORES_ORDEM,\n\tf.cnpj as FORNECEDOR_CNPJ,\n\tf.cpf as FORNECEDOR_CPF,\n\ta.ordem,\n\ta.data,\n\ta.valor\nfrom\n\tfornecedor f\njoin rubrica_fornecedores rf on\n\tf.id = rf.fornecedor_fk\njoin rubrica r on\n\trf.rubrica_fk = r.id\njoin tipo_de_contrato tdc on\n\ttdc.id = f.tipo_de_contrato_fk\njoin categoria c on\n\tc.id = r.categoria_fk\njoin centro_de_custo cdc on\n\tcdc.id = r.centro_de_custo_fk\njoin contrato c2 on\n\tcdc.contrato_fk = c2.id\njoin atividade a on\n\ta.rubrica_fornecedores_fk = rf.id\norder by\n\ttrim(c2.nome) asc,\n\ttrim(f.nome) asc,\n\trf.data_final"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "CONTRATO",
+											"type": "String",
+											"physicalType": "VarChar"
+										},
+										"sink": {
+											"name": "CONTRATO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "FORNECEDOR",
+											"type": "String",
+											"physicalType": "VarChar"
+										},
+										"sink": {
+											"name": "FORNECEDOR",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "TIPO DE CONTRATO",
+											"type": "String",
+											"physicalType": "VarChar"
+										},
+										"sink": {
+											"name": "TIPO DE CONTRATO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "REPRESENTANTE LEGAL",
+											"type": "String",
+											"physicalType": "VarChar"
+										},
+										"sink": {
+											"name": "REPRESENTANTE LEGAL",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "RUBRICA",
+											"type": "String",
+											"physicalType": "VarChar"
+										},
+										"sink": {
+											"name": "RUBRICA",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "PARCELAS",
+											"type": "Int32",
+											"physicalType": "Int32"
+										},
+										"sink": {
+											"name": "PARCELAS",
+											"type": "Int32",
+											"physicalType": "int"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA INICIAL",
+											"type": "DateTime",
+											"physicalType": "Date"
+										},
+										"sink": {
+											"name": "DATA INICIAL",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA FINAL",
+											"type": "DateTime",
+											"physicalType": "Date"
+										},
+										"sink": {
+											"name": "DATA FINAL",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "VALOR TOTAL",
+											"type": "Decimal",
+											"physicalType": "NewDecimal"
+										},
+										"sink": {
+											"name": "VALOR TOTAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 2,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "QUANTIDADE DE HORAS",
+											"type": "Int32",
+											"physicalType": "Int32"
+										},
+										"sink": {
+											"name": "QUANTIDADE DE HORAS",
+											"type": "Int32",
+											"physicalType": "int"
+										}
+									},
+									{
+										"source": {
+											"name": "VALOR UNITÁRIO",
+											"type": "Decimal",
+											"physicalType": "NewDecimal"
+										},
+										"sink": {
+											"name": "VALOR UNITÁRIO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 2,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "APOIADOR",
+											"type": "String",
+											"physicalType": "VarChar"
+										},
+										"sink": {
+											"name": "APOIADOR",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "VALOR TOTAL DOADO PELO APOIADOR",
+											"type": "Decimal",
+											"physicalType": "NewDecimal"
+										},
+										"sink": {
+											"name": "VALOR TOTAL DOADO PELO APOIADOR",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 2,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "ORIGEM PUBLICA",
+											"type": "SByte",
+											"physicalType": "Byte"
+										},
+										"sink": {
+											"name": "ORIGEM PUBLICA",
+											"type": "Int16",
+											"physicalType": "smallint"
+										}
+									},
+									{
+										"source": {
+											"name": "Categoria Dos Gastos",
+											"type": "String",
+											"physicalType": "VarChar"
+										},
+										"sink": {
+											"name": "Categoria Dos Gastos",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "RUBRICA_FORNECEDORES_ORDEM",
+											"type": "Int32",
+											"physicalType": "Int32"
+										},
+										"sink": {
+											"name": "RUBRICA_FORNECEDORES_ORDEM",
+											"type": "Int32",
+											"physicalType": "int"
+										}
+									},
+									{
+										"source": {
+											"name": "FORNECEDOR_CNPJ",
+											"type": "String",
+											"physicalType": "VarChar"
+										},
+										"sink": {
+											"name": "FORNECEDOR_CNPJ",
+											"type": "String",
+											"physicalType": "char"
+										}
+									},
+									{
+										"source": {
+											"name": "FORNECEDOR_CPF",
+											"type": "String",
+											"physicalType": "VarChar"
+										},
+										"sink": {
+											"name": "FORNECEDOR_CPF",
+											"type": "String",
+											"physicalType": "char"
+										}
+									},
+									{
+										"source": {
+											"name": "ordem",
+											"type": "Int32",
+											"physicalType": "Int32"
+										},
+										"sink": {
+											"name": "ordem",
+											"type": "Int32",
+											"physicalType": "int"
+										}
+									},
+									{
+										"source": {
+											"name": "data",
+											"type": "DateTime",
+											"physicalType": "Date"
+										},
+										"sink": {
+											"name": "DataDePagamentoDaOrdem",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "valor",
+											"type": "Decimal",
+											"physicalType": "NewDecimal"
+										},
+										"sink": {
+											"name": "ValorPagoNaOrdem",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 2,
+											"precision": 18
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DB_financeiro",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSqlFinanceiroComOrdem",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "DeleteFinanceiroParcelas",
+						"type": "Script",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "delete from [data-warehouse-tag].Financeiro.contratosComOrdem"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Trigger-data-warehouse-tag')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "Data-warehouse-tag",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Hour",
+						"interval": 24,
+						"startTime": "2024-12-05T00:00:00",
+						"timeZone": "E. South America Standard Time"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Trigger_BNDES')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "Pipeline-BNDS",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Hour",
+						"interval": 48,
+						"startTime": "2024-08-30T00:00:00Z",
+						"timeZone": "UTC"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Trigger_TAG_AccumulatedData_Load')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "Pipeline-TAG-AccumulatedData-Load",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Hour",
+						"interval": 24,
+						"startTime": "2024-08-27T23:59:00",
+						"timeZone": "E. South America Standard Time"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Trigger_Financeiro')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "Financeiro-RH",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Hour",
+						"interval": 24,
+						"startTime": "2024-12-11T23:59:00Z",
+						"timeZone": "UTC"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/Financeiro-RH')]"
+			]
+		}
+	]
+}

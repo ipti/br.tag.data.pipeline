@@ -44,6 +44,9 @@
 		"MySqlFeiraNova_password": {
 			"value": ""
 		},
+		"MySqlFinanceiro_password": {
+			"value": ""
+		},
 		"MySqlGeneralMaynard_password": {
 			"value": ""
 		},
@@ -201,6 +204,15 @@
 			"value": "feiranova.tag.ong.br "
 		},
 		"MySqlFeiraNova_properties_typeProperties_username": {
+			"value": "tagdata"
+		},
+		"MySqlFinanceiro_properties_typeProperties_server": {
+			"value": "br-ong-tag.mysql.database.azure.com"
+		},
+		"MySqlFinanceiro_properties_typeProperties_database": {
+			"value": "br.org.ipti.financeiro"
+		},
+		"MySqlFinanceiro_properties_typeProperties_username": {
 			"value": "tagdata"
 		},
 		"MySqlGeneralMaynard_properties_typeProperties_server": {
