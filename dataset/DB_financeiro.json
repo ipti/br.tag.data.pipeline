@@ -1,0 +1,12 @@
+{
+	"name": "DB_financeiro",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "MySqlFinanceiro",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": []
+	}
+}

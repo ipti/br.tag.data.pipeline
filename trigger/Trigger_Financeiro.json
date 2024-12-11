@@ -1,0 +1,24 @@
+{
+	"name": "Trigger_Financeiro",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "Financeiro-RH",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Hour",
+				"interval": 24,
+				"startTime": "2024-12-11T23:59:00Z",
+				"timeZone": "UTC"
+			}
+		}
+	}
+}
