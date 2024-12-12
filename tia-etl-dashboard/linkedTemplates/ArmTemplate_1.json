@@ -861,6 +861,123 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlFinanceiroComOrdem')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CONTRATO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "FORNECEDOR",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TIPO DE CONTRATO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "REPRESENTANTE LEGAL",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RUBRICA",
+						"type": "nvarchar"
+					},
+					{
+						"name": "PARCELAS",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "DATA INICIAL",
+						"type": "date"
+					},
+					{
+						"name": "DATA FINAL",
+						"type": "date"
+					},
+					{
+						"name": "VALOR TOTAL",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "QUANTIDADE DE HORAS",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "VALOR UNITÁRIO",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "APOIADOR",
+						"type": "nvarchar"
+					},
+					{
+						"name": "VALOR TOTAL DOADO PELO APOIADOR",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "ORIGEM PUBLICA",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "Categoria Dos Gastos",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RUBRICA_FORNECEDORES_ORDEM",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "FORNECEDOR_CNPJ",
+						"type": "char"
+					},
+					{
+						"name": "FORNECEDOR_CPF",
+						"type": "char"
+					},
+					{
+						"name": "ordem",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "DataDePagamentoDaOrdem",
+						"type": "date"
+					},
+					{
+						"name": "ValorPagoNaOrdem",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					}
+				],
+				"typeProperties": {
+					"schema": "Financeiro",
+					"table": "contratosComOrdem"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/DB_axixa')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -892,22 +1009,6 @@
 					"schema": "dbo",
 					"table": "BNDES_City"
 				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_boquim')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlBoquim",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
 			},
 			"dependsOn": []
 		}
