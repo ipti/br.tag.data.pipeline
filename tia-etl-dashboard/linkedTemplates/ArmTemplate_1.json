@@ -978,6 +978,97 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlPagamentoRecorrente')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CONTRATO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "FORNECEDOR",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TIPO DE CONTRATO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "REPRESENTANTE LEGAL",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RUBRICA",
+						"type": "nvarchar"
+					},
+					{
+						"name": "PARCELAS",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "DATA INICIAL",
+						"type": "date"
+					},
+					{
+						"name": "DATA FINAL",
+						"type": "date"
+					},
+					{
+						"name": "VALOR TOTAL",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "QUANTIDADE DE HORAS",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "VALOR UNITÁRIO",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "APOIADOR",
+						"type": "nvarchar"
+					},
+					{
+						"name": "VALOR TOTAL DOADO PELO APOIADOR",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "ORIGEM PUBLICA",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "Valor total das rubricas",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					}
+				],
+				"typeProperties": {
+					"schema": "Financeiro",
+					"table": "PagamentoRecorrente"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/DB_axixa')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -990,25 +1081,6 @@
 				"type": "MySqlTable",
 				"schema": [],
 				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_bndsAtt')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "BNDES_City"
-				}
 			},
 			"dependsOn": []
 		}
