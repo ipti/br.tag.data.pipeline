@@ -1,0 +1,56 @@
+{
+	"name": "DB_D_Class_Faults_Elementary",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "F_HASH",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "Class",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Month",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "TotalScheduledClassDays",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "AbsentDays",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "TotalLessonsPerDay",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "TotalFaults",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "School_id",
+				"type": "int",
+				"precision": 10
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "D_Class_Faults_Elementary"
+		}
+	}
+}

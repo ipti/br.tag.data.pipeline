@@ -1,0 +1,27 @@
+{
+	"name": "JsonTesteBases",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureBlobStorageBUF",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": "basesTagTeste.json",
+				"folderPath": "BasesTag",
+				"container": "tagdatawarehouse-csv-files"
+			}
+		},
+		"schema": {
+			"type": "object",
+			"properties": {
+				"DatabaseName": {
+					"type": "string"
+				}
+			}
+		}
+	}
+}
