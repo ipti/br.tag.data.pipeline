@@ -4,72 +4,72 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Nome do Data Factory",
+			"metadata": "Data Factory name",
 			"defaultValue": "tia-etl-dashboard"
 		},
 		"MySqlItapemirim_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlItapemirim'"
+			"metadata": "Secure string for 'password' of 'MySqlItapemirim'"
 		},
 		"MySqlJaparatuba_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJaparatuba'"
+			"metadata": "Secure string for 'password' of 'MySqlJaparatuba'"
 		},
 		"MySqlJapoata_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJapoata'"
+			"metadata": "Secure string for 'password' of 'MySqlJapoata'"
 		},
 		"MySqlMalhadaDosBois_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlMalhadaDosBois'"
+			"metadata": "Secure string for 'password' of 'MySqlMalhadaDosBois'"
 		},
 		"MySqlPirambu_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPirambu'"
+			"metadata": "Secure string for 'password' of 'MySqlPirambu'"
 		},
 		"MySqlPocoDantas_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPocoDantas'"
+			"metadata": "Secure string for 'password' of 'MySqlPocoDantas'"
 		},
 		"MySqlPropria_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPropria'"
+			"metadata": "Secure string for 'password' of 'MySqlPropria'"
 		},
 		"MySqlRubelita_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlRubelita'"
+			"metadata": "Secure string for 'password' of 'MySqlRubelita'"
 		},
 		"MySqlSantaLuzia_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantaLuzia'"
+			"metadata": "Secure string for 'password' of 'MySqlSantaLuzia'"
 		},
 		"MySqlSantaRosaDeLima_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantaRosaDeLima'"
+			"metadata": "Secure string for 'password' of 'MySqlSantaRosaDeLima'"
 		},
 		"MySqlSantanaDoSaoFrancisco_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantanaDoSaoFrancisco'"
+			"metadata": "Secure string for 'password' of 'MySqlSantanaDoSaoFrancisco'"
 		},
 		"MySqlSaoJoaoDaBarra_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSaoJoaoDaBarra'"
+			"metadata": "Secure string for 'password' of 'MySqlSaoJoaoDaBarra'"
 		},
 		"MySqlUbatuba_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUbatuba'"
+			"metadata": "Secure string for 'password' of 'MySqlUbatuba'"
 		},
 		"MySqlUirauna_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUirauna'"
+			"metadata": "Secure string for 'password' of 'MySqlUirauna'"
 		},
 		"MySqlUmari_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUmari'"
+			"metadata": "Secure string for 'password' of 'MySqlUmari'"
 		},
 		"MySqlitabi_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlitabi'"
+			"metadata": "Secure string for 'password' of 'MySqlitabi'"
 		},
 		"MySqlItapemirim_properties_typeProperties_server": {
 			"type": "string",

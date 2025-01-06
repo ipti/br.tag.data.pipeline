@@ -4,84 +4,84 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Nome do Data Factory",
+			"metadata": "Data Factory name",
 			"defaultValue": "tia-etl-dashboard"
 		},
 		"AzureBlobStorageBUF_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureBlobStorageBUF'"
+			"metadata": "Secure string for 'connectionString' of 'AzureBlobStorageBUF'"
 		},
 		"AzureSqlDatabase1_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureSqlDatabase1'"
+			"metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase1'"
 		},
 		"Banco_cluster_TIA_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'Banco_cluster_TIA'"
+			"metadata": "Secure string for 'password' of 'Banco_cluster_TIA'"
 		},
 		"FileServer1_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'FileServer1'"
+			"metadata": "Secure string for 'password' of 'FileServer1'"
 		},
 		"MySqlAltoDoRodrigues_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlAltoDoRodrigues'"
+			"metadata": "Secure string for 'password' of 'MySqlAltoDoRodrigues'"
 		},
 		"MySqlAxixa_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlAxixa'"
+			"metadata": "Secure string for 'password' of 'MySqlAxixa'"
 		},
 		"MySqlBoquim_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlBoquim'"
+			"metadata": "Secure string for 'password' of 'MySqlBoquim'"
 		},
 		"MySqlBuzios_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlBuzios'"
+			"metadata": "Secure string for 'password' of 'MySqlBuzios'"
 		},
 		"MySqlCaicaraDoNorte_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlCaicaraDoNorte'"
+			"metadata": "Secure string for 'password' of 'MySqlCaicaraDoNorte'"
 		},
 		"MySqlCampoDoBrito_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlCampoDoBrito'"
+			"metadata": "Secure string for 'password' of 'MySqlCampoDoBrito'"
 		},
 		"MySqlCarmopolis_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlCarmopolis'"
+			"metadata": "Secure string for 'password' of 'MySqlCarmopolis'"
 		},
 		"MySqlCristalia_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlCristalia'"
+			"metadata": "Secure string for 'password' of 'MySqlCristalia'"
 		},
 		"MySqlFeiraNova_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlFeiraNova'"
+			"metadata": "Secure string for 'password' of 'MySqlFeiraNova'"
 		},
 		"MySqlFinanceiro_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlFinanceiro'"
+			"metadata": "Secure string for 'password' of 'MySqlFinanceiro'"
 		},
 		"MySqlGeneralMaynard_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlGeneralMaynard'"
+			"metadata": "Secure string for 'password' of 'MySqlGeneralMaynard'"
 		},
 		"MySqlGloria_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlGloria'"
+			"metadata": "Secure string for 'password' of 'MySqlGloria'"
 		},
 		"MySqlGrachoCardoso_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlGrachoCardoso'"
+			"metadata": "Secure string for 'password' of 'MySqlGrachoCardoso'"
 		},
 		"MySqlHumbertoCampos_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlHumbertoCampos'"
+			"metadata": "Secure string for 'password' of 'MySqlHumbertoCampos'"
 		},
 		"MySqlIcatu_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlIcatu'"
+			"metadata": "Secure string for 'password' of 'MySqlIcatu'"
 		},
 		"Banco_cluster_TIA_properties_typeProperties_server": {
 			"type": "string",
