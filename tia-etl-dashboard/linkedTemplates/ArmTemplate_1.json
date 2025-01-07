@@ -4,72 +4,76 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Data Factory name",
+			"metadata": "Nome do Data Factory",
 			"defaultValue": "tia-etl-dashboard"
 		},
 		"MySqlItapemirim_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlItapemirim'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlItapemirim'"
 		},
 		"MySqlJaparatuba_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlJaparatuba'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJaparatuba'"
 		},
 		"MySqlJapoata_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlJapoata'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJapoata'"
 		},
 		"MySqlMalhadaDosBois_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlMalhadaDosBois'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlMalhadaDosBois'"
 		},
 		"MySqlPirambu_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlPirambu'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPirambu'"
 		},
 		"MySqlPocoDantas_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlPocoDantas'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPocoDantas'"
 		},
 		"MySqlPropria_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlPropria'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPropria'"
 		},
 		"MySqlRubelita_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlRubelita'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlRubelita'"
 		},
 		"MySqlSantaLuzia_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlSantaLuzia'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantaLuzia'"
 		},
 		"MySqlSantaRosaDeLima_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlSantaRosaDeLima'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantaRosaDeLima'"
 		},
 		"MySqlSantanaDoSaoFrancisco_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlSantanaDoSaoFrancisco'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantanaDoSaoFrancisco'"
 		},
 		"MySqlSaoJoaoDaBarra_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlSaoJoaoDaBarra'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSaoJoaoDaBarra'"
 		},
 		"MySqlUbatuba_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlUbatuba'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUbatuba'"
 		},
 		"MySqlUirauna_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlUirauna'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUirauna'"
 		},
 		"MySqlUmari_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlUmari'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUmari'"
 		},
 		"MySqlitabi_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlitabi'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlitabi'"
+		},
+		"AzureFunction1_functionKey": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'functionKey' de 'AzureFunction1'"
 		},
 		"MySqlItapemirim_properties_typeProperties_server": {
 			"type": "string",
@@ -262,6 +266,10 @@
 		"MySqlitabi_properties_typeProperties_username": {
 			"type": "string",
 			"defaultValue": "tagdata"
+		},
+		"AzureFunction1_properties_typeProperties_functionAppUrl": {
+			"type": "string",
+			"defaultValue": ""
 		}
 	},
 	"variables": {
@@ -632,6 +640,29 @@
 						"value": "[parameters('MySqlitabi_password')]"
 					},
 					"driverVersion": "v2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureFunction1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureFunction",
+				"typeProperties": {
+					"functionAppUrl": "[parameters('AzureFunction1_properties_typeProperties_functionAppUrl')]",
+					"authentication": "Anonymous",
+					"functionKey": {
+						"type": "SecureString",
+						"value": "[parameters('AzureFunction1_functionKey')]"
+					}
 				}
 			},
 			"dependsOn": []
@@ -1065,22 +1096,6 @@
 					"schema": "Financeiro",
 					"table": "PagamentoRecorrente"
 				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_axixa')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlAxixa",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
 			},
 			"dependsOn": []
 		}

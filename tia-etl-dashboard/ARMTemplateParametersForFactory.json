@@ -110,6 +110,9 @@
 		"MySqlitabi_password": {
 			"value": ""
 		},
+		"AzureFunction1_functionKey": {
+			"value": ""
+		},
 		"Banco_cluster_TIA_properties_typeProperties_server": {
 			"value": "br-ong-tag.mysql.database.azure.com"
 		},
@@ -403,6 +406,9 @@
 		},
 		"MySqlitabi_properties_typeProperties_username": {
 			"value": "tagdata"
+		},
+		"AzureFunction1_properties_typeProperties_functionAppUrl": {
+			"value": ""
 		}
 	}
 }
