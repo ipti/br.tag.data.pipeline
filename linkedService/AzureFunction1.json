@@ -1,0 +1,16 @@
+{
+	"name": "AzureFunction1",
+	"properties": {
+		"parameters": {
+			"name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureFunction",
+		"typeProperties": {
+			"functionAppUrl": "",
+			"authentication": "Anonymous"
+		}
+	}
+}
