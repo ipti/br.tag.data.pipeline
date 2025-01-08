@@ -27,7 +27,7 @@
 						}
 					},
 					"dataset": {
-						"referenceName": "JsonTesteBases",
+						"referenceName": "BasesTagJson",
 						"type": "DatasetReference"
 					},
 					"firstRowOnly": false
@@ -36,8 +36,6 @@
 			{
 				"name": "LoopCopyDatabasesFundamental",
 				"type": "ForEach",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "DatabaseNames",
@@ -1687,9 +1685,9 @@
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "DatabaseNames",
+						"activity": "LoopCopyDatabasesFundamental",
 						"dependencyConditions": [
-							"Succeeded"
+							"Completed"
 						]
 					}
 				],
