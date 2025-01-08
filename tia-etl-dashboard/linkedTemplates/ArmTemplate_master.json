@@ -11,6 +11,10 @@
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureBlobStorageBUF'"
 		},
+		"AzureFunction1_functionKey": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'functionKey' de 'AzureFunction1'"
+		},
 		"AzureSqlDatabase1_connectionString": {
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureSqlDatabase1'"
@@ -147,9 +151,9 @@
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlitabi'"
 		},
-		"AzureFunction1_functionKey": {
-			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'functionKey' de 'AzureFunction1'"
+		"AzureFunction1_properties_typeProperties_functionAppUrl": {
+			"type": "string",
+			"defaultValue": ""
 		},
 		"Banco_cluster_TIA_properties_typeProperties_server": {
 			"type": "string",
@@ -543,10 +547,6 @@
 			"type": "string",
 			"defaultValue": "tagdata"
 		},
-		"AzureFunction1_properties_typeProperties_functionAppUrl": {
-			"type": "string",
-			"defaultValue": ""
-		},
 		"containerUri": {
 			"type": "string",
 			"metadata": "URI para a conta de armazenamento contendo os modelos do ARM vinculados"
@@ -576,6 +576,9 @@
 					},
 					"AzureBlobStorageBUF_connectionString": {
 						"value": "[parameters('AzureBlobStorageBUF_connectionString')]"
+					},
+					"AzureFunction1_functionKey": {
+						"value": "[parameters('AzureFunction1_functionKey')]"
 					},
 					"AzureSqlDatabase1_connectionString": {
 						"value": "[parameters('AzureSqlDatabase1_connectionString')]"
@@ -628,8 +631,8 @@
 					"MySqlHumbertoCampos_password": {
 						"value": "[parameters('MySqlHumbertoCampos_password')]"
 					},
-					"MySqlIcatu_password": {
-						"value": "[parameters('MySqlIcatu_password')]"
+					"AzureFunction1_properties_typeProperties_functionAppUrl": {
+						"value": "[parameters('AzureFunction1_properties_typeProperties_functionAppUrl')]"
 					},
 					"Banco_cluster_TIA_properties_typeProperties_server": {
 						"value": "[parameters('Banco_cluster_TIA_properties_typeProperties_server')]"
@@ -771,15 +774,6 @@
 					},
 					"MySqlHumbertoCampos_properties_typeProperties_username": {
 						"value": "[parameters('MySqlHumbertoCampos_properties_typeProperties_username')]"
-					},
-					"MySqlIcatu_properties_typeProperties_server": {
-						"value": "[parameters('MySqlIcatu_properties_typeProperties_server')]"
-					},
-					"MySqlIcatu_properties_typeProperties_database": {
-						"value": "[parameters('MySqlIcatu_properties_typeProperties_database')]"
-					},
-					"MySqlIcatu_properties_typeProperties_username": {
-						"value": "[parameters('MySqlIcatu_properties_typeProperties_username')]"
 					}
 				}
 			},
@@ -798,6 +792,9 @@
 				"parameters": {
 					"factoryName": {
 						"value": "[parameters('factoryName')]"
+					},
+					"MySqlIcatu_password": {
+						"value": "[parameters('MySqlIcatu_password')]"
 					},
 					"MySqlItapemirim_password": {
 						"value": "[parameters('MySqlItapemirim_password')]"
@@ -847,8 +844,14 @@
 					"MySqlitabi_password": {
 						"value": "[parameters('MySqlitabi_password')]"
 					},
-					"AzureFunction1_functionKey": {
-						"value": "[parameters('AzureFunction1_functionKey')]"
+					"MySqlIcatu_properties_typeProperties_server": {
+						"value": "[parameters('MySqlIcatu_properties_typeProperties_server')]"
+					},
+					"MySqlIcatu_properties_typeProperties_database": {
+						"value": "[parameters('MySqlIcatu_properties_typeProperties_database')]"
+					},
+					"MySqlIcatu_properties_typeProperties_username": {
+						"value": "[parameters('MySqlIcatu_properties_typeProperties_username')]"
 					},
 					"MySqlItapemirim_properties_typeProperties_server": {
 						"value": "[parameters('MySqlItapemirim_properties_typeProperties_server')]"
@@ -993,9 +996,6 @@
 					},
 					"MySqlitabi_properties_typeProperties_username": {
 						"value": "[parameters('MySqlitabi_properties_typeProperties_username')]"
-					},
-					"AzureFunction1_properties_typeProperties_functionAppUrl": {
-						"value": "[parameters('AzureFunction1_properties_typeProperties_functionAppUrl')]"
 					}
 				}
 			},

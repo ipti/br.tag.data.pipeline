@@ -11,6 +11,10 @@
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureBlobStorageBUF'"
 		},
+		"AzureFunction1_functionKey": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'functionKey' de 'AzureFunction1'"
+		},
 		"AzureSqlDatabase1_connectionString": {
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureSqlDatabase1'"
@@ -79,9 +83,9 @@
 			"type": "secureString",
 			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlHumbertoCampos'"
 		},
-		"MySqlIcatu_password": {
-			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlIcatu'"
+		"AzureFunction1_properties_typeProperties_functionAppUrl": {
+			"type": "string",
+			"defaultValue": ""
 		},
 		"Banco_cluster_TIA_properties_typeProperties_server": {
 			"type": "string",
@@ -270,18 +274,6 @@
 		"MySqlHumbertoCampos_properties_typeProperties_username": {
 			"type": "string",
 			"defaultValue": "tagdata"
-		},
-		"MySqlIcatu_properties_typeProperties_server": {
-			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
-		},
-		"MySqlIcatu_properties_typeProperties_database": {
-			"type": "string",
-			"defaultValue": "icatu.tag.ong.br"
-		},
-		"MySqlIcatu_properties_typeProperties_username": {
-			"type": "string",
-			"defaultValue": "tagdata"
 		}
 	},
 	"variables": {
@@ -455,6 +447,29 @@
 				"type": "AzureBlobStorage",
 				"typeProperties": {
 					"connectionString": "[parameters('AzureBlobStorageBUF_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureFunction1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureFunction",
+				"typeProperties": {
+					"functionAppUrl": "[parameters('AzureFunction1_properties_typeProperties_functionAppUrl')]",
+					"authentication": "Anonymous",
+					"functionKey": {
+						"type": "SecureString",
+						"value": "[parameters('AzureFunction1_functionKey')]"
+					}
 				}
 			},
 			"dependsOn": []
@@ -833,29 +848,6 @@
 					"password": {
 						"type": "SecureString",
 						"value": "[parameters('MySqlHumbertoCampos_password')]"
-					},
-					"driverVersion": "v2"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/MySqlIcatu')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "MySql",
-				"typeProperties": {
-					"server": "[parameters('MySqlIcatu_properties_typeProperties_server')]",
-					"port": 3306,
-					"database": "[parameters('MySqlIcatu_properties_typeProperties_database')]",
-					"username": "[parameters('MySqlIcatu_properties_typeProperties_username')]",
-					"sslMode": 1,
-					"useSystemTrustStore": 0,
-					"password": {
-						"type": "SecureString",
-						"value": "[parameters('MySqlIcatu_password')]"
 					},
 					"driverVersion": "v2"
 				}

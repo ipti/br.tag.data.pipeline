@@ -8,6 +8,9 @@
 		"AzureBlobStorageBUF_connectionString": {
 			"value": ""
 		},
+		"AzureFunction1_functionKey": {
+			"value": ""
+		},
 		"AzureSqlDatabase1_connectionString": {
 			"value": ""
 		},
@@ -110,7 +113,7 @@
 		"MySqlitabi_password": {
 			"value": ""
 		},
-		"AzureFunction1_functionKey": {
+		"AzureFunction1_properties_typeProperties_functionAppUrl": {
 			"value": ""
 		},
 		"Banco_cluster_TIA_properties_typeProperties_server": {
@@ -406,9 +409,6 @@
 		},
 		"MySqlitabi_properties_typeProperties_username": {
 			"value": "tagdata"
-		},
-		"AzureFunction1_properties_typeProperties_functionAppUrl": {
-			"value": ""
 		},
 		"containerUri": {
 			"value": ""
