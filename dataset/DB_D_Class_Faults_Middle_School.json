@@ -1,0 +1,58 @@
+{
+	"name": "DB_D_Class_Faults_Middle_School",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "F_HASH",
+				"type": "varchar"
+			},
+			{
+				"name": "Class",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Month",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "TotalScheduledClassDays",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "AbsentDays",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "TotalLessonsPerDay",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "TotalFaults",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "School_id",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Discipline_Name",
+				"type": "nvarchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "D_Class_Faults_Middle_School"
+		}
+	}
+}

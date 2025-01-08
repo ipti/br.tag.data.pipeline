@@ -1,0 +1,24 @@
+{
+	"name": "Trigger_Bulk",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "Warehouse_ClassFaults_Bulk",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Hour",
+				"interval": 1000,
+				"startTime": "2025-01-09T00:00:00",
+				"timeZone": "E. South America Standard Time"
+			}
+		}
+	}
+}

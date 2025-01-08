@@ -27,15 +27,17 @@
 						}
 					},
 					"dataset": {
-						"referenceName": "BasesTagJson",
+						"referenceName": "JsonTesteBases",
 						"type": "DatasetReference"
 					},
 					"firstRowOnly": false
 				}
 			},
 			{
-				"name": "LoopCopyDatabases",
+				"name": "LoopCopyDatabasesFundamental",
 				"type": "ForEach",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "DatabaseNames",
@@ -1673,6 +1675,1746 @@
 							"outputs": [
 								{
 									"referenceName": "DB_D_Class_Faults_Elementary",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "LoopCopyDatabasesFundamentalMaior",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "DatabaseNames",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('DatabaseNames').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "CopyDataMiddleMonth1",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": "@concat('SELECT \r\n    s.inep_id AS `school`, \r\n    c.name AS `classroom`, \r\n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \r\n    ed.name AS `discipline_name`, \r\n    t.month AS `Month`, \r\n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \r\n    SUM(CASE WHEN (\r\n        SELECT COUNT(1) \r\n        FROM `', item().DatabaseName, '`.class_faults cf \r\n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\r\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \r\n    COUNT(1) AS `TotalLessonsPerDay`, \r\n    SUM(\r\n        (SELECT COUNT(1) \r\n         FROM `', item().DatabaseName, '`.class_faults cf \r\n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\r\n    ) AS `TotalFaults`\r\nFROM `', item().DatabaseName, '`.schedule t\r\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\r\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\r\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\r\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\r\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\r\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\r\nWHERE t.unavailable = 0 \r\n  AND c.school_year = 2024\r\n  AND si.id is not null\r\n  AND t.month = 1 \r\n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\r\nGROUP BY \r\n    s.inep_id, \r\n    c.name, \r\n    si.id, \r\n    se.school_inep_id_fk, \r\n    ed.name, \r\n    t.month, \r\n    t.discipline_fk\r\nORDER BY \r\n    c.name, \r\n    si.id, \r\n    t.month')\r\n"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"dataIntegrationUnits": 4,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "student"
+											},
+											"sink": {
+												"name": "F_HASH",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom"
+											},
+											"sink": {
+												"name": "Class",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Month"
+											},
+											"sink": {
+												"name": "Month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalScheduledDays"
+											},
+											"sink": {
+												"name": "TotalScheduledClassDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "AbsentDays"
+											},
+											"sink": {
+												"name": "AbsentDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalLessonsPerDay"
+											},
+											"sink": {
+												"name": "TotalLessonsPerDay",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalFaults"
+											},
+											"sink": {
+												"name": "TotalFaults",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school"
+											},
+											"sink": {
+												"name": "School_id",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_name"
+											},
+											"sink": {
+												"name": "Discipline_Name",
+												"type": "nvarchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_cluster",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DB_D_Class_Faults_Middle_School",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "CopyDataMiddleMonth2",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyDataMiddleMonth1",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "@concat('SELECT \n    s.inep_id AS `school`, \n    c.name AS `classroom`, \n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \n    ed.name AS `discipline_name`, \n    t.month AS `Month`, \n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \n    SUM(CASE WHEN (\n        SELECT COUNT(1) \n        FROM `', item().DatabaseName, '`.class_faults cf \n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \n    COUNT(1) AS `TotalLessonsPerDay`, \n    SUM(\n        (SELECT COUNT(1) \n         FROM `', item().DatabaseName, '`.class_faults cf \n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\n    ) AS `TotalFaults`\nFROM `', item().DatabaseName, '`.schedule t\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\nWHERE t.unavailable = 0 \n  AND c.school_year = 2024\n  AND si.id is not null\n  AND t.month = 2 \n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\nGROUP BY \n    s.inep_id, \n    c.name, \n    si.id, \n    se.school_inep_id_fk, \n    ed.name, \n    t.month, \n    t.discipline_fk\nORDER BY \n    c.name, \n    si.id, \n    t.month')\n",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"dataIntegrationUnits": 4,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "student"
+											},
+											"sink": {
+												"name": "F_HASH",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom"
+											},
+											"sink": {
+												"name": "Class",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Month"
+											},
+											"sink": {
+												"name": "Month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalScheduledDays"
+											},
+											"sink": {
+												"name": "TotalScheduledClassDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "AbsentDays"
+											},
+											"sink": {
+												"name": "AbsentDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalLessonsPerDay"
+											},
+											"sink": {
+												"name": "TotalLessonsPerDay",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalFaults"
+											},
+											"sink": {
+												"name": "TotalFaults",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school"
+											},
+											"sink": {
+												"name": "School_id",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_name"
+											},
+											"sink": {
+												"name": "Discipline_Name",
+												"type": "nvarchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_cluster",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DB_D_Class_Faults_Middle_School",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "CopyDataMiddleMonth3",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyDataMiddleMonth2",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "@concat('SELECT \n    s.inep_id AS `school`, \n    c.name AS `classroom`, \n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \n    ed.name AS `discipline_name`, \n    t.month AS `Month`, \n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \n    SUM(CASE WHEN (\n        SELECT COUNT(1) \n        FROM `', item().DatabaseName, '`.class_faults cf \n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \n    COUNT(1) AS `TotalLessonsPerDay`, \n    SUM(\n        (SELECT COUNT(1) \n         FROM `', item().DatabaseName, '`.class_faults cf \n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\n    ) AS `TotalFaults`\nFROM `', item().DatabaseName, '`.schedule t\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\nWHERE t.unavailable = 0 \n  AND c.school_year = 2024\n  AND si.id is not null\n  AND t.month = 3 \n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\nGROUP BY \n    s.inep_id, \n    c.name, \n    si.id, \n    se.school_inep_id_fk, \n    ed.name, \n    t.month, \n    t.discipline_fk\nORDER BY \n    c.name, \n    si.id, \n    t.month')\n",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"dataIntegrationUnits": 4,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "student"
+											},
+											"sink": {
+												"name": "F_HASH",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom"
+											},
+											"sink": {
+												"name": "Class",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Month"
+											},
+											"sink": {
+												"name": "Month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalScheduledDays"
+											},
+											"sink": {
+												"name": "TotalScheduledClassDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "AbsentDays"
+											},
+											"sink": {
+												"name": "AbsentDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalLessonsPerDay"
+											},
+											"sink": {
+												"name": "TotalLessonsPerDay",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalFaults"
+											},
+											"sink": {
+												"name": "TotalFaults",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school"
+											},
+											"sink": {
+												"name": "School_id",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_name"
+											},
+											"sink": {
+												"name": "Discipline_Name",
+												"type": "nvarchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_cluster",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DB_D_Class_Faults_Middle_School",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "CopyDataMiddleMonth4",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyDataMiddleMonth3",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "@concat('SELECT \n    s.inep_id AS `school`, \n    c.name AS `classroom`, \n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \n    ed.name AS `discipline_name`, \n    t.month AS `Month`, \n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \n    SUM(CASE WHEN (\n        SELECT COUNT(1) \n        FROM `', item().DatabaseName, '`.class_faults cf \n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \n    COUNT(1) AS `TotalLessonsPerDay`, \n    SUM(\n        (SELECT COUNT(1) \n         FROM `', item().DatabaseName, '`.class_faults cf \n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\n    ) AS `TotalFaults`\nFROM `', item().DatabaseName, '`.schedule t\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\nWHERE t.unavailable = 0 \n  AND c.school_year = 2024\n  AND si.id is not null\n  AND t.month = 4 \n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\nGROUP BY \n    s.inep_id, \n    c.name, \n    si.id, \n    se.school_inep_id_fk, \n    ed.name, \n    t.month, \n    t.discipline_fk\nORDER BY \n    c.name, \n    si.id, \n    t.month')\n",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"dataIntegrationUnits": 4,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "student"
+											},
+											"sink": {
+												"name": "F_HASH",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom"
+											},
+											"sink": {
+												"name": "Class",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Month"
+											},
+											"sink": {
+												"name": "Month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalScheduledDays"
+											},
+											"sink": {
+												"name": "TotalScheduledClassDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "AbsentDays"
+											},
+											"sink": {
+												"name": "AbsentDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalLessonsPerDay"
+											},
+											"sink": {
+												"name": "TotalLessonsPerDay",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalFaults"
+											},
+											"sink": {
+												"name": "TotalFaults",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school"
+											},
+											"sink": {
+												"name": "School_id",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_name"
+											},
+											"sink": {
+												"name": "Discipline_Name",
+												"type": "nvarchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_cluster",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DB_D_Class_Faults_Middle_School",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "CopyDataMiddleMonth5",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyDataMiddleMonth4",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "@concat('SELECT \n    s.inep_id AS `school`, \n    c.name AS `classroom`, \n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \n    ed.name AS `discipline_name`, \n    t.month AS `Month`, \n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \n    SUM(CASE WHEN (\n        SELECT COUNT(1) \n        FROM `', item().DatabaseName, '`.class_faults cf \n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \n    COUNT(1) AS `TotalLessonsPerDay`, \n    SUM(\n        (SELECT COUNT(1) \n         FROM `', item().DatabaseName, '`.class_faults cf \n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\n    ) AS `TotalFaults`\nFROM `', item().DatabaseName, '`.schedule t\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\nWHERE t.unavailable = 0 \n  AND c.school_year = 2024\n  AND si.id is not null\n  AND t.month = 5 \n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\nGROUP BY \n    s.inep_id, \n    c.name, \n    si.id, \n    se.school_inep_id_fk, \n    ed.name, \n    t.month, \n    t.discipline_fk\nORDER BY \n    c.name, \n    si.id, \n    t.month')\n",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"dataIntegrationUnits": 4,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "student"
+											},
+											"sink": {
+												"name": "F_HASH",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom"
+											},
+											"sink": {
+												"name": "Class",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Month"
+											},
+											"sink": {
+												"name": "Month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalScheduledDays"
+											},
+											"sink": {
+												"name": "TotalScheduledClassDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "AbsentDays"
+											},
+											"sink": {
+												"name": "AbsentDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalLessonsPerDay"
+											},
+											"sink": {
+												"name": "TotalLessonsPerDay",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalFaults"
+											},
+											"sink": {
+												"name": "TotalFaults",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school"
+											},
+											"sink": {
+												"name": "School_id",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_name"
+											},
+											"sink": {
+												"name": "Discipline_Name",
+												"type": "nvarchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_cluster",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DB_D_Class_Faults_Middle_School",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "CopyDataMiddleMonth6",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyDataMiddleMonth5",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "@concat('SELECT \n    s.inep_id AS `school`, \n    c.name AS `classroom`, \n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \n    ed.name AS `discipline_name`, \n    t.month AS `Month`, \n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \n    SUM(CASE WHEN (\n        SELECT COUNT(1) \n        FROM `', item().DatabaseName, '`.class_faults cf \n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \n    COUNT(1) AS `TotalLessonsPerDay`, \n    SUM(\n        (SELECT COUNT(1) \n         FROM `', item().DatabaseName, '`.class_faults cf \n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\n    ) AS `TotalFaults`\nFROM `', item().DatabaseName, '`.schedule t\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\nWHERE t.unavailable = 0 \n  AND c.school_year = 2024\n  AND si.id is not null\n  AND t.month = 6 \n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\nGROUP BY \n    s.inep_id, \n    c.name, \n    si.id, \n    se.school_inep_id_fk, \n    ed.name, \n    t.month, \n    t.discipline_fk\nORDER BY \n    c.name, \n    si.id, \n    t.month')\n",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"dataIntegrationUnits": 4,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "student"
+											},
+											"sink": {
+												"name": "F_HASH",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom"
+											},
+											"sink": {
+												"name": "Class",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Month"
+											},
+											"sink": {
+												"name": "Month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalScheduledDays"
+											},
+											"sink": {
+												"name": "TotalScheduledClassDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "AbsentDays"
+											},
+											"sink": {
+												"name": "AbsentDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalLessonsPerDay"
+											},
+											"sink": {
+												"name": "TotalLessonsPerDay",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalFaults"
+											},
+											"sink": {
+												"name": "TotalFaults",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school"
+											},
+											"sink": {
+												"name": "School_id",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_name"
+											},
+											"sink": {
+												"name": "Discipline_Name",
+												"type": "nvarchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_cluster",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DB_D_Class_Faults_Middle_School",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "CopyDataMiddleMonth7",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyDataMiddleMonth6",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "@concat('SELECT \n    s.inep_id AS `school`, \n    c.name AS `classroom`, \n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \n    ed.name AS `discipline_name`, \n    t.month AS `Month`, \n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \n    SUM(CASE WHEN (\n        SELECT COUNT(1) \n        FROM `', item().DatabaseName, '`.class_faults cf \n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \n    COUNT(1) AS `TotalLessonsPerDay`, \n    SUM(\n        (SELECT COUNT(1) \n         FROM `', item().DatabaseName, '`.class_faults cf \n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\n    ) AS `TotalFaults`\nFROM `', item().DatabaseName, '`.schedule t\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\nWHERE t.unavailable = 0 \n  AND c.school_year = 2024\n  AND si.id is not null\n  AND t.month = 7 \n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\nGROUP BY \n    s.inep_id, \n    c.name, \n    si.id, \n    se.school_inep_id_fk, \n    ed.name, \n    t.month, \n    t.discipline_fk\nORDER BY \n    c.name, \n    si.id, \n    t.month')\n",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"dataIntegrationUnits": 4,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "student"
+											},
+											"sink": {
+												"name": "F_HASH",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom"
+											},
+											"sink": {
+												"name": "Class",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Month"
+											},
+											"sink": {
+												"name": "Month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalScheduledDays"
+											},
+											"sink": {
+												"name": "TotalScheduledClassDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "AbsentDays"
+											},
+											"sink": {
+												"name": "AbsentDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalLessonsPerDay"
+											},
+											"sink": {
+												"name": "TotalLessonsPerDay",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalFaults"
+											},
+											"sink": {
+												"name": "TotalFaults",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school"
+											},
+											"sink": {
+												"name": "School_id",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_name"
+											},
+											"sink": {
+												"name": "Discipline_Name",
+												"type": "nvarchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_cluster",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DB_D_Class_Faults_Middle_School",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "CopyDataMiddleMonth8",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyDataMiddleMonth7",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "@concat('SELECT \n    s.inep_id AS `school`, \n    c.name AS `classroom`, \n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \n    ed.name AS `discipline_name`, \n    t.month AS `Month`, \n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \n    SUM(CASE WHEN (\n        SELECT COUNT(1) \n        FROM `', item().DatabaseName, '`.class_faults cf \n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \n    COUNT(1) AS `TotalLessonsPerDay`, \n    SUM(\n        (SELECT COUNT(1) \n         FROM `', item().DatabaseName, '`.class_faults cf \n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\n    ) AS `TotalFaults`\nFROM `', item().DatabaseName, '`.schedule t\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\nWHERE t.unavailable = 0 \n  AND c.school_year = 2024\n  AND si.id is not null\n  AND t.month = 8 \n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\nGROUP BY \n    s.inep_id, \n    c.name, \n    si.id, \n    se.school_inep_id_fk, \n    ed.name, \n    t.month, \n    t.discipline_fk\nORDER BY \n    c.name, \n    si.id, \n    t.month')\n",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"dataIntegrationUnits": 4,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "student"
+											},
+											"sink": {
+												"name": "F_HASH",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom"
+											},
+											"sink": {
+												"name": "Class",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Month"
+											},
+											"sink": {
+												"name": "Month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalScheduledDays"
+											},
+											"sink": {
+												"name": "TotalScheduledClassDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "AbsentDays"
+											},
+											"sink": {
+												"name": "AbsentDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalLessonsPerDay"
+											},
+											"sink": {
+												"name": "TotalLessonsPerDay",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalFaults"
+											},
+											"sink": {
+												"name": "TotalFaults",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school"
+											},
+											"sink": {
+												"name": "School_id",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_name"
+											},
+											"sink": {
+												"name": "Discipline_Name",
+												"type": "nvarchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_cluster",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DB_D_Class_Faults_Middle_School",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "CopyDataMiddleMonth9",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyDataMiddleMonth8",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "@concat('SELECT \n    s.inep_id AS `school`, \n    c.name AS `classroom`, \n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \n    ed.name AS `discipline_name`, \n    t.month AS `Month`, \n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \n    SUM(CASE WHEN (\n        SELECT COUNT(1) \n        FROM `', item().DatabaseName, '`.class_faults cf \n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \n    COUNT(1) AS `TotalLessonsPerDay`, \n    SUM(\n        (SELECT COUNT(1) \n         FROM `', item().DatabaseName, '`.class_faults cf \n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\n    ) AS `TotalFaults`\nFROM `', item().DatabaseName, '`.schedule t\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\nWHERE t.unavailable = 0 \n  AND c.school_year = 2024\n  AND si.id is not null\n  AND t.month = 9 \n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\nGROUP BY \n    s.inep_id, \n    c.name, \n    si.id, \n    se.school_inep_id_fk, \n    ed.name, \n    t.month, \n    t.discipline_fk\nORDER BY \n    c.name, \n    si.id, \n    t.month')\n",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"dataIntegrationUnits": 4,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "student"
+											},
+											"sink": {
+												"name": "F_HASH",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom"
+											},
+											"sink": {
+												"name": "Class",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Month"
+											},
+											"sink": {
+												"name": "Month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalScheduledDays"
+											},
+											"sink": {
+												"name": "TotalScheduledClassDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "AbsentDays"
+											},
+											"sink": {
+												"name": "AbsentDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalLessonsPerDay"
+											},
+											"sink": {
+												"name": "TotalLessonsPerDay",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalFaults"
+											},
+											"sink": {
+												"name": "TotalFaults",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school"
+											},
+											"sink": {
+												"name": "School_id",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_name"
+											},
+											"sink": {
+												"name": "Discipline_Name",
+												"type": "nvarchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_cluster",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DB_D_Class_Faults_Middle_School",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "CopyDataMiddleMonth10",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyDataMiddleMonth9",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "@concat('SELECT \n    s.inep_id AS `school`, \n    c.name AS `classroom`, \n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \n    ed.name AS `discipline_name`, \n    t.month AS `Month`, \n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \n    SUM(CASE WHEN (\n        SELECT COUNT(1) \n        FROM `', item().DatabaseName, '`.class_faults cf \n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \n    COUNT(1) AS `TotalLessonsPerDay`, \n    SUM(\n        (SELECT COUNT(1) \n         FROM `', item().DatabaseName, '`.class_faults cf \n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\n    ) AS `TotalFaults`\nFROM `', item().DatabaseName, '`.schedule t\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\nWHERE t.unavailable = 0 \n  AND c.school_year = 2024\n  AND si.id is not null\n  AND t.month = 10 \n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\nGROUP BY \n    s.inep_id, \n    c.name, \n    si.id, \n    se.school_inep_id_fk, \n    ed.name, \n    t.month, \n    t.discipline_fk\nORDER BY \n    c.name, \n    si.id, \n    t.month')\n",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"dataIntegrationUnits": 4,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "student"
+											},
+											"sink": {
+												"name": "F_HASH",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom"
+											},
+											"sink": {
+												"name": "Class",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Month"
+											},
+											"sink": {
+												"name": "Month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalScheduledDays"
+											},
+											"sink": {
+												"name": "TotalScheduledClassDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "AbsentDays"
+											},
+											"sink": {
+												"name": "AbsentDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalLessonsPerDay"
+											},
+											"sink": {
+												"name": "TotalLessonsPerDay",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalFaults"
+											},
+											"sink": {
+												"name": "TotalFaults",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school"
+											},
+											"sink": {
+												"name": "School_id",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_name"
+											},
+											"sink": {
+												"name": "Discipline_Name",
+												"type": "nvarchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_cluster",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DB_D_Class_Faults_Middle_School",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "CopyDataMiddleMonth11",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyDataMiddleMonth10",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "@concat('SELECT \n    s.inep_id AS `school`, \n    c.name AS `classroom`, \n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \n    ed.name AS `discipline_name`, \n    t.month AS `Month`, \n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \n    SUM(CASE WHEN (\n        SELECT COUNT(1) \n        FROM `', item().DatabaseName, '`.class_faults cf \n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \n    COUNT(1) AS `TotalLessonsPerDay`, \n    SUM(\n        (SELECT COUNT(1) \n         FROM `', item().DatabaseName, '`.class_faults cf \n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\n    ) AS `TotalFaults`\nFROM `', item().DatabaseName, '`.schedule t\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\nWHERE t.unavailable = 0 \n  AND c.school_year = 2024\n  AND si.id is not null\n  AND t.month = 11 \n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\nGROUP BY \n    s.inep_id, \n    c.name, \n    si.id, \n    se.school_inep_id_fk, \n    ed.name, \n    t.month, \n    t.discipline_fk\nORDER BY \n    c.name, \n    si.id, \n    t.month')\n",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"dataIntegrationUnits": 4,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "student"
+											},
+											"sink": {
+												"name": "F_HASH",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom"
+											},
+											"sink": {
+												"name": "Class",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Month"
+											},
+											"sink": {
+												"name": "Month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalScheduledDays"
+											},
+											"sink": {
+												"name": "TotalScheduledClassDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "AbsentDays"
+											},
+											"sink": {
+												"name": "AbsentDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalLessonsPerDay"
+											},
+											"sink": {
+												"name": "TotalLessonsPerDay",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalFaults"
+											},
+											"sink": {
+												"name": "TotalFaults",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school"
+											},
+											"sink": {
+												"name": "School_id",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_name"
+											},
+											"sink": {
+												"name": "Discipline_Name",
+												"type": "nvarchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_cluster",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DB_D_Class_Faults_Middle_School",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "CopyDataMiddleMonth12",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyDataMiddleMonth11",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "@concat('SELECT \n    s.inep_id AS `school`, \n    c.name AS `classroom`, \n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \n    ed.name AS `discipline_name`, \n    t.month AS `Month`, \n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \n    SUM(CASE WHEN (\n        SELECT COUNT(1) \n        FROM `', item().DatabaseName, '`.class_faults cf \n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \n    COUNT(1) AS `TotalLessonsPerDay`, \n    SUM(\n        (SELECT COUNT(1) \n         FROM `', item().DatabaseName, '`.class_faults cf \n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\n    ) AS `TotalFaults`\nFROM `', item().DatabaseName, '`.schedule t\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\nWHERE t.unavailable = 0 \n  AND c.school_year = 2024\n  AND si.id is not null\n  AND t.month = 12 \n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\nGROUP BY \n    s.inep_id, \n    c.name, \n    si.id, \n    se.school_inep_id_fk, \n    ed.name, \n    t.month, \n    t.discipline_fk\nORDER BY \n    c.name, \n    si.id, \n    t.month')\n",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"dataIntegrationUnits": 4,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "student"
+											},
+											"sink": {
+												"name": "F_HASH",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom"
+											},
+											"sink": {
+												"name": "Class",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Month"
+											},
+											"sink": {
+												"name": "Month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalScheduledDays"
+											},
+											"sink": {
+												"name": "TotalScheduledClassDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "AbsentDays"
+											},
+											"sink": {
+												"name": "AbsentDays",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalLessonsPerDay"
+											},
+											"sink": {
+												"name": "TotalLessonsPerDay",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "TotalFaults"
+											},
+											"sink": {
+												"name": "TotalFaults",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school"
+											},
+											"sink": {
+												"name": "School_id",
+												"type": "nvarchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_name"
+											},
+											"sink": {
+												"name": "Discipline_Name",
+												"type": "nvarchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_cluster",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DB_D_Class_Faults_Middle_School",
 									"type": "DatasetReference"
 								}
 							]
