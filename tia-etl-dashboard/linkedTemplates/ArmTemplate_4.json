@@ -13,6 +13,34 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/DBbndes')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Utilizam",
+						"type": "varchar"
+					},
+					{
+						"name": "Cidade",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "BNDES"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/JsonTesteBases')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -66,67 +94,6 @@
 						"startTime": "2024-08-30T00:00:00",
 						"timeZone": "E. South America Standard Time"
 					}
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_D_Class_Faults_Middle_School')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "F_HASH",
-						"type": "varchar"
-					},
-					{
-						"name": "Class",
-						"type": "nvarchar"
-					},
-					{
-						"name": "Month",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "TotalScheduledClassDays",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "AbsentDays",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "TotalLessonsPerDay",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "TotalFaults",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "School_id",
-						"type": "nvarchar"
-					},
-					{
-						"name": "Discipline_Name",
-						"type": "nvarchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "D_Class_Faults_Middle_School"
 				}
 			},
 			"dependsOn": []
@@ -2009,7 +1976,9 @@
 				"annotations": [],
 				"lastPublishTime": "2024-06-19T19:54:56Z"
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DBbndes')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Pipeline-TAG-AccumulatedData-Load')]",
@@ -22637,7 +22606,10 @@
 									"typeProperties": {
 										"source": {
 											"type": "MySqlSource",
-											"query": "@concat('SELECT \r\n    s.inep_id AS `school`, \r\n    c.name AS `classroom`, \r\n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \r\n    ed.name AS `discipline_name`, \r\n    t.month AS `Month`, \r\n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \r\n    SUM(CASE WHEN (\r\n        SELECT COUNT(1) \r\n        FROM `', item().DatabaseName, '`.class_faults cf \r\n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\r\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \r\n    COUNT(1) AS `TotalLessonsPerDay`, \r\n    SUM(\r\n        (SELECT COUNT(1) \r\n         FROM `', item().DatabaseName, '`.class_faults cf \r\n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\r\n    ) AS `TotalFaults`\r\nFROM `', item().DatabaseName, '`.schedule t\r\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\r\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\r\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\r\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\r\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\r\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\r\nWHERE t.unavailable = 0 \r\n  AND c.school_year = 2024\r\n  AND si.id is not null\r\n  AND t.month = 1 \r\n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\r\nGROUP BY \r\n    s.inep_id, \r\n    c.name, \r\n    si.id, \r\n    se.school_inep_id_fk, \r\n    ed.name, \r\n    t.month, \r\n    t.discipline_fk\r\nORDER BY \r\n    c.name, \r\n    si.id, \r\n    t.month')\r\n"
+											"query": {
+												"value": "@concat('SELECT \r\n    s.inep_id AS `school`, \r\n    c.name AS `classroom`, \r\n    CONCAT(si.id, \"-\", se.school_inep_id_fk) AS `student`, \r\n    ed.name AS `discipline_name`, \r\n    t.month AS `Month`, \r\n    COUNT(DISTINCT t.day) AS `TotalScheduledDays`, \r\n    SUM(CASE WHEN (\r\n        SELECT COUNT(1) \r\n        FROM `', item().DatabaseName, '`.class_faults cf \r\n        WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id\r\n    ) > 0 THEN 1 ELSE 0 END) AS `AbsentDays`, \r\n    COUNT(1) AS `TotalLessonsPerDay`, \r\n    SUM(\r\n        (SELECT COUNT(1) \r\n         FROM `', item().DatabaseName, '`.class_faults cf \r\n         WHERE cf.schedule_fk = t.id AND cf.student_fk = si.id)\r\n    ) AS `TotalFaults`\r\nFROM `', item().DatabaseName, '`.schedule t\r\nJOIN `', item().DatabaseName, '`.classroom c ON c.id = t.classroom_fk\r\nJOIN `', item().DatabaseName, '`.school_identification s ON s.inep_id = c.school_inep_fk\r\nJOIN `', item().DatabaseName, '`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\r\nJOIN `', item().DatabaseName, '`.student_enrollment se ON se.classroom_fk = t.classroom_fk\r\nJOIN `', item().DatabaseName, '`.student_identification si ON se.student_fk = si.id\r\nJOIN `', item().DatabaseName, '`.edcenso_discipline ed ON t.discipline_fk = ed.id\r\nWHERE t.unavailable = 0 \r\n  AND c.school_year = 2024\r\n  AND si.id is not null\r\n  AND t.month = 1 \r\n  AND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\r\nGROUP BY \r\n    s.inep_id, \r\n    c.name, \r\n    si.id, \r\n    se.school_inep_id_fk, \r\n    ed.name, \r\n    t.month, \r\n    t.discipline_fk\r\nORDER BY \r\n    c.name, \r\n    si.id, \r\n    t.month')\r\n",
+												"type": "Expression"
+											}
 										},
 										"sink": {
 											"type": "AzureSqlSink",
@@ -24373,9 +24345,7 @@
 				},
 				"annotations": []
 			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/DB_D_Class_Faults_Middle_School')]"
-			]
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Trigger-data-warehouse-tag')]",
@@ -24438,6 +24408,36 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Trigger_Bulk')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Stopped",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "Warehouse_ClassFaults_Bulk",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Hour",
+						"interval": 1000,
+						"startTime": "2025-01-09T00:00:00",
+						"timeZone": "E. South America Standard Time"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/Warehouse_ClassFaults_Bulk')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Trigger_Financeiro')]",
 			"type": "Microsoft.DataFactory/factories/triggers",
 			"apiVersion": "2018-06-01",
@@ -24495,36 +24495,6 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/Pipeline-TAG-AccumulatedData-Load')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Trigger_Bulk')]",
-			"type": "Microsoft.DataFactory/factories/triggers",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"runtimeState": "Started",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "Warehouse_ClassFaults_Bulk",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					}
-				],
-				"type": "ScheduleTrigger",
-				"typeProperties": {
-					"recurrence": {
-						"frequency": "Hour",
-						"interval": 1000,
-						"startTime": "2025-01-09T00:00:00",
-						"timeZone": "E. South America Standard Time"
-					}
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Warehouse_ClassFaults_Bulk')]"
 			]
 		}
 	]

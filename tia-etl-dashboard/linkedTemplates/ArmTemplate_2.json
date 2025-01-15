@@ -102,6 +102,67 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/DB_D_Class_Faults_Middle_School')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "F_HASH",
+						"type": "varchar"
+					},
+					{
+						"name": "Class",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Month",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "TotalScheduledClassDays",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "AbsentDays",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "TotalLessonsPerDay",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "TotalFaults",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "School_id",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Discipline_Name",
+						"type": "nvarchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "D_Class_Faults_Middle_School"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/DB_axixa')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -412,22 +473,6 @@
 			"properties": {
 				"linkedServiceName": {
 					"referenceName": "MySqlIcatu",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_itabi')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlitabi",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],
