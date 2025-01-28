@@ -132,7 +132,7 @@
 			"value": "root"
 		},
 		"MySqlAltoDoRodrigues_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlAltoDoRodrigues_properties_typeProperties_database": {
 			"value": "altodorodrigues.tag.ong.br"
@@ -141,7 +141,7 @@
 			"value": "tagdata"
 		},
 		"MySqlAxixa_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlAxixa_properties_typeProperties_database": {
 			"value": "axixa.tag.ong.br"
@@ -150,7 +150,7 @@
 			"value": "tagdata"
 		},
 		"MySqlBoquim_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlBoquim_properties_typeProperties_database": {
 			"value": "boquim.tag.ong.br"
@@ -159,7 +159,7 @@
 			"value": "tagdata"
 		},
 		"MySqlBuzios_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlBuzios_properties_typeProperties_database": {
 			"value": "buzios.tag.ong.br"
@@ -168,7 +168,7 @@
 			"value": "tagdata"
 		},
 		"MySqlCaicaraDoNorte_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlCaicaraDoNorte_properties_typeProperties_database": {
 			"value": "caicaradonorte.tag.ong.br"
@@ -195,7 +195,7 @@
 			"value": "tagdata"
 		},
 		"MySqlCristalia_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlCristalia_properties_typeProperties_database": {
 			"value": "cristalia.tag.ong.br"
@@ -204,7 +204,7 @@
 			"value": "tagdata"
 		},
 		"MySqlFeiraNova_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlFeiraNova_properties_typeProperties_database": {
 			"value": "feiranova.tag.ong.br "
@@ -222,7 +222,7 @@
 			"value": "tagdata"
 		},
 		"MySqlGeneralMaynard_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlGeneralMaynard_properties_typeProperties_database": {
 			"value": "generalmaynard.tag.ong.br"
@@ -231,7 +231,7 @@
 			"value": "tagdata"
 		},
 		"MySqlGloria_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlGloria_properties_typeProperties_database": {
 			"value": "nossasenhoradagloria.tag.ong.br"
@@ -240,7 +240,7 @@
 			"value": "tagdata"
 		},
 		"MySqlGrachoCardoso_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlGrachoCardoso_properties_typeProperties_database": {
 			"value": "gracchocardoso.tag.ong.br"
@@ -249,7 +249,7 @@
 			"value": "tagdata"
 		},
 		"MySqlHumbertoCampos_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlHumbertoCampos_properties_typeProperties_database": {
 			"value": "humbertodecampos.tag.ong.br"
@@ -258,7 +258,7 @@
 			"value": "tagdata"
 		},
 		"MySqlIcatu_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlIcatu_properties_typeProperties_database": {
 			"value": "icatu.tag.ong.br"
@@ -267,7 +267,7 @@
 			"value": "tagdata"
 		},
 		"MySqlItapemirim_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlItapemirim_properties_typeProperties_database": {
 			"value": "itapemirim.tag.ong.br"
@@ -276,7 +276,7 @@
 			"value": "tagdata"
 		},
 		"MySqlJaparatuba_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlJaparatuba_properties_typeProperties_database": {
 			"value": "japaratuba.tag.ong.br"
@@ -303,7 +303,7 @@
 			"value": "tagdata"
 		},
 		"MySqlPirambu_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlPirambu_properties_typeProperties_database": {
 			"value": "pirambu.tag.ong.br"
@@ -312,7 +312,7 @@
 			"value": "tagdata"
 		},
 		"MySqlPocoDantas_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlPocoDantas_properties_typeProperties_database": {
 			"value": "pocodantas.tag.ong.br"
@@ -330,7 +330,7 @@
 			"value": "tagdata"
 		},
 		"MySqlRubelita_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlRubelita_properties_typeProperties_database": {
 			"value": "rubelita.tag.ong.br"
@@ -339,7 +339,7 @@
 			"value": "tagdata"
 		},
 		"MySqlSantaLuzia_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlSantaLuzia_properties_typeProperties_database": {
 			"value": "santaluzia.tag.ong.br"
@@ -348,7 +348,7 @@
 			"value": "tagdata"
 		},
 		"MySqlSantaRosaDeLima_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlSantaRosaDeLima_properties_typeProperties_database": {
 			"value": "santarosadelima.tag.ong.br"
@@ -366,7 +366,7 @@
 			"value": "tagdata"
 		},
 		"MySqlSaoJoaoDaBarra_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlSaoJoaoDaBarra_properties_typeProperties_database": {
 			"value": "saojoaodabarra.tag.ong.br"
@@ -375,7 +375,7 @@
 			"value": "tagdata"
 		},
 		"MySqlUbatuba_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlUbatuba_properties_typeProperties_database": {
 			"value": "ubatuba.tag.ong.br"
@@ -384,7 +384,7 @@
 			"value": "tagdata"
 		},
 		"MySqlUirauna_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlUirauna_properties_typeProperties_database": {
 			"value": "uirauna.tag.ong.br"

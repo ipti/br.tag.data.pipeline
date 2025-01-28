@@ -77,7 +77,7 @@
 		},
 		"MySqlIcatu_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlIcatu_properties_typeProperties_database": {
 			"type": "string",
@@ -89,7 +89,7 @@
 		},
 		"MySqlItapemirim_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlItapemirim_properties_typeProperties_database": {
 			"type": "string",
@@ -101,7 +101,7 @@
 		},
 		"MySqlJaparatuba_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlJaparatuba_properties_typeProperties_database": {
 			"type": "string",
@@ -137,7 +137,7 @@
 		},
 		"MySqlPirambu_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlPirambu_properties_typeProperties_database": {
 			"type": "string",
@@ -149,7 +149,7 @@
 		},
 		"MySqlPocoDantas_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlPocoDantas_properties_typeProperties_database": {
 			"type": "string",
@@ -173,7 +173,7 @@
 		},
 		"MySqlRubelita_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlRubelita_properties_typeProperties_database": {
 			"type": "string",
@@ -185,7 +185,7 @@
 		},
 		"MySqlSantaLuzia_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlSantaLuzia_properties_typeProperties_database": {
 			"type": "string",
@@ -197,7 +197,7 @@
 		},
 		"MySqlSantaRosaDeLima_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlSantaRosaDeLima_properties_typeProperties_database": {
 			"type": "string",
@@ -221,7 +221,7 @@
 		},
 		"MySqlSaoJoaoDaBarra_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlSaoJoaoDaBarra_properties_typeProperties_database": {
 			"type": "string",
@@ -233,7 +233,7 @@
 		},
 		"MySqlUbatuba_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlUbatuba_properties_typeProperties_database": {
 			"type": "string",
@@ -245,7 +245,7 @@
 		},
 		"MySqlUirauna_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"MySqlUirauna_properties_typeProperties_database": {
 			"type": "string",
