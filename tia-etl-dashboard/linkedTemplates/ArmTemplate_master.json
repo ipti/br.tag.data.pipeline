@@ -157,11 +157,11 @@
 		},
 		"Banco_cluster_TIA_properties_typeProperties_server": {
 			"type": "string",
-			"defaultValue": "br-ong-tag.mysql.database.azure.com"
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"Banco_cluster_TIA_properties_typeProperties_database": {
 			"type": "string",
-			"defaultValue": "cluster.data.tag.ong.br"
+			"defaultValue": "treinamento.tag.ong.br"
 		},
 		"Banco_cluster_TIA_properties_typeProperties_username": {
 			"type": "string",

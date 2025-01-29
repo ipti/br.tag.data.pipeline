@@ -117,10 +117,10 @@
 			"value": ""
 		},
 		"Banco_cluster_TIA_properties_typeProperties_server": {
-			"value": "br-ong-tag.mysql.database.azure.com"
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
 		},
 		"Banco_cluster_TIA_properties_typeProperties_database": {
-			"value": "cluster.data.tag.ong.br"
+			"value": "treinamento.tag.ong.br"
 		},
 		"Banco_cluster_TIA_properties_typeProperties_username": {
 			"value": "tagdata"
