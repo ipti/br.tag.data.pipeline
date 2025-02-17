@@ -6,7 +6,7 @@
 		"pipelines": [
 			{
 				"pipelineReference": {
-					"referenceName": "Warehouse_TAG_BulkLoader",
+					"referenceName": "Warehouse_TAG_Accumulated_Data",
 					"type": "PipelineReference"
 				}
 			}
