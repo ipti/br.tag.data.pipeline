@@ -4,7 +4,7 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Nome do Data Factory",
+			"metadata": "Data Factory name",
 			"defaultValue": "tia-etl-dashboard"
 		}
 	},
