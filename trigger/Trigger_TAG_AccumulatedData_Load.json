@@ -9,6 +9,12 @@
 					"referenceName": "Pipeline-TAG-AccumulatedData-Load",
 					"type": "PipelineReference"
 				}
+			},
+			{
+				"pipelineReference": {
+					"referenceName": "Warehouse_TAG_BulkLoader",
+					"type": "PipelineReference"
+				}
 			}
 		],
 		"type": "ScheduleTrigger",
@@ -16,7 +22,7 @@
 			"recurrence": {
 				"frequency": "Hour",
 				"interval": 24,
-				"startTime": "2024-08-27T23:59:00",
+				"startTime": "2025-02-17T23:59:00",
 				"timeZone": "E. South America Standard Time"
 			}
 		}
