@@ -6,12 +6,6 @@
 		"pipelines": [
 			{
 				"pipelineReference": {
-					"referenceName": "Pipeline-TAG-AccumulatedData-Load",
-					"type": "PipelineReference"
-				}
-			},
-			{
-				"pipelineReference": {
 					"referenceName": "Warehouse_TAG_BulkLoader",
 					"type": "PipelineReference"
 				}
