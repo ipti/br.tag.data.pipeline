@@ -566,7 +566,10 @@
 							"typeProperties": {
 								"source": {
 									"type": "MySqlSource",
-									"query": "SELECT si.id FROM `@{item().DatabaseName}`.student_identification si\r\n"
+									"query": {
+										"value": "SELECT si.id FROM `@{item().DatabaseName}`.student_identification si\r\n",
+										"type": "Expression"
+									}
 								},
 								"dataset": {
 									"referenceName": "DB_gloria",
@@ -602,11 +605,14 @@
 								"scripts": [
 									{
 										"parameters": {
-											"value": "@array(replace(replace(replace(replace(string(activity('equalsID').output.value), '[', ''), ']', ''), '{\"id\":', ''), '}', ''))\n",
+											"value": "@{\n    \"lista_ids\": join(activity('equalsID').output.value.*.id, ',')\n}",
 											"type": "Expression"
 										},
 										"type": "Query",
-										"text": "Select ad.ID FROM Accumulated_Data ad WHERE ad.ID IN (SELECT value FROM STRING_SPLIT(@lista_ids, ',')) and '@{item().DatabaseName}' = ad.Database_name;\r\n"
+										"text": {
+											"value": "Select ad.ID FROM Accumulated_Data ad WHERE ad.ID IN (SELECT value FROM STRING_SPLIT(@lista_ids, ',')) and '@{item().DatabaseName}' = ad.Database_name;\r\n",
+											"type": "Expression"
+										}
 									}
 								],
 								"scriptBlockExecutionTimeout": "02:00:00"
@@ -665,6 +671,14 @@
 				}
 			}
 		],
+		"parameters": {
+			"lista_ids": {
+				"type": "string",
+				"defaultValue": {
+					"lista_ids": "@join(activity('equalsID').output.value.*.id, ',')"
+				}
+			}
+		},
 		"variables": {
 			"LastInsertGloria": {
 				"type": "String"
