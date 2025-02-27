@@ -605,17 +605,31 @@
 								"scripts": [
 									{
 										"parameters": {
-											"value": "@{\n    \"lista_ids\": join(activity('equalsID').output.value.*.id, ',')\n}",
+											"value": "@json(concat('{\"lista_ids\":\"', variables('lista_ids'), '\"}'))",
 											"type": "Expression"
 										},
 										"type": "Query",
 										"text": {
-											"value": "Select ad.ID FROM Accumulated_Data ad WHERE ad.ID IN (SELECT value FROM STRING_SPLIT(@lista_ids, ',')) and '@{item().DatabaseName}' = ad.Database_name;\r\n",
+											"value": "Select ad.ID FROM Accumulated_Data ad WHERE ad.ID IN (SELECT value FROM STRING_SPLIT(@lista_ids, ',')) and '@{item().DatabaseName}' = ad.Database_name;\n",
 											"type": "Expression"
 										}
 									}
 								],
 								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						},
+						{
+							"name": "SetListaIds",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "lista_ids",
+								"value": "@join(activity('equalsID').output.value.*.id, ',')"
 							}
 						}
 					]
@@ -671,16 +685,11 @@
 				}
 			}
 		],
-		"parameters": {
-			"lista_ids": {
-				"type": "string",
-				"defaultValue": {
-					"lista_ids": "@join(activity('equalsID').output.value.*.id, ',')"
-				}
-			}
-		},
 		"variables": {
 			"LastInsertGloria": {
+				"type": "String"
+			},
+			"lista_ids": {
 				"type": "String"
 			}
 		},
