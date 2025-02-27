@@ -583,9 +583,9 @@
 							"type": "Script",
 							"dependsOn": [
 								{
-									"activity": "equalsID",
+									"activity": "SetListaIds",
 									"dependencyConditions": [
-										"Succeeded"
+										"Completed"
 									]
 								}
 							],
@@ -605,7 +605,7 @@
 								"scripts": [
 									{
 										"parameters": {
-											"value": "@json(concat('{\"lista_ids\":\"', variables('lista_ids'), '\"}'))",
+											"value": "@{variables('lista_ids')}",
 											"type": "Expression"
 										},
 										"type": "Query",
@@ -621,7 +621,14 @@
 						{
 							"name": "SetListaIds",
 							"type": "SetVariable",
-							"dependsOn": [],
+							"dependsOn": [
+								{
+									"activity": "equalsID",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
 							"policy": {
 								"secureOutput": false,
 								"secureInput": false
@@ -629,7 +636,10 @@
 							"userProperties": [],
 							"typeProperties": {
 								"variableName": "lista_ids",
-								"value": "@join(activity('equalsID').output.value.*.id, ',')"
+								"value": {
+									"value": "@{join(activity('equalsID').output.value.*.id, ',')}",
+									"type": "Expression"
+								}
 							}
 						}
 					]
