@@ -1,0 +1,63 @@
+{
+	"name": "AzureSqlTable1",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "inserted_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "F_HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "celiac_desase",
+				"type": "bit"
+			},
+			{
+				"name": "diabetes_desease",
+				"type": "bit"
+			},
+			{
+				"name": "iron_deficiency_anemia_desease",
+				"type": "bit"
+			},
+			{
+				"name": "lactose_intolerance_desease",
+				"type": "bit"
+			},
+			{
+				"name": "malnutrition_desease",
+				"type": "bit"
+			},
+			{
+				"name": "hypertension_desease",
+				"type": "bit"
+			},
+			{
+				"name": "obesity_desease",
+				"type": "bit"
+			},
+			{
+				"name": "other_health_problems",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo_tia",
+			"table": "D_HEALTH"
+		}
+	}
+}
