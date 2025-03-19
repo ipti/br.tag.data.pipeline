@@ -1,0 +1,95 @@
+{
+	"name": "D_STUDENT_DISCIPLINE",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "inserted_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "F_HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "discipline_name",
+				"type": "varchar"
+			},
+			{
+				"name": "grade_1",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "grade_2",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "grade_3",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "grade_4",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "rec_bim_1",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "rec_bim_2",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "rec_sem_1",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "rec_sem_2",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "rec_sem_3",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "rec_sem_4",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "rec_final",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "final_mean",
+				"type": "float",
+				"precision": 15
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo_tia",
+			"table": "D_STUDENT_DISCIPLINE"
+		}
+	}
+}

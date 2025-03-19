@@ -214,8 +214,8 @@
 			}
 		],
 		"typeProperties": {
-			"schema": "dbo",
-			"table": "Accumulated_Data"
+			"schema": "dbo_tia",
+			"table": "F_ENROLLMENT"
 		}
 	},
 	"type": "Microsoft.DataFactory/factories/datasets"

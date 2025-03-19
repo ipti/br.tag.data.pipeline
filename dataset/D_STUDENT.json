@@ -1,0 +1,103 @@
+{
+	"name": "D_STUDENT",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "F_HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "inserted_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "name",
+				"type": "varchar"
+			},
+			{
+				"name": "street_addrees",
+				"type": "varchar"
+			},
+			{
+				"name": "bolsa_familia_participator",
+				"type": "bit"
+			},
+			{
+				"name": "gender",
+				"type": "varchar"
+			},
+			{
+				"name": "ethnicity",
+				"type": "varchar"
+			},
+			{
+				"name": "birth_city",
+				"type": "varchar"
+			},
+			{
+				"name": "deficiency",
+				"type": "varchar"
+			},
+			{
+				"name": "birthday",
+				"type": "varchar"
+			},
+			{
+				"name": "neighborhood_address",
+				"type": "varchar"
+			},
+			{
+				"name": "cep",
+				"type": "varchar"
+			},
+			{
+				"name": "public_transport",
+				"type": "varchar"
+			},
+			{
+				"name": "city_address",
+				"type": "varchar"
+			},
+			{
+				"name": "mother_name",
+				"type": "varchar"
+			},
+			{
+				"name": "father_name",
+				"type": "varchar"
+			},
+			{
+				"name": "residence_zone",
+				"type": "varchar"
+			},
+			{
+				"name": "student_cpf",
+				"type": "varchar"
+			},
+			{
+				"name": "responsable_cpf",
+				"type": "varchar"
+			},
+			{
+				"name": "uf",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo_tia",
+			"table": "D_STUDENT"
+		}
+	}
+}

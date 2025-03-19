@@ -1,0 +1,65 @@
+{
+	"name": "F_ENROLLMENT",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "school_id",
+				"type": "varchar"
+			},
+			{
+				"name": "classroom_id",
+				"type": "varchar"
+			},
+			{
+				"name": "student_id",
+				"type": "varchar"
+			},
+			{
+				"name": "db_name",
+				"type": "varchar"
+			},
+			{
+				"name": "data_origin",
+				"type": "varchar"
+			},
+			{
+				"name": "inserted_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "log_lineage",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "health_id",
+				"type": "varchar"
+			},
+			{
+				"name": "status",
+				"type": "varchar"
+			},
+			{
+				"name": "enrollment_status",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo_tia",
+			"table": "F_ENROLLMENT"
+		}
+	}
+}
