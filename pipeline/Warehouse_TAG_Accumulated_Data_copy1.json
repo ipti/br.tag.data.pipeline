@@ -822,6 +822,8 @@
 						{
 							"name": "D_CLASSROOM",
 							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -844,6 +846,85 @@
 								"enableStaging": false,
 								"translator": {
 									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "HASH-ID"
+											},
+											"sink": {
+												"name": "HASH_ID",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "F_HASH_ID"
+											},
+											"sink": {
+												"name": "F_HASH_ID",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "name"
+											},
+											"sink": {
+												"name": "name",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "inserted_at"
+											},
+											"sink": {
+												"name": "inserted_at",
+												"type": "datetime",
+												"scale": 3,
+												"precision": 23
+											}
+										},
+										{
+											"source": {
+												"name": "stage"
+											},
+											"sink": {
+												"name": "stage",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "serie"
+											},
+											"sink": {
+												"name": "serie",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "class_year"
+											},
+											"sink": {
+												"name": "class_year",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "updated_at"
+											},
+											"sink": {
+												"name": "updated_at",
+												"type": "datetime",
+												"scale": 3,
+												"precision": 23
+											}
+										}
+									],
 									"typeConversion": true,
 									"typeConversionSettings": {
 										"allowDataTruncation": true,
