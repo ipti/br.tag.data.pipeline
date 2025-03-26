@@ -951,6 +951,8 @@
 						{
 							"name": "D_STUDENT_FAULTS_ELEMENTAR",
 							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -963,7 +965,10 @@
 							"typeProperties": {
 								"source": {
 									"type": "MySqlSource",
-									"query": "SELECT\n\tCONCAT(MIN(t.id), '-', c.id, '-', se.school_inep_id_fk) AS 'HASH_ID', -- Pega o primeiro t.id vinculado ao c.id\n    t.id as 'F_HASH_ID' ,\n    now() as inserted_at,\n    'elementary school' as discipline_id,\n\tconcat(si.id, '-', se.school_inep_id_fk,'-' ,se.classroom_fk) as student_id,\n    t.updated_at,\n    COUNT(DISTINCT t.day) AS scheduled_student_class_days,\n    COUNT(DISTINCT CASE WHEN cf.id IS NOT NULL THEN t.day END) AS total_faults_per_day\nFROM `@{item().DatabaseName}`.schedule t\nJOIN `@{item().DatabaseName}`.classroom c ON c.id = t.classroom_fk\nJOIN `@{item().DatabaseName}`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `@{item().DatabaseName}`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `@{item().DatabaseName}`.student_identification si ON se.student_fk = si.id\nJOIN `@{item().DatabaseName}`.student_documents_and_address sd ON sd.id = si.id\nLEFT JOIN `@{item().DatabaseName}`.class_faults cf ON cf.student_fk = si.id AND cf.schedule_fk = t.id\nleft join `@{item().DatabaseName}`.grade_results gr on se.student_fk = gr.enrollment_fk\nWHERE t.unavailable = 0\nGROUP BY c.id, si.id, t.month;"
+									"query": {
+										"value": "SELECT\n\tCONCAT(MIN(t.id), '-', c.id, '-', se.school_inep_id_fk) AS 'class_id',\n\tCONCAT(MIN(t.id), '-', c.id, '-', se.school_inep_id_fk, '-', si.id) AS 'HASH-ID',\n    t.id as 'F_HASH_ID' ,\n    now() as inserted_at,\n    'elementary school' as discipline_id,\n\tconcat(si.id, '-', se.school_inep_id_fk,'-' ,se.classroom_fk) as student_id,\n    t.updated_at,\n    COUNT(DISTINCT t.day) AS scheduled_student_class_days,\n    COUNT(DISTINCT CASE WHEN cf.id IS NOT NULL THEN t.day END) AS total_faults_per_day\nFROM `@{item().DatabaseName}`.schedule t\nJOIN `@{item().DatabaseName}`.classroom c ON c.id = t.classroom_fk\nJOIN `@{item().DatabaseName}`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `@{item().DatabaseName}`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `@{item().DatabaseName}`.student_identification si ON se.student_fk = si.id\nJOIN `@{item().DatabaseName}`.student_documents_and_address sd ON sd.id = si.id\nLEFT JOIN `@{item().DatabaseName}`.class_faults cf ON cf.student_fk = si.id AND cf.schedule_fk = t.id\nleft join `@{item().DatabaseName}`.grade_results gr on se.student_fk = gr.enrollment_fk\nWHERE t.unavailable = 0\nGROUP BY c.id, si.id, t.month;",
+										"type": "Expression"
+									}
 								},
 								"sink": {
 									"type": "AzureSqlSink",
@@ -976,10 +981,10 @@
 									"mappings": [
 										{
 											"source": {
-												"name": "HASH_ID"
+												"name": "class_id"
 											},
 											"sink": {
-												"name": "HASH_ID",
+												"name": "class_id",
 												"type": "varchar"
 											}
 										},
@@ -990,6 +995,34 @@
 											"sink": {
 												"name": "F_HASH_ID",
 												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "student_id"
+											},
+											"sink": {
+												"name": "student_id",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_id"
+											},
+											"sink": {
+												"name": "discipline_id",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "total_faults_per_day"
+											},
+											"sink": {
+												"name": "total_faults_per_day",
+												"type": "int",
+												"precision": 10
 											}
 										},
 										{
@@ -1016,24 +1049,6 @@
 										},
 										{
 											"source": {
-												"name": "discipline_id"
-											},
-											"sink": {
-												"name": "discipline_id",
-												"type": "varchar"
-											}
-										},
-										{
-											"source": {
-												"name": "student_id"
-											},
-											"sink": {
-												"name": "student_id",
-												"type": "varchar"
-											}
-										},
-										{
-											"source": {
 												"name": "scheduled_student_class_days"
 											},
 											"sink": {
@@ -1044,12 +1059,11 @@
 										},
 										{
 											"source": {
-												"name": "total_faults_per_day"
+												"name": "HASH-ID"
 											},
 											"sink": {
-												"name": "total_faults_per_day",
-												"type": "int",
-												"precision": 10
+												"name": "HASH_ID",
+												"type": "varchar"
 											}
 										}
 									],
@@ -1068,13 +1082,13 @@
 							],
 							"outputs": [
 								{
-									"referenceName": "D_STUDENT_FAULTS_ELEMETARY",
+									"referenceName": "D_STUDENT_FAULTS_ELEMENTARY",
 									"type": "DatasetReference"
 								}
 							]
 						},
 						{
-							"name": "F_CLASS",
+							"name": "F_CLASS_ELEMENTARY",
 							"type": "Copy",
 							"state": "Inactive",
 							"onInactiveMarkAs": "Succeeded",
