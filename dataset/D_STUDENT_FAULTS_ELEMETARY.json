@@ -1,0 +1,60 @@
+{
+	"name": "D_STUDENT_FAULTS_ELEMETARY",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "F_HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "student_id",
+				"type": "varchar"
+			},
+			{
+				"name": "discipline_id",
+				"type": "varchar"
+			},
+			{
+				"name": "total_faults_per_day",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "total_faults_per_discipline",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "inserted_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "updated_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "scheduled_student_class_days",
+				"type": "int",
+				"precision": 10
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo_tia",
+			"table": "D_STUDENT_FAULTS"
+		}
+	}
+}

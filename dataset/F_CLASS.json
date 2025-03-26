@@ -1,0 +1,74 @@
+{
+	"name": "F_CLASS",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "inserted_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "teacher_id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "class_id",
+				"type": "varchar"
+			},
+			{
+				"name": "classroom_id",
+				"type": "varchar"
+			},
+			{
+				"name": "scheduled_class_days",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "scheduled_month",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "scheduled_lessons_per_day",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "scheduled_year",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "school_id",
+				"type": "varchar"
+			},
+			{
+				"name": "discipline_id",
+				"type": "varchar"
+			},
+			{
+				"name": "updated_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo_tia",
+			"table": "F_CLASS"
+		}
+	}
+}
