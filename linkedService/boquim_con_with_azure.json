@@ -1,0 +1,12 @@
+{
+	"name": "boquim_con_with_azure",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureMySql",
+		"typeProperties": {
+			"connectionString": "server=br-ong-tag-extended.mysql.database.azure.com;port=3306;database=boquim.tag.ong.br;uid=tagdata;sslmode=1;usesystemtruststore=0",
+			"encryptedCredential": "ew0KICAiVmVyc2lvbiI6ICIyMDE3LTExLTMwIiwNCiAgIlByb3RlY3Rpb25Nb2RlIjogIktleSIsDQogICJTZWNyZXRDb250ZW50VHlwZSI6ICJQbGFpbnRleHQiLA0KICAiQ3JlZGVudGlhbElkIjogIkRBVEFGQUNUT1JZQENENzdDMEMwLTIwOUMtNEFCQy04OEU0LTQwOENGMTk4OThFNl81YWVkYTM0NS04MmUyLTQ1MGYtOTI0YS1hMDUxM2FkZGY2MDYiDQp9"
+		}
+	}
+}
