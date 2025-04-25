@@ -27,7 +27,7 @@
 						}
 					},
 					"dataset": {
-						"referenceName": "JsonTeste3Bases",
+						"referenceName": "EscolasPorBase",
 						"type": "DatasetReference"
 					},
 					"firstRowOnly": false
