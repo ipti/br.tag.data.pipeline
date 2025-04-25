@@ -1237,9 +1237,100 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select \nconcat(si.inep_id , '-', si.cep) as 'HASH-ID',\nsi.cep,\nec.name as 'city' ,\neu.acronym as 'uf'\nFROM\n   `@{item().DatabaseName}`.school_identification si\nleft join `@{item().DatabaseName}`.edcenso_city ec on si.edcenso_city_fk = ec.id \nleft join `@{item().DatabaseName}`.edcenso_uf eu on si.edcenso_uf_fk = eu.id ",
+										"value": "select \nconcat(si.inep_id , '-', si.cep) as 'HASH-ID',\nconcat(si.inep_id , '-', si.cep, '-', ec.id, '-', eu.id) as 'F_HASH_ID',\nsi.cep,\nec.name as 'city' ,\neu.acronym as 'uf'\nFROM\n   `@{item().DatabaseName}`.school_identification si\nleft join `@{item().DatabaseName}`.edcenso_city ec on si.edcenso_city_fk = ec.id \nleft join `@{item().DatabaseName}`.edcenso_uf eu on si.edcenso_uf_fk = eu.id ",
 										"type": "Expression"
 									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "HASH-ID"
+											},
+											"sink": {
+												"name": "HASH_ID",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "cep"
+											},
+											"sink": {
+												"name": "cep",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "city"
+											},
+											"sink": {
+												"name": "city",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "uf"
+											},
+											"sink": {
+												"name": "uf",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "F_HASH_ID"
+											},
+											"sink": {
+												"name": "F_HASH_ID"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_gloria",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "D_SCHOOL_GEOGRAPH",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "D_SCHOOL",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": "select \r\nconcat(si.inep_id , '-', si.cep) as 'HASH-ID',\r\nconcat(si.inep_id , '-', si.cep, '-', si.initial_date) as 'F_HASH-ID',\r\nnow() as 'inserted_at' ,\r\nsi.latitude ,\r\nsi.longitude ,\r\nsi.name,\r\nsi.address ,\r\nsi.address_number as 'number_address',\r\nsi.address_complement ,\r\nsi.address_neighborhood ,\r\nsi.situation,\r\nsi.initial_date as 'join_at',\r\nMAX(CASE WHEN l.crud = 'E' THEN 1 ELSE 0 END) AS exported_educacenso\r\nFROM\r\n  `@{item().DatabaseName}`.school_identification si\r\nJOIN `@{item().DatabaseName}`.log l ON si.inep_id = l.school_fk \r\ngroup by si.inep_id \r\n"
 								},
 								"sink": {
 									"type": "AzureSqlSink",
@@ -1261,14 +1352,113 @@
 										},
 										{
 											"source": {
-												"name": "cep"
+												"name": "F_HASH-ID"
 											},
 											"sink": {
-												"name": "cep",
+												"name": "F_HASH_ID",
 												"type": "varchar"
 											}
 										},
-										null
+										{
+											"source": {
+												"name": "inserted_at"
+											},
+											"sink": {
+												"name": "inserted_at",
+												"type": "datetime",
+												"scale": 3,
+												"precision": 23
+											}
+										},
+										{
+											"source": {
+												"name": "latitude"
+											},
+											"sink": {
+												"name": "latitude",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "longitude"
+											},
+											"sink": {
+												"name": "longitude",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "name"
+											},
+											"sink": {
+												"name": "name",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "address"
+											},
+											"sink": {
+												"name": "address",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "number_address"
+											},
+											"sink": {
+												"name": "number_address",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "address_complement"
+											},
+											"sink": {
+												"name": "address_complement",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "address_neighborhood"
+											},
+											"sink": {
+												"name": "address_neighborhood",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "situation"
+											},
+											"sink": {
+												"name": "situation",
+												"type": "bit"
+											}
+										},
+										{
+											"source": {
+												"name": "join_at"
+											},
+											"sink": {
+												"name": "join_at"
+											}
+										},
+										{
+											"source": {
+												"name": "exported_educacenso"
+											},
+											"sink": {
+												"name": "exported_educacenso",
+												"type": "bit"
+											}
+										}
 									],
 									"typeConversion": true,
 									"typeConversionSettings": {
@@ -1285,7 +1475,7 @@
 							],
 							"outputs": [
 								{
-									"referenceName": "D_SCHOOL_GEOGRAPH",
+									"referenceName": "D_SCHOOL",
 									"type": "DatasetReference"
 								}
 							]
