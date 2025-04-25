@@ -64,7 +64,44 @@
 							"type": "Copy",
 							"state": "Inactive",
 							"onInactiveMarkAs": "Succeeded",
-							"dependsOn": [],
+							"dependsOn": [
+								{
+									"activity": "D_SCHOOL",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "D_SCHOOL_GEOGRAPH",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "D_STUDENT",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "D_HEALTH",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "D_CLASSROOM",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "D_STUDENT_DISCIPLINE",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
@@ -595,7 +632,7 @@
 							]
 						},
 						{
-							"name": "D_STUDENT_GRADE",
+							"name": "D_STUDENT_DISCIPLINE",
 							"type": "Copy",
 							"state": "Inactive",
 							"onInactiveMarkAs": "Succeeded",
@@ -1318,6 +1355,8 @@
 						{
 							"name": "D_SCHOOL",
 							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -1476,6 +1515,65 @@
 							"outputs": [
 								{
 									"referenceName": "D_SCHOOL",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "F_AVALIATION",
+							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
+							"dependsOn": [
+								{
+									"activity": "D_STUDENT_DISCIPLINE",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "D_STUDENT",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_gloria",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "F_AVALIATION",
 									"type": "DatasetReference"
 								}
 							]
