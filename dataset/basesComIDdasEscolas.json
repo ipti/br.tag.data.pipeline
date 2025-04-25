@@ -1,0 +1,30 @@
+{
+	"name": "basesComIDdasEscolas",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureBlobStorageBUF",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": "escolas_formatado.json",
+				"folderPath": "BasesTag",
+				"container": "tagdatawarehouse-csv-files"
+			}
+		},
+		"schema": {
+			"type": "object",
+			"properties": {
+				"inep_id": {
+					"type": "integer"
+				},
+				"DatabaseName": {
+					"type": "string"
+				}
+			}
+		}
+	}
+}

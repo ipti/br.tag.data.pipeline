@@ -1,0 +1,33 @@
+{
+	"name": "D_SCHOOL_GEOGRAPH",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "cep",
+				"type": "varchar"
+			},
+			{
+				"name": "city",
+				"type": "varchar"
+			},
+			{
+				"name": "uf",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo_tia",
+			"table": "D_SCHOOL_GEOGRAPH"
+		}
+	}
+}

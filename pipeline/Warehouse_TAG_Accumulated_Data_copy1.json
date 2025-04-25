@@ -793,33 +793,6 @@
 							]
 						},
 						{
-							"name": "D_STUDENT_FAULTS",
-							"type": "Copy",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
-							"dependsOn": [],
-							"policy": {
-								"timeout": "0.12:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"source": {
-									"type": "MySqlSource"
-								},
-								"enableStaging": false
-							},
-							"inputs": [
-								{
-									"referenceName": "DB_gloria",
-									"type": "DatasetReference"
-								}
-							]
-						},
-						{
 							"name": "D_CLASSROOM",
 							"type": "Copy",
 							"state": "Inactive",
@@ -1242,6 +1215,77 @@
 							"outputs": [
 								{
 									"referenceName": "F_CLASS",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "D_SCHOOL_GEOGRAPH",
+							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "select \nconcat(si.inep_id , '-', si.cep) as 'HASH-ID',\nsi.cep,\nec.name as 'city' ,\neu.acronym as 'uf'\nFROM\n   `@{item().DatabaseName}`.school_identification si\nleft join `@{item().DatabaseName}`.edcenso_city ec on si.edcenso_city_fk = ec.id \nleft join `@{item().DatabaseName}`.edcenso_uf eu on si.edcenso_uf_fk = eu.id ",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "HASH_ID"
+											},
+											"sink": {
+												"name": "HASH_ID",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "cep"
+											},
+											"sink": {
+												"name": "cep",
+												"type": "varchar"
+											}
+										},
+										null
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_gloria",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "D_SCHOOL_GEOGRAPH",
 									"type": "DatasetReference"
 								}
 							]
