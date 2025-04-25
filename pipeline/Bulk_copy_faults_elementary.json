@@ -1,0 +1,368 @@
+{
+	"name": "Bulk_copy_faults_elementary",
+	"properties": {
+		"activities": [
+			{
+				"name": "DatabaseNames",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "JsonTeste3Bases",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "LoopCopyBulkIncremental",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "DatabaseNames",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('DatabaseNames').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 3,
+					"activities": [
+						{
+							"name": "D_STUDENT_FAULTS_ELEMENTAR",
+							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "SELECT\n\tCONCAT(MIN(t.id), '-', c.id, '-', se.school_inep_id_fk) AS 'class_id',\n\tCONCAT(MIN(t.id), '-', c.id, '-', se.school_inep_id_fk, '-', si.id) AS 'HASH-ID',\n    t.id as 'F_HASH_ID' ,\n    now() as inserted_at,\n    'elementary school' as discipline_id,\n\tconcat(si.id, '-', se.school_inep_id_fk,'-' ,se.classroom_fk) as student_id,\n    t.updated_at,\n    COUNT(DISTINCT t.day) AS scheduled_student_class_days,\n    COUNT(DISTINCT CASE WHEN cf.id IS NOT NULL THEN t.day END) AS total_faults_per_day\nFROM `@{item().DatabaseName}`.schedule t\nJOIN `@{item().DatabaseName}`.classroom c ON c.id = t.classroom_fk\nJOIN `@{item().DatabaseName}`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `@{item().DatabaseName}`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `@{item().DatabaseName}`.student_identification si ON se.student_fk = si.id\nJOIN `@{item().DatabaseName}`.student_documents_and_address sd ON sd.id = si.id\nLEFT JOIN `@{item().DatabaseName}`.class_faults cf ON cf.student_fk = si.id AND cf.schedule_fk = t.id\nleft join `@{item().DatabaseName}`.grade_results gr on se.student_fk = gr.enrollment_fk\nWHERE t.unavailable = 0\nGROUP BY c.id, si.id, t.month;",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "class_id"
+											},
+											"sink": {
+												"name": "class_id",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "F_HASH_ID"
+											},
+											"sink": {
+												"name": "F_HASH_ID",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "student_id"
+											},
+											"sink": {
+												"name": "student_id",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_id"
+											},
+											"sink": {
+												"name": "discipline_id",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "total_faults_per_day"
+											},
+											"sink": {
+												"name": "total_faults_per_day",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "inserted_at"
+											},
+											"sink": {
+												"name": "inserted_at",
+												"type": "datetime",
+												"scale": 3,
+												"precision": 23
+											}
+										},
+										{
+											"source": {
+												"name": "updated_at"
+											},
+											"sink": {
+												"name": "updated_at",
+												"type": "datetime",
+												"scale": 3,
+												"precision": 23
+											}
+										},
+										{
+											"source": {
+												"name": "scheduled_student_class_days"
+											},
+											"sink": {
+												"name": "scheduled_student_class_days",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "HASH-ID"
+											},
+											"sink": {
+												"name": "HASH_ID",
+												"type": "varchar"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_gloria",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "D_STUDENT_FAULTS_ELEMENTARY",
+									"type": "DatasetReference"
+								}
+							]
+						},
+						{
+							"name": "F_CLASS_ELEMENTARY",
+							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "SELECT\n\tCONCAT(MIN(t.id), '-', c.id, '-', se.school_inep_id_fk, '-',si2.cep) as 'HASH_ID', \n\tCONCAT(MIN(t.id), '-', c.id, '-', se.school_inep_id_fk) AS 'class_id', -- Pega o primeiro t.id vinculado ao c.id\n\tconcat (se.classroom_fk, '-', se.school_inep_id_fk) as 'classroom_id',\n\tconcat(se.school_inep_id_fk, '-', si2.cep) as school_id,\n\tconcat(itd.instructor_fk, '-', c.id, '-', se.school_inep_id_fk) as 'teacher_id',\n    t.id as 'F_HASH_ID' ,\n    c.name,\n    t.`month` ,\n    c.school_year ,\n    now() as inserted_at,\n    t.updated_at as updated_at,\n    'elementary school' as discipline_id,\n    COUNT(DISTINCT t.day) AS scheduled_student_class_days\nFROM `@{item().DatabaseName}`.schedule t\nJOIN `@{item().DatabaseName}`.classroom c ON c.id = t.classroom_fk\nJOIN `@{item().DatabaseName}`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `@{item().DatabaseName}`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `@{item().DatabaseName}`.student_identification si ON se.student_fk = si.id\nJOIN `@{item().DatabaseName}`.student_documents_and_address sd ON sd.id = si.id\nLEFT JOIN `@{item().DatabaseName}`.class_faults cf ON cf.student_fk = si.id AND cf.schedule_fk = t.id\nleft join `@{item().DatabaseName}`.grade_results gr on se.student_fk = gr.enrollment_fk\nleft join `@{item().DatabaseName}`.instructor_teaching_data itd on c.id = itd.classroom_id_fk and se.school_inep_id_fk = itd.school_inep_id_fk \nleft join `@{item().DatabaseName}`.school_identification si2 on se.school_inep_id_fk = si2.inep_id\nWHERE t.unavailable = 0 and c.id is not null and t.id is not null and se.school_inep_id_fk is not null\nGROUP BY c.id, t.month\norder by c.id;",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "HASH_ID"
+											},
+											"sink": {
+												"name": "HASH_ID",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "inserted_at"
+											},
+											"sink": {
+												"name": "inserted_at",
+												"type": "datetime",
+												"scale": 3,
+												"precision": 23
+											}
+										},
+										{
+											"source": {
+												"name": "teacher_id"
+											},
+											"sink": {
+												"name": "teacher_id",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "class_id"
+											},
+											"sink": {
+												"name": "class_id",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "classroom_id"
+											},
+											"sink": {
+												"name": "classroom_id",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "scheduled_student_class_days"
+											},
+											"sink": {
+												"name": "scheduled_class_days",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "month"
+											},
+											"sink": {
+												"name": "scheduled_month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school_year"
+											},
+											"sink": {
+												"name": "scheduled_year",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "school_id"
+											},
+											"sink": {
+												"name": "school_id",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_id"
+											},
+											"sink": {
+												"name": "discipline_id",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "updated_at"
+											},
+											"sink": {
+												"name": "updated_at",
+												"type": "datetime",
+												"scale": 3,
+												"precision": 23
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_gloria",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "F_CLASS",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"LastInsertGloria": {
+				"type": "String"
+			},
+			"lista_ids": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}
