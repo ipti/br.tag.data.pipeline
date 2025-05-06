@@ -64,6 +64,30 @@
 							"type": "Copy",
 							"dependsOn": [
 								{
+									"activity": "D_STUDENT",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "D_HEALTH",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "D_CLASSROOM",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "D_SCHOOL_GEOGRAPH",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
 									"activity": "D_SCHOOL",
 									"dependencyConditions": [
 										"Succeeded"
@@ -195,14 +219,7 @@
 						{
 							"name": "D_HEALTH",
 							"type": "Copy",
-							"dependsOn": [
-								{
-									"activity": "D_STUDENT_DISCIPLINE",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
+							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
@@ -605,14 +622,7 @@
 						{
 							"name": "D_STUDENT_DISCIPLINE",
 							"type": "Copy",
-							"dependsOn": [
-								{
-									"activity": "D_STUDENT",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
+							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
@@ -808,14 +818,7 @@
 						{
 							"name": "D_CLASSROOM",
 							"type": "Copy",
-							"dependsOn": [
-								{
-									"activity": "D_HEALTH",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
+							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
@@ -1240,14 +1243,7 @@
 						{
 							"name": "D_SCHOOL_GEOGRAPH",
 							"type": "Copy",
-							"dependsOn": [
-								{
-									"activity": "D_CLASSROOM",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
+							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
@@ -1343,7 +1339,13 @@
 							"type": "Copy",
 							"dependsOn": [
 								{
-									"activity": "F_ENROLLMENT",
+									"activity": "D_STUDENT_DISCIPLINE",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "D_STUDENT",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -1448,14 +1450,7 @@
 						{
 							"name": "D_SCHOOL",
 							"type": "Copy",
-							"dependsOn": [
-								{
-									"activity": "D_SCHOOL_GEOGRAPH",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
+							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
