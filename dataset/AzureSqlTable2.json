@@ -1,0 +1,71 @@
+{
+	"name": "AzureSqlTable2",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "F_HASH_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "inserted_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "latitude",
+				"type": "varchar"
+			},
+			{
+				"name": "longitude",
+				"type": "varchar"
+			},
+			{
+				"name": "name",
+				"type": "varchar"
+			},
+			{
+				"name": "address",
+				"type": "varchar"
+			},
+			{
+				"name": "number_address",
+				"type": "varchar"
+			},
+			{
+				"name": "address_complement",
+				"type": "varchar"
+			},
+			{
+				"name": "address_neighborhood",
+				"type": "varchar"
+			},
+			{
+				"name": "situation",
+				"type": "bit"
+			},
+			{
+				"name": "exported_educacenso",
+				"type": "varchar"
+			},
+			{
+				"name": "join_at",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo_tia",
+			"table": "D_SCHOOL"
+		}
+	}
+}

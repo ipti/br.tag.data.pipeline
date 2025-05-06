@@ -1,0 +1,12 @@
+{
+	"name": "teste",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "boquim_con_with_azure",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureMySqlTable",
+		"schema": []
+	}
+}
