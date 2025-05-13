@@ -1650,7 +1650,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "select max(LogDate) from [data-warehouse-tag].dbo_tia.F_ENROLLMENT;",
+						"sqlReaderQuery": "select max(inserted_at) from [data-warehouse-tag].dbo_tia.F_ENROLLMENT;",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
