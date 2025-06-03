@@ -194,6 +194,14 @@
 												"name": "enrollment_status",
 												"type": "varchar"
 											}
+										},
+										{
+											"source": {
+												"name": "db_name"
+											},
+											"sink": {
+												"name": "db_name"
+											}
 										}
 									],
 									"typeConversion": true,
