@@ -4,76 +4,84 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Data Factory name",
+			"metadata": "Nome do Data Factory",
 			"defaultValue": "tia-etl-dashboard"
 		},
 		"MySqlIcatu_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlIcatu'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlIcatu'"
 		},
 		"MySqlItapemirim_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlItapemirim'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlItapemirim'"
 		},
 		"MySqlJaparatuba_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlJaparatuba'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJaparatuba'"
 		},
 		"MySqlJapoata_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlJapoata'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlJapoata'"
 		},
 		"MySqlMalhadaDosBois_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlMalhadaDosBois'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlMalhadaDosBois'"
 		},
 		"MySqlPirambu_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlPirambu'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPirambu'"
 		},
 		"MySqlPocoDantas_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlPocoDantas'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPocoDantas'"
 		},
 		"MySqlPropria_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlPropria'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlPropria'"
 		},
 		"MySqlRubelita_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlRubelita'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlRubelita'"
 		},
 		"MySqlSantaLuzia_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlSantaLuzia'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantaLuzia'"
 		},
 		"MySqlSantaRosaDeLima_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlSantaRosaDeLima'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantaRosaDeLima'"
 		},
 		"MySqlSantanaDoSaoFrancisco_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlSantanaDoSaoFrancisco'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSantanaDoSaoFrancisco'"
 		},
 		"MySqlSaoJoaoDaBarra_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlSaoJoaoDaBarra'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlSaoJoaoDaBarra'"
 		},
 		"MySqlUbatuba_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlUbatuba'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUbatuba'"
 		},
 		"MySqlUirauna_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlUirauna'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUirauna'"
 		},
 		"MySqlUmari_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlUmari'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlUmari'"
 		},
 		"MySqlitabi_password": {
 			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'MySqlitabi'"
+			"metadata": "Cadeia de caracteres segura para 'password' de 'MySqlitabi'"
+		},
+		"boquim_con_with_azure_connectionString": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'boquim_con_with_azure'"
+		},
+		"maria_db_boquim_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'maria_db_boquim'"
 		},
 		"MySqlIcatu_properties_typeProperties_server": {
 			"type": "string",
@@ -276,6 +284,18 @@
 			"defaultValue": "itabi.tag.ong.br"
 		},
 		"MySqlitabi_properties_typeProperties_username": {
+			"type": "string",
+			"defaultValue": "tagdata"
+		},
+		"maria_db_boquim_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "br-ong-tag-extended.mysql.database.azure.com"
+		},
+		"maria_db_boquim_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "boquim.tag.ong.br"
+		},
+		"maria_db_boquim_properties_typeProperties_username": {
 			"type": "string",
 			"defaultValue": "tagdata"
 		}
@@ -676,6 +696,42 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/boquim_con_with_azure')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureMySql",
+				"typeProperties": {
+					"connectionString": "[parameters('boquim_con_with_azure_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/maria_db_boquim')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "MariaDB",
+				"typeProperties": {
+					"server": "[parameters('maria_db_boquim_properties_typeProperties_server')]",
+					"port": 3306,
+					"database": "[parameters('maria_db_boquim_properties_typeProperties_database')]",
+					"username": "[parameters('maria_db_boquim_properties_typeProperties_username')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('maria_db_boquim_password')]"
+					},
+					"driverVersion": "v2",
+					"sslMode": 4,
+					"useSystemTrustStore": 0
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Accumulated_data')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -893,216 +949,8 @@
 					}
 				],
 				"typeProperties": {
-					"schema": "dbo",
-					"table": "Accumulated_Data"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AzureSqlFinanceiroComOrdem')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "CONTRATO",
-						"type": "nvarchar"
-					},
-					{
-						"name": "FORNECEDOR",
-						"type": "nvarchar"
-					},
-					{
-						"name": "TIPO DE CONTRATO",
-						"type": "nvarchar"
-					},
-					{
-						"name": "REPRESENTANTE LEGAL",
-						"type": "nvarchar"
-					},
-					{
-						"name": "RUBRICA",
-						"type": "nvarchar"
-					},
-					{
-						"name": "PARCELAS",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "DATA INICIAL",
-						"type": "date"
-					},
-					{
-						"name": "DATA FINAL",
-						"type": "date"
-					},
-					{
-						"name": "VALOR TOTAL",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					},
-					{
-						"name": "QUANTIDADE DE HORAS",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "VALOR UNITÁRIO",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					},
-					{
-						"name": "APOIADOR",
-						"type": "nvarchar"
-					},
-					{
-						"name": "VALOR TOTAL DOADO PELO APOIADOR",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					},
-					{
-						"name": "ORIGEM PUBLICA",
-						"type": "smallint",
-						"precision": 5
-					},
-					{
-						"name": "Categoria Dos Gastos",
-						"type": "nvarchar"
-					},
-					{
-						"name": "RUBRICA_FORNECEDORES_ORDEM",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "FORNECEDOR_CNPJ",
-						"type": "char"
-					},
-					{
-						"name": "FORNECEDOR_CPF",
-						"type": "char"
-					},
-					{
-						"name": "ordem",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "DataDePagamentoDaOrdem",
-						"type": "date"
-					},
-					{
-						"name": "ValorPagoNaOrdem",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					}
-				],
-				"typeProperties": {
-					"schema": "Financeiro",
-					"table": "contratosComOrdem"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AzureSqlPagamentoRecorrente')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "CONTRATO",
-						"type": "nvarchar"
-					},
-					{
-						"name": "FORNECEDOR",
-						"type": "nvarchar"
-					},
-					{
-						"name": "TIPO DE CONTRATO",
-						"type": "nvarchar"
-					},
-					{
-						"name": "REPRESENTANTE LEGAL",
-						"type": "nvarchar"
-					},
-					{
-						"name": "RUBRICA",
-						"type": "nvarchar"
-					},
-					{
-						"name": "PARCELAS",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "DATA INICIAL",
-						"type": "date"
-					},
-					{
-						"name": "DATA FINAL",
-						"type": "date"
-					},
-					{
-						"name": "VALOR TOTAL",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					},
-					{
-						"name": "QUANTIDADE DE HORAS",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "VALOR UNITÁRIO",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					},
-					{
-						"name": "APOIADOR",
-						"type": "nvarchar"
-					},
-					{
-						"name": "VALOR TOTAL DOADO PELO APOIADOR",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					},
-					{
-						"name": "ORIGEM PUBLICA",
-						"type": "smallint",
-						"precision": 5
-					},
-					{
-						"name": "Valor total das rubricas",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					}
-				],
-				"typeProperties": {
-					"schema": "Financeiro",
-					"table": "PagamentoRecorrente"
+					"schema": "dbo_tia",
+					"table": "F_ENROLLMENT"
 				}
 			},
 			"dependsOn": []

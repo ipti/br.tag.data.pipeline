@@ -4,7 +4,7 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Data Factory name",
+			"metadata": "Nome do Data Factory",
 			"defaultValue": "tia-etl-dashboard"
 		}
 	},
@@ -12,6 +12,102 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/DB_financeiro')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlFinanceiro",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DB_generalMaynard')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlGeneralMaynard",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DB_gloria')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlGloria",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DB_gracchoCardoso')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlGrachoCardoso",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DB_humbertoCampos')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlHumbertoCampos",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DB_icatu')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "MySqlIcatu",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "MySqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/DB_itabi')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
@@ -257,293 +353,6 @@
 				"type": "MySqlTable",
 				"schema": [],
 				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_school')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "ID",
-						"type": "varchar"
-					},
-					{
-						"name": "Latitude",
-						"type": "varchar"
-					},
-					{
-						"name": "Longitude",
-						"type": "varchar"
-					},
-					{
-						"name": "Name",
-						"type": "varchar"
-					},
-					{
-						"name": "Address",
-						"type": "varchar"
-					},
-					{
-						"name": "Number_address",
-						"type": "varchar"
-					},
-					{
-						"name": "CEP",
-						"type": "varchar"
-					},
-					{
-						"name": "Address_complement",
-						"type": "varchar"
-					},
-					{
-						"name": "Address_neighborhood",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "D_School"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_studentHealth')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "F_HASH",
-						"type": "varchar"
-					},
-					{
-						"name": "Celiac_desease",
-						"type": "varchar"
-					},
-					{
-						"name": "Diabetes_desase",
-						"type": "varchar"
-					},
-					{
-						"name": "Iron_deficiency_anemia_desease",
-						"type": "varchar"
-					},
-					{
-						"name": "Sickle_cell_anemia_desease",
-						"type": "varchar"
-					},
-					{
-						"name": "Lactose_Intolerance_desease",
-						"type": "varchar"
-					},
-					{
-						"name": "Malnutrition_desease",
-						"type": "varchar"
-					},
-					{
-						"name": "Hypertension_desease",
-						"type": "varchar"
-					},
-					{
-						"name": "Obesity_desease",
-						"type": "varchar"
-					},
-					{
-						"name": "Other_health_problem",
-						"type": "varchar"
-					},
-					{
-						"name": "LogDate",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "D_Student_health"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_studentTable')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "F_HASH",
-						"type": "varchar"
-					},
-					{
-						"name": "Student_ID",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Name",
-						"type": "varchar"
-					},
-					{
-						"name": "Street_address",
-						"type": "varchar"
-					},
-					{
-						"name": "Bolsa_familia_participator",
-						"type": "bit"
-					},
-					{
-						"name": "Gender",
-						"type": "varchar"
-					},
-					{
-						"name": "Ethnicity",
-						"type": "varchar"
-					},
-					{
-						"name": "Birth_city",
-						"type": "varchar"
-					},
-					{
-						"name": "Deficiency",
-						"type": "varchar"
-					},
-					{
-						"name": "Birthday",
-						"type": "varchar"
-					},
-					{
-						"name": "Neighborhood_address",
-						"type": "varchar"
-					},
-					{
-						"name": "CEP",
-						"type": "varchar"
-					},
-					{
-						"name": "Public_transport",
-						"type": "varchar"
-					},
-					{
-						"name": "City_address",
-						"type": "varchar"
-					},
-					{
-						"name": "Mother_name",
-						"type": "varchar"
-					},
-					{
-						"name": "Father_name",
-						"type": "varchar"
-					},
-					{
-						"name": "Residence_zone",
-						"type": "varchar"
-					},
-					{
-						"name": "School_id_fk",
-						"type": "varchar"
-					},
-					{
-						"name": "Log_lineage",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "F_Student"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_uirauna')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlUirauna",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_umari')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlUmari",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_vaccine')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "F_HASH",
-						"type": "varchar"
-					},
-					{
-						"name": "Vaccine_name",
-						"type": "varchar"
-					},
-					{
-						"name": "LogDate",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "D_Student_vaccine"
-				}
 			},
 			"dependsOn": []
 		}

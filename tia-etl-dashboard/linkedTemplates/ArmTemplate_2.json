@@ -4,7 +4,7 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Data Factory name",
+			"metadata": "Nome do Data Factory",
 			"defaultValue": "tia-etl-dashboard"
 		}
 	},
@@ -12,6 +12,414 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlFinanceiroComOrdem')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CONTRATO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "FORNECEDOR",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TIPO DE CONTRATO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "REPRESENTANTE LEGAL",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RUBRICA",
+						"type": "nvarchar"
+					},
+					{
+						"name": "PARCELAS",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "DATA INICIAL",
+						"type": "date"
+					},
+					{
+						"name": "DATA FINAL",
+						"type": "date"
+					},
+					{
+						"name": "VALOR TOTAL",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "QUANTIDADE DE HORAS",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "VALOR UNITÁRIO",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "APOIADOR",
+						"type": "nvarchar"
+					},
+					{
+						"name": "VALOR TOTAL DOADO PELO APOIADOR",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "ORIGEM PUBLICA",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "Categoria Dos Gastos",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RUBRICA_FORNECEDORES_ORDEM",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "FORNECEDOR_CNPJ",
+						"type": "char"
+					},
+					{
+						"name": "FORNECEDOR_CPF",
+						"type": "char"
+					},
+					{
+						"name": "ordem",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "DataDePagamentoDaOrdem",
+						"type": "date"
+					},
+					{
+						"name": "ValorPagoNaOrdem",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					}
+				],
+				"typeProperties": {
+					"schema": "Financeiro",
+					"table": "contratosComOrdem"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlPagamentoRecorrente')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CONTRATO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "FORNECEDOR",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TIPO DE CONTRATO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "REPRESENTANTE LEGAL",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RUBRICA",
+						"type": "nvarchar"
+					},
+					{
+						"name": "PARCELAS",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "DATA INICIAL",
+						"type": "date"
+					},
+					{
+						"name": "DATA FINAL",
+						"type": "date"
+					},
+					{
+						"name": "VALOR TOTAL",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "QUANTIDADE DE HORAS",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "VALOR UNITÁRIO",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "APOIADOR",
+						"type": "nvarchar"
+					},
+					{
+						"name": "VALOR TOTAL DOADO PELO APOIADOR",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					},
+					{
+						"name": "ORIGEM PUBLICA",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "Valor total das rubricas",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 2
+					}
+				],
+				"typeProperties": {
+					"schema": "Financeiro",
+					"table": "PagamentoRecorrente"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlTable1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "HASH_ID",
+						"type": "varchar"
+					},
+					{
+						"name": "inserted_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "F_HASH_ID",
+						"type": "varchar"
+					},
+					{
+						"name": "celiac_desase",
+						"type": "bit"
+					},
+					{
+						"name": "diabetes_desease",
+						"type": "bit"
+					},
+					{
+						"name": "iron_deficiency_anemia_desease",
+						"type": "bit"
+					},
+					{
+						"name": "lactose_intolerance_desease",
+						"type": "bit"
+					},
+					{
+						"name": "malnutrition_desease",
+						"type": "bit"
+					},
+					{
+						"name": "hypertension_desease",
+						"type": "bit"
+					},
+					{
+						"name": "obesity_desease",
+						"type": "bit"
+					},
+					{
+						"name": "other_health_problems",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo_tia",
+					"table": "D_HEALTH"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlTable2')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "HASH_ID",
+						"type": "varchar"
+					},
+					{
+						"name": "F_HASH_ID",
+						"type": "varchar"
+					},
+					{
+						"name": "inserted_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "latitude",
+						"type": "varchar"
+					},
+					{
+						"name": "longitude",
+						"type": "varchar"
+					},
+					{
+						"name": "name",
+						"type": "varchar"
+					},
+					{
+						"name": "address",
+						"type": "varchar"
+					},
+					{
+						"name": "number_address",
+						"type": "varchar"
+					},
+					{
+						"name": "address_complement",
+						"type": "varchar"
+					},
+					{
+						"name": "address_neighborhood",
+						"type": "varchar"
+					},
+					{
+						"name": "situation",
+						"type": "bit"
+					},
+					{
+						"name": "exported_educacenso",
+						"type": "varchar"
+					},
+					{
+						"name": "join_at",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo_tia",
+					"table": "D_SCHOOL"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/BasesAtualizadas17_02_2025')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorageBUF",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "BasesAtualizados.json",
+						"folderPath": "BasesTag",
+						"container": "tagdatawarehouse-csv-files"
+					}
+				},
+				"schema": {
+					"type": "object",
+					"properties": {
+						"DatabaseName": {
+							"type": "string"
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/BasesParaTesteGrandes')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorageBUF",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "basesTesteGrandes.json",
+						"folderPath": "BasesTag",
+						"container": "tagdatawarehouse-csv-files"
+					}
+				},
+				"schema": {
+					"type": "object",
+					"properties": {
+						"DatabaseName": {
+							"type": "string"
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/BasesTagJson')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
@@ -377,102 +785,6 @@
 			"properties": {
 				"linkedServiceName": {
 					"referenceName": "MySqlFeiraNova",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_financeiro')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlFinanceiro",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_generalMaynard')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlGeneralMaynard",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_gloria')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlGloria",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_gracchoCardoso')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlGrachoCardoso",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_humbertoCampos')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlHumbertoCampos",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "MySqlTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DB_icatu')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "MySqlIcatu",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],

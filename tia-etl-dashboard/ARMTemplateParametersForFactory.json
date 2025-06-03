@@ -113,6 +113,12 @@
 		"MySqlitabi_password": {
 			"value": ""
 		},
+		"boquim_con_with_azure_connectionString": {
+			"value": ""
+		},
+		"maria_db_boquim_password": {
+			"value": ""
+		},
 		"AzureFunction1_properties_typeProperties_functionAppUrl": {
 			"value": ""
 		},
@@ -408,6 +414,15 @@
 			"value": "itabi.tag.ong.br"
 		},
 		"MySqlitabi_properties_typeProperties_username": {
+			"value": "tagdata"
+		},
+		"maria_db_boquim_properties_typeProperties_server": {
+			"value": "br-ong-tag-extended.mysql.database.azure.com"
+		},
+		"maria_db_boquim_properties_typeProperties_database": {
+			"value": "boquim.tag.ong.br"
+		},
+		"maria_db_boquim_properties_typeProperties_username": {
 			"value": "tagdata"
 		}
 	}
