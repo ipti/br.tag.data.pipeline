@@ -202,6 +202,14 @@
 											"sink": {
 												"name": "db_name"
 											}
+										},
+										{
+											"source": {
+												"name": "student_id"
+											},
+											"sink": {
+												"name": "student_id"
+											}
 										}
 									],
 									"typeConversion": true,
