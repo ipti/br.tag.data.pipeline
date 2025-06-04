@@ -57,7 +57,7 @@
 						"type": "Expression"
 					},
 					"isSequential": false,
-					"batchCount": 3,
+					"batchCount": 5,
 					"activities": [
 						{
 							"name": "F_ENROLLMENT",
@@ -201,6 +201,14 @@
 											},
 											"sink": {
 												"name": "db_name"
+											}
+										},
+										{
+											"source": {
+												"name": "student_id"
+											},
+											"sink": {
+												"name": "student_id"
 											}
 										}
 									],
