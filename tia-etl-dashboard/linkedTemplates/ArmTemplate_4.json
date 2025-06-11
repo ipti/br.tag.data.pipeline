@@ -465,6 +465,82 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/D_HEALTH_STAGING')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "HASH_ID",
+						"type": "varchar"
+					},
+					{
+						"name": "inserted_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "F_HASH_ID",
+						"type": "varchar"
+					},
+					{
+						"name": "celiac_desase",
+						"type": "bit"
+					},
+					{
+						"name": "diabetes_desease",
+						"type": "bit"
+					},
+					{
+						"name": "iron_deficiency_anemia_desease",
+						"type": "bit"
+					},
+					{
+						"name": "lactose_intolerance_desease",
+						"type": "bit"
+					},
+					{
+						"name": "malnutrition_desease",
+						"type": "bit"
+					},
+					{
+						"name": "hypertension_desease",
+						"type": "bit"
+					},
+					{
+						"name": "obesity_desease",
+						"type": "bit"
+					},
+					{
+						"name": "other_health_problems",
+						"type": "varchar"
+					},
+					{
+						"name": "updated_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "sickle_cell_anemia",
+						"type": "bit"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo_tia",
+					"table": "D_HEALTH_STAGING"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/D_SCHOOL')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -1067,74 +1143,6 @@
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/F_ENROLLMENT')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "HASH_ID",
-						"type": "varchar"
-					},
-					{
-						"name": "school_id",
-						"type": "varchar"
-					},
-					{
-						"name": "classroom_id",
-						"type": "varchar"
-					},
-					{
-						"name": "student_id",
-						"type": "varchar"
-					},
-					{
-						"name": "db_name",
-						"type": "varchar"
-					},
-					{
-						"name": "data_origin",
-						"type": "varchar"
-					},
-					{
-						"name": "inserted_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "log_lineage",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "health_id",
-						"type": "varchar"
-					},
-					{
-						"name": "status",
-						"type": "varchar"
-					},
-					{
-						"name": "enrollment_status",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo_tia",
-					"table": "F_ENROLLMENT"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/F_ENROLLMENT_TIMESTAMP')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
 			"properties": {
