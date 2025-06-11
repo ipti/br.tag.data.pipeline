@@ -672,7 +672,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "SELECT\n  CONCAT(c.id, '-', c.school_inep_id_fk) AS `HASH_ID`,\n  c.id AS `F_HASH_ID`,\n  c.name,\n  CASE\n      WHEN svm.stage = '1' THEN 'EDUCAÇÃO INFANTIL'\n      WHEN svm.stage = '2' THEN 'ENSINO FUNDAMENTAL'\n      WHEN svm.stage = '3' THEN 'ENSINO FUNDAMENTAL'\n      WHEN svm.stage = '4' THEN 'ENSINO MÉDIO'\n      WHEN svm.stage = '5' THEN 'EDUCAÇÃO PROFISSIONAL'\n      WHEN svm.stage = '6' THEN 'EDUCAÇÃO DE JOVENS E ADULTOS'\n      WHEN svm.stage = '7' THEN\n          CASE WHEN svm.id = '56' THEN 'MULTIETAPA'\n               ELSE 'ENSINO FUNDAMENTAL'\n          END\n  END AS `stage`,\n  CONCAT(\n    CASE\n      WHEN svm.id IN (1,2,3,4,5,6,7,8,9,10,11,25,26,27,28,29,30,31,32,33,34,35,36,37,38) THEN 'NA '\n      WHEN svm.id IN (14,15,16,17,18,19,20,21,41) THEN 'NO '\n      ELSE ''\n    END,\n    CASE\n      WHEN svm.id = 1 THEN 'CRECHE'\n      WHEN svm.id = 2 THEN 'PRÉ-ESCOLA'\n      WHEN svm.id = 3 THEN 'EDUCAÇÃO INFANTIL'\n      WHEN svm.id IN (4,14,25,30,35) THEN '1'\n      WHEN svm.id IN (5,15,26,31,36) THEN '2'\n      WHEN svm.id IN (6,16,27,32,37) THEN '3'\n      WHEN svm.id IN (7,17,28,33,38) THEN '4'\n      WHEN svm.id IN (8,18) THEN '5'\n      WHEN svm.id IN (9,19) THEN '6'\n      WHEN svm.id IN (10,20) THEN '7'\n      WHEN svm.id IN (11,21) THEN '8'\n      WHEN svm.id = 41 THEN '9'\n      ELSE ''\n    END,\n    CASE\n      WHEN svm.id IN (1,2,3) THEN ''\n      WHEN svm.id IN (4,5,6,7,8,9,10,11,25,26,27,28,29,30,31,32,33,34,35,36,37,38) THEN '* SÉRIE'\n      WHEN svm.id IN (14,15,16,17,18,19,20,21,41) THEN '* ANO'\n      ELSE 'NA ____________________'\n    END\n  ) AS `serie`,\n  c.school_year AS `class_year`,\n  c.updated_at,\n  NOW() AS inserted_at\nFROM `@{item().DatabaseName}`.classroom c\nLEFT JOIN `@{item().DatabaseName}`.edcenso_stage_vs_modality svm \n  ON c.edcenso_stage_vs_modality_fk = svm.id\nWHERE c.updated_at > '@{variables('LastInsertGloria')}'\nORDER BY c.school_year, c.id;\n",
+										"value": "SELECT\n  CONCAT(c.id, '-', c.school_inep_fk) AS `HASH_ID`,\n  c.id AS `F_HASH_ID`,\n  c.name,\n  CASE\n      WHEN svm.stage = '1' THEN 'EDUCAÇÃO INFANTIL'\n      WHEN svm.stage = '2' THEN 'ENSINO FUNDAMENTAL'\n      WHEN svm.stage = '3' THEN 'ENSINO FUNDAMENTAL'\n      WHEN svm.stage = '4' THEN 'ENSINO MÉDIO'\n      WHEN svm.stage = '5' THEN 'EDUCAÇÃO PROFISSIONAL'\n      WHEN svm.stage = '6' THEN 'EDUCAÇÃO DE JOVENS E ADULTOS'\n      WHEN svm.stage = '7' THEN\n          CASE WHEN svm.id = '56' THEN 'MULTIETAPA'\n               ELSE 'ENSINO FUNDAMENTAL'\n          END\n  END AS `stage`,\n  CONCAT(\n    CASE\n      WHEN svm.id IN (1,2,3,4,5,6,7,8,9,10,11,25,26,27,28,29,30,31,32,33,34,35,36,37,38) THEN 'NA '\n      WHEN svm.id IN (14,15,16,17,18,19,20,21,41) THEN 'NO '\n      ELSE ''\n    END,\n    CASE\n      WHEN svm.id = 1 THEN 'CRECHE'\n      WHEN svm.id = 2 THEN 'PRÉ-ESCOLA'\n      WHEN svm.id = 3 THEN 'EDUCAÇÃO INFANTIL'\n      WHEN svm.id IN (4,14,25,30,35) THEN '1'\n      WHEN svm.id IN (5,15,26,31,36) THEN '2'\n      WHEN svm.id IN (6,16,27,32,37) THEN '3'\n      WHEN svm.id IN (7,17,28,33,38) THEN '4'\n      WHEN svm.id IN (8,18) THEN '5'\n      WHEN svm.id IN (9,19) THEN '6'\n      WHEN svm.id IN (10,20) THEN '7'\n      WHEN svm.id IN (11,21) THEN '8'\n      WHEN svm.id = 41 THEN '9'\n      ELSE ''\n    END,\n    CASE\n      WHEN svm.id IN (1,2,3) THEN ''\n      WHEN svm.id IN (4,5,6,7,8,9,10,11,25,26,27,28,29,30,31,32,33,34,35,36,37,38) THEN '* SÉRIE'\n      WHEN svm.id IN (14,15,16,17,18,19,20,21,41) THEN '* ANO'\n      ELSE 'NA ____________________'\n    END\n  ) AS `serie`,\n  c.school_year AS `class_year`,\n  c.updated_at,\n  NOW() AS inserted_at\nFROM `@{item().DatabaseName}`.classroom c\nLEFT JOIN `@{item().DatabaseName}`.edcenso_stage_vs_modality svm \n  ON c.edcenso_stage_vs_modality_fk = svm.id\nWHERE c.updated_at > '@{variables('LastInsertGloria')}'\nORDER BY c.school_year, c.id;\n",
 										"type": "Expression"
 									}
 								},
@@ -1374,7 +1374,7 @@
 							"userProperties": [],
 							"typeProperties": {
 								"expression": {
-									"value": "@not(equals(item().DatabaseName, 'indiabira.tag.ong.br'))\n",
+									"value": "@not(equals(item().DatabaseName, 'indaiabira.tag.ong.br'))\n",
 									"type": "Expression"
 								},
 								"ifTrueActivities": [
@@ -1604,7 +1604,7 @@
 							"userProperties": [],
 							"typeProperties": {
 								"expression": {
-									"value": "@not(equals(item().DatabaseName, 'indiabira.tag.ong.br'))\n",
+									"value": "@not(equals(item().DatabaseName, 'indaiabira.tag.ong.br'))\n",
 									"type": "Expression"
 								},
 								"ifTrueActivities": [
