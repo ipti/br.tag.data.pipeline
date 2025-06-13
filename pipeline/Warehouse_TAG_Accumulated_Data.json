@@ -544,7 +544,7 @@
 							],
 							"outputs": [
 								{
-									"referenceName": "Accumulated_data",
+									"referenceName": "accumulated_data_bug_fix",
 									"type": "DatasetReference"
 								}
 							]
