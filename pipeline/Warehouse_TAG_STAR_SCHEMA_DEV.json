@@ -1776,6 +1776,12 @@
 			},
 			"lista_ids": {
 				"type": "String"
+			},
+			"@utcNow()": {
+				"type": "String"
+			},
+			"executionTimestamp": {
+				"type": "String"
 			}
 		},
 		"annotations": []
