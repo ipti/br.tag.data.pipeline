@@ -1,5 +1,5 @@
 {
-	"name": "Warehouse_TAG_STAR_SCHEMA_bulk_copy1",
+	"name": "Warehouse_TAG_STAR_SCHEMA_partial_bulk",
 	"properties": {
 		"activities": [
 			{
