@@ -5053,12 +5053,6 @@
 					},
 					"lista_ids": {
 						"type": "String"
-					},
-					"@utcNow()": {
-						"type": "String"
-					},
-					"executionTimestamp": {
-						"type": "String"
 					}
 				},
 				"annotations": []
@@ -10615,7 +10609,7 @@
 					"recurrence": {
 						"frequency": "Hour",
 						"interval": 24,
-						"startTime": "2024-12-05T04:00:00",
+						"startTime": "2025-06-15T04:00:00",
 						"timeZone": "E. South America Standard Time"
 					}
 				}
