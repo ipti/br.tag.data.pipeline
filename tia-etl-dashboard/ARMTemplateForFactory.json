@@ -13030,6 +13030,13 @@
 							"type": "PipelineReference"
 						},
 						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "Warehouse_TAG_STAR_SCHEMA_partial_bulk",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
 					}
 				],
 				"type": "ScheduleTrigger",
@@ -13037,13 +13044,14 @@
 					"recurrence": {
 						"frequency": "Hour",
 						"interval": 24,
-						"startTime": "2024-12-05T00:00:00",
+						"startTime": "2024-12-05T04:00:00",
 						"timeZone": "E. South America Standard Time"
 					}
 				}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Data-warehouse-tag')]"
+				"[concat(variables('factoryId'), '/pipelines/Data-warehouse-tag')]",
+				"[concat(variables('factoryId'), '/pipelines/Warehouse_TAG_STAR_SCHEMA_partial_bulk')]"
 			]
 		},
 		{
@@ -13204,7 +13212,7 @@
 								"type": "Expression"
 							},
 							"isSequential": false,
-							"batchCount": 5,
+							"batchCount": 3,
 							"activities": [
 								{
 									"name": "F_ENROLLMENT",
@@ -13404,7 +13412,7 @@
 										"source": {
 											"type": "MySqlSource",
 											"query": {
-												"value": "select\nCONCAT(COALESCE(sr.id, 'NO_RESTRICTION'), '-', se.school_inep_id_fk, '-', si.id, '-', se.classroom_fk) AS 'HASH_ID',\nCOALESCE(SR.id, 'NO_RESTRICTION') as \"F_HASH_ID\",\nsr.celiac, sr.diabetes, sr.hypertension, sr.iron_deficiency_anemia, sr.lactose_intolerance, \nsr.malnutrition, sr.obesity, sr.sickle_cell_anemia, sr.`others`, sr.updated_at, \n'@{variables('executionTimestamp')}' as inserted_at, sr.updated_at \nfrom `@{item().DatabaseName}`.student_identification si\nleft join `@{item().DatabaseName}`.student_enrollment se on si.id = se.student_fk\nleft join `@{item().DatabaseName}`.student_restrictions sr on si.id = sr.student_fk\nleft join `@{item().DatabaseName}`.school_identification si2 on se.school_inep_id_fk = si2.inep_id\nwhere si.id IS NOT NULL and se.school_inep_id_fk is not null and se.classroom_fk IS NOT NULL\ngroup by CONCAT(COALESCE(sr.id, 'NO_RESTRICTION'), '-', se.school_inep_id_fk, '-', si.id, '-', se.classroom_fk),\nCOALESCE(SR.id, 'NO_RESTRICTION'), sr.celiac, sr.diabetes, sr.hypertension, \nsr.iron_deficiency_anemia, sr.lactose_intolerance, sr.malnutrition, sr.obesity, \nsr.sickle_cell_anemia, sr.`others`, sr.updated_at;",
+												"value": "select\nCONCAT(COALESCE(sr.id, 'NO_RESTRICTION'), '-', se.school_inep_id_fk, '-', si.id, '-', se.classroom_fk) AS 'HASH_ID',\nCOALESCE(SR.id, 'NO_RESTRICTION') as \"F_HASH_ID\",\nsr.celiac, sr.diabetes, sr.hypertension, sr.iron_deficiency_anemia, sr.lactose_intolerance, \nsr.malnutrition, sr.obesity, sr.sickle_cell_anemia, sr.`others`, sr.updated_at, \n'@{variables('executionTimestamp')}' as inserted_at, sr.updated_at \nfrom `@{item().DatabaseName}`.student_identification si\nleft join `@{item().DatabaseName}`.student_enrollment se on si.id = se.student_fk\nleft join `@{item().DatabaseName}`.student_restrictions sr on si.id = sr.student_fk\nleft join `@{item().DatabaseName}`.school_identification si2 on se.school_inep_id_fk = si2.inep_id\nwhere si.id IS NOT NULL and se.school_inep_id_fk is not null \nand se.classroom_fk IS NOT NULL\ngroup by CONCAT(COALESCE(sr.id, 'NO_RESTRICTION'), '-', se.school_inep_id_fk, '-', si.id, '-', se.classroom_fk),\nCOALESCE(SR.id, 'NO_RESTRICTION'), sr.celiac, sr.diabetes, sr.hypertension, \nsr.iron_deficiency_anemia, sr.lactose_intolerance, sr.malnutrition, sr.obesity, \nsr.sickle_cell_anemia, sr.`others`, sr.updated_at;",
 												"type": "Expression"
 											}
 										},
@@ -13584,7 +13592,7 @@
 										"source": {
 											"type": "MySqlSource",
 											"query": {
-												"value": "select CONCAT(\n  COALESCE(si.id, 'NO_ID'), '-', \n  COALESCE(si.school_inep_id_fk, 'NO_SCHOOL'), '-', \n  COALESCE(se.classroom_fk, 'NO_CLASSROOM')\n) as 'HASH_ID', \nsi.id as 'F_HASH_ID',\n'@{variables('executionTimestamp')}' as 'inserted_at',\nsi.name, sd.neighborhood AS `neighborhood_address`, si.bf_participator as 'bolsa_familia_participator', sd.address AS `street_address`,\nIF(si.sex = 1, 'Masculino', 'Feminino') AS `gender`,\n    (CASE\n        WHEN si.color_race = '1' THEN 'Branca'\n        WHEN si.color_race = '2' THEN 'Preta'\n        WHEN si.color_race = '3' THEN 'Parda'\n        WHEN si.color_race = '4' THEN 'Amarela'\n        WHEN si.color_race = '5' THEN 'Indígena'\n        ELSE 'Não Declarada'\n    END) AS `color`,\n    (CASE\n        WHEN si.deficiency = 0 THEN 'Não'\n        ELSE CONCAT_WS(': ',\n            'Possui',\n            CONCAT_WS(', ',\n                (CASE WHEN si.deficiency_type_blindness = 1 THEN 'Cegueira' END),\n                (CASE WHEN si.deficiency_type_low_vision = 1 THEN 'Baixa visão' END),\n                (CASE WHEN si.deficiency_type_deafness = 1 THEN 'Surdez' END),\n                (CASE WHEN si.deficiency_type_disability_hearing = 1 THEN 'Deficiência Auditiva' END),\n                (CASE WHEN si.deficiency_type_deafblindness = 1 THEN 'Surdocegueira' END),\n                (CASE WHEN si.deficiency_type_phisical_disability = 1 THEN 'Deficiência Física' END),\n                (CASE WHEN si.deficiency_type_intelectual_disability = 1 THEN 'Deficiência Intelectual' END),\n                (CASE WHEN si.deficiency_type_multiple_disabilities = 1 THEN 'Deficiência Múltipla' END),\n                (CASE WHEN si.deficiency_type_autism = 1 THEN 'Autismo Infantil' END),\n                (CASE WHEN si.deficiency_type_aspenger_syndrome = 1 THEN 'Síndrome de Asperger' END),\n                (CASE WHEN si.deficiency_type_rett_syndrome = 1 THEN 'Síndrome de Rett' END),\n                (CASE WHEN si.deficiency_type_childhood_disintegrative_disorder = 1 THEN 'Transtorno Desintegrativo da Infância' END),\n                (CASE WHEN si.deficiency_type_gifted = 1 THEN 'Altas habilidades / Superdotação' END)\n            )\n        )\n    END) AS `deficiency`,\n    ec.name AS `birth_city`,\n    si.birthday ,\n    eu.acronym as 'uf',\n    sd.cep,\n        (CASE\n        WHEN se.vehicle_type_bus = 0 THEN 'Não'\n        WHEN se.vehicle_type_bus = 1 THEN 'Sim'\n    END) AS `public_transport`,\n    si.filiation_1 AS `mother`,\n    si.filiation_2 AS `father`,\n    (CASE\n        WHEN sd.residence_zone = '1' THEN 'Urbano'\n        WHEN sd.residence_zone = '2' THEN 'Rural'\n    END) AS `residence_zone`, si.responsable_cpf as 'responsable_cpf', sd.cpf as 'student_cpf'\nfrom `@{item().DatabaseName}`.student_identification  si\nleft join `@{item().DatabaseName}`.student_enrollment se on si.id = se.student_fk\nleft join `@{item().DatabaseName}`.student_documents_and_address sd on si.id = sd.id\nleft join `@{item().DatabaseName}`.school_identification si2 on si.school_inep_id_fk = si2.inep_id\nLEFT JOIN `@{item().DatabaseName}`.edcenso_city ec ON si.edcenso_city_fk = ec.id\nleft join `@{item().DatabaseName}`.edcenso_uf eu on si.edcenso_uf_fk = eu.id\nwhere si.id is not null and si.school_inep_id_fk is not null;",
+												"value": "select CONCAT(\n  COALESCE(si.id, 'NO_ID'), '-', \n  COALESCE(si.school_inep_id_fk, 'NO_SCHOOL'), '-', \n  COALESCE(se.classroom_fk, 'NO_CLASSROOM')\n) as 'HASH_ID', \nsi.id as 'F_HASH_ID',\n'@{variables('executionTimestamp')}' as 'inserted_at',\nsi.name, sd.neighborhood AS `neighborhood_address`, si.bf_participator as 'bolsa_familia_participator', sd.address AS `street_address`,\nIF(si.sex = 1, 'Masculino', 'Feminino') AS `gender`,\n    (CASE\n        WHEN si.color_race = '1' THEN 'Branca'\n        WHEN si.color_race = '2' THEN 'Preta'\n        WHEN si.color_race = '3' THEN 'Parda'\n        WHEN si.color_race = '4' THEN 'Amarela'\n        WHEN si.color_race = '5' THEN 'Indígena'\n        ELSE 'Não Declarada'\n    END) AS `color`,\n    (CASE\n        WHEN si.deficiency = 0 THEN 'Não'\n        ELSE CONCAT_WS(': ',\n            'Possui',\n            CONCAT_WS(', ',\n                (CASE WHEN si.deficiency_type_blindness = 1 THEN 'Cegueira' END),\n                (CASE WHEN si.deficiency_type_low_vision = 1 THEN 'Baixa visão' END),\n                (CASE WHEN si.deficiency_type_deafness = 1 THEN 'Surdez' END),\n                (CASE WHEN si.deficiency_type_disability_hearing = 1 THEN 'Deficiência Auditiva' END),\n                (CASE WHEN si.deficiency_type_deafblindness = 1 THEN 'Surdocegueira' END),\n                (CASE WHEN si.deficiency_type_phisical_disability = 1 THEN 'Deficiência Física' END),\n                (CASE WHEN si.deficiency_type_intelectual_disability = 1 THEN 'Deficiência Intelectual' END),\n                (CASE WHEN si.deficiency_type_multiple_disabilities = 1 THEN 'Deficiência Múltipla' END),\n                (CASE WHEN si.deficiency_type_autism = 1 THEN 'Autismo Infantil' END),\n                (CASE WHEN si.deficiency_type_aspenger_syndrome = 1 THEN 'Síndrome de Asperger' END),\n                (CASE WHEN si.deficiency_type_rett_syndrome = 1 THEN 'Síndrome de Rett' END),\n                (CASE WHEN si.deficiency_type_childhood_disintegrative_disorder = 1 THEN 'Transtorno Desintegrativo da Infância' END),\n                (CASE WHEN si.deficiency_type_gifted = 1 THEN 'Altas habilidades / Superdotação' END)\n            )\n        )\n    END) AS `deficiency`,\n    ec.name AS `birth_city`,\n    si.birthday ,\n    eu.acronym as 'uf',\n    sd.cep,\n        (CASE\n        WHEN se.vehicle_type_bus = 0 THEN 'Não'\n        WHEN se.vehicle_type_bus = 1 THEN 'Sim'\n    END) AS `public_transport`,\n    si.filiation_1 AS `mother`,\n    si.filiation_2 AS `father`,\n    (CASE\n        WHEN sd.residence_zone = '1' THEN 'Urbano'\n        WHEN sd.residence_zone = '2' THEN 'Rural'\n    END) AS `residence_zone`, si.responsable_cpf as 'responsable_cpf', sd.cpf as 'student_cpf'\nfrom `@{item().DatabaseName}`.student_identification  si\nleft join `@{item().DatabaseName}`.student_enrollment se on si.id = se.student_fk\nleft join `@{item().DatabaseName}`.student_documents_and_address sd on si.id = sd.id\nleft join `@{item().DatabaseName}`.school_identification si2 on si.school_inep_id_fk = si2.inep_id\nLEFT JOIN `@{item().DatabaseName}`.edcenso_city ec ON si.edcenso_city_fk = ec.id\nleft join `@{item().DatabaseName}`.edcenso_uf eu on si.edcenso_uf_fk = eu.id\nwhere si.id is not null \nand si.school_inep_id_fk is not null;",
 												"type": "Expression"
 											}
 										},
