@@ -1,0 +1,165 @@
+{
+	"name": "Raw_Instructor_teaching_data",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "register_type",
+				"type": "varchar"
+			},
+			{
+				"name": "school_inep_id_fk",
+				"type": "varchar"
+			},
+			{
+				"name": "instructor_inep_id",
+				"type": "varchar"
+			},
+			{
+				"name": "instructor_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "classroom_inep_id",
+				"type": "varchar"
+			},
+			{
+				"name": "classroom_id_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "role",
+				"type": "smallint",
+				"precision": 5
+			},
+			{
+				"name": "contract_type",
+				"type": "smallint",
+				"precision": 5
+			},
+			{
+				"name": "discipline_1_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_2_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_3_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_4_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_5_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_6_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_7_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_8_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_9_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_10_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_11_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_12_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_13_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_14_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_15_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "hash",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "hash_instructor",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "hash_classroom",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "regent",
+				"type": "tinyint",
+				"precision": 3
+			},
+			{
+				"name": "created_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "updated_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "raw",
+			"table": "instructor_teaching_data"
+		}
+	}
+}

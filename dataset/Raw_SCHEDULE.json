@@ -1,0 +1,106 @@
+{
+	"name": "Raw_SCHEDULE",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "instructor_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "discipline_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "classroom_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "day",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "month",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "year",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "week",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "week_day",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "schedule",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "turn",
+				"type": "varchar"
+			},
+			{
+				"name": "unavailable",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "diary",
+				"type": "text"
+			},
+			{
+				"name": "fkid",
+				"type": "varchar"
+			},
+			{
+				"name": "hash",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "created_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "updated_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "substitute_instructor_fk",
+				"type": "int",
+				"precision": 10
+			}
+		],
+		"typeProperties": {
+			"schema": "raw",
+			"table": "schedule"
+		}
+	}
+}

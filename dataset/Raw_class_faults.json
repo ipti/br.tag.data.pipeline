@@ -1,0 +1,52 @@
+{
+	"name": "Raw_class_faults",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "student_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "schedule_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "fkid",
+				"type": "varchar"
+			},
+			{
+				"name": "justification",
+				"type": "varchar"
+			},
+			{
+				"name": "created_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "updated_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "raw",
+			"table": "class_faults"
+		}
+	}
+}
