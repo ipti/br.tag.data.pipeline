@@ -63,7 +63,7 @@
 						"type": "Expression"
 					},
 					"isSequential": false,
-					"batchCount": 2,
+					"batchCount": 3,
 					"activities": [
 						{
 							"name": "F_ENROLLMENT",
