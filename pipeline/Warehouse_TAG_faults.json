@@ -5,8 +5,6 @@
 			{
 				"name": "DatabaseNames",
 				"type": "Lookup",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
@@ -38,8 +36,6 @@
 			{
 				"name": "LoopCopyBulkIncremental",
 				"type": "ForEach",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "DatabaseNames",
@@ -79,7 +75,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.instructor_teaching_data itd",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.instructor_teaching_data itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
 										"type": "Expression"
 									}
 								},
@@ -134,7 +130,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.class_faults itd",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.class_faults itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
 										"type": "Expression"
 									}
 								},
@@ -174,68 +170,6 @@
 							]
 						},
 						{
-							"name": "schedule",
-							"type": "Copy",
-							"dependsOn": [
-								{
-									"activity": "Class_faults",
-									"dependencyConditions": [
-										"Completed"
-									]
-								}
-							],
-							"policy": {
-								"timeout": "0.12:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"source": {
-									"type": "MySqlSource",
-									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.schedule itd",
-										"type": "Expression"
-									}
-								},
-								"sink": {
-									"type": "AzureSqlSink",
-									"writeBehavior": "upsert",
-									"upsertSettings": {
-										"useTempDB": true,
-										"keys": [
-											"id"
-										]
-									},
-									"sqlWriterUseTableLock": false,
-									"disableMetricsCollection": false
-								},
-								"enableStaging": false,
-								"translator": {
-									"type": "TabularTranslator",
-									"typeConversion": true,
-									"typeConversionSettings": {
-										"allowDataTruncation": true,
-										"treatBooleanAsNumber": false
-									}
-								}
-							},
-							"inputs": [
-								{
-									"referenceName": "DB_gloria",
-									"type": "DatasetReference"
-								}
-							],
-							"outputs": [
-								{
-									"referenceName": "Raw_SCHEDULE",
-									"type": "DatasetReference"
-								}
-							]
-						},
-						{
 							"name": "student_identification",
 							"type": "Copy",
 							"dependsOn": [],
@@ -251,7 +185,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_identification itd",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_identification itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
 										"type": "Expression"
 									}
 								},
@@ -365,7 +299,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_enrollment itd",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_enrollment itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
 										"type": "Expression"
 									}
 								},
@@ -486,7 +420,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.classroom itd",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.classroom itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
 										"type": "Expression"
 									}
 								},
@@ -602,7 +536,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.school_identification itd",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.school_identification itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
 										"type": "Expression"
 									}
 								},
@@ -706,7 +640,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_discipline itd",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_discipline itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
 										"type": "Expression"
 									}
 								},
@@ -779,7 +713,7 @@
 											"source": {
 												"type": "MySqlSource",
 												"query": {
-													"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd",
+													"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
 													"type": "Expression"
 												}
 											},
@@ -937,7 +871,7 @@
 											"source": {
 												"type": "MySqlSource",
 												"query": {
-													"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd",
+													"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
 													"type": "Expression"
 												}
 											},
@@ -978,6 +912,248 @@
 									}
 								]
 							}
+						},
+						{
+							"name": "schedule",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Class_faults",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.schedule itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "upsert",
+									"upsertSettings": {
+										"useTempDB": true,
+										"keys": [
+											"id"
+										]
+									},
+									"sqlWriterUseTableLock": false,
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "id"
+											},
+											"sink": {
+												"name": "id",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "discipline_fk"
+											},
+											"sink": {
+												"name": "discipline_fk",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "instructor_fk"
+											},
+											"sink": {
+												"name": "instructor_fk",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "classroom_fk"
+											},
+											"sink": {
+												"name": "classroom_fk",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "day"
+											},
+											"sink": {
+												"name": "day",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "month"
+											},
+											"sink": {
+												"name": "month",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "year"
+											},
+											"sink": {
+												"name": "year",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "week"
+											},
+											"sink": {
+												"name": "week",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "week_day"
+											},
+											"sink": {
+												"name": "week_day",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "schedule"
+											},
+											"sink": {
+												"name": "schedule",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "turn"
+											},
+											"sink": {
+												"name": "turn",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "unavailable"
+											},
+											"sink": {
+												"name": "unavailable",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "fkid"
+											},
+											"sink": {
+												"name": "fkid",
+												"type": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "hash"
+											},
+											"sink": {
+												"name": "hash",
+												"type": "bigint",
+												"precision": 19
+											}
+										},
+										{
+											"source": {
+												"name": "created_at"
+											},
+											"sink": {
+												"name": "created_at",
+												"type": "datetime",
+												"scale": 3,
+												"precision": 23
+											}
+										},
+										{
+											"source": {
+												"name": "updated_at"
+											},
+											"sink": {
+												"name": "updated_at",
+												"type": "datetime",
+												"scale": 3,
+												"precision": 23
+											}
+										},
+										{
+											"source": {
+												"name": "substitute_instructor_fk"
+											},
+											"sink": {
+												"name": "substitute_instructor_fk",
+												"type": "int",
+												"precision": 10
+											}
+										},
+										{
+											"source": {
+												"name": "database_name"
+											},
+											"sink": {
+												"name": "database_name"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DB_gloria",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "Raw_SCHEDULE",
+									"type": "DatasetReference"
+								}
+							]
 						}
 					]
 				}
@@ -985,8 +1161,6 @@
 			{
 				"name": "GetLastInsertDate",
 				"type": "Lookup",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
@@ -1012,8 +1186,6 @@
 			{
 				"name": "LastInsertDate",
 				"type": "SetVariable",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "GetLastInsertDate",
@@ -1034,1181 +1206,6 @@
 						"type": "Expression"
 					}
 				}
-			},
-			{
-				"name": "schedule_copy1",
-				"type": "Copy",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "MySqlSource",
-						"query": {
-							"value": "select 'tome-acu.tag.ong.br' AS database_name,itd.* from `tome-acu.tag.ong.br`.schedule itd",
-							"type": "Expression"
-						}
-					},
-					"sink": {
-						"type": "AzureSqlSink",
-						"writeBehavior": "upsert",
-						"upsertSettings": {
-							"useTempDB": true,
-							"keys": [
-								"id"
-							]
-						},
-						"sqlWriterUseTableLock": false,
-						"disableMetricsCollection": false
-					},
-					"enableStaging": false,
-					"translator": {
-						"type": "TabularTranslator",
-						"mappings": [
-							{
-								"source": {
-									"name": "id"
-								},
-								"sink": {
-									"name": "id",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "discipline_fk"
-								},
-								"sink": {
-									"name": "discipline_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "instructor_fk"
-								},
-								"sink": {
-									"name": "instructor_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "classroom_fk"
-								},
-								"sink": {
-									"name": "classroom_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "day"
-								},
-								"sink": {
-									"name": "day",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "month"
-								},
-								"sink": {
-									"name": "month",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "year"
-								},
-								"sink": {
-									"name": "year",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "week"
-								},
-								"sink": {
-									"name": "week",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "week_day"
-								},
-								"sink": {
-									"name": "week_day",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "schedule"
-								},
-								"sink": {
-									"name": "schedule",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "turn"
-								},
-								"sink": {
-									"name": "turn",
-									"type": "varchar"
-								}
-							},
-							{
-								"source": {
-									"name": "unavailable"
-								},
-								"sink": {
-									"name": "unavailable",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "fkid"
-								},
-								"sink": {
-									"name": "fkid",
-									"type": "varchar"
-								}
-							},
-							{
-								"source": {
-									"name": "hash"
-								},
-								"sink": {
-									"name": "hash",
-									"type": "bigint",
-									"precision": 19
-								}
-							},
-							{
-								"source": {
-									"name": "created_at"
-								},
-								"sink": {
-									"name": "created_at",
-									"type": "datetime",
-									"scale": 3,
-									"precision": 23
-								}
-							},
-							{
-								"source": {
-									"name": "updated_at"
-								},
-								"sink": {
-									"name": "updated_at",
-									"type": "datetime",
-									"scale": 3,
-									"precision": 23
-								}
-							},
-							{
-								"source": {
-									"name": "substitute_instructor_fk"
-								},
-								"sink": {
-									"name": "substitute_instructor_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "database_name"
-								},
-								"sink": {
-									"name": "database_name"
-								}
-							}
-						],
-						"typeConversion": true,
-						"typeConversionSettings": {
-							"allowDataTruncation": true,
-							"treatBooleanAsNumber": false
-						}
-					}
-				},
-				"inputs": [
-					{
-						"referenceName": "DB_gloria",
-						"type": "DatasetReference"
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "Raw_SCHEDULE",
-						"type": "DatasetReference"
-					}
-				]
-			},
-			{
-				"name": "schedule_copy1_copy1",
-				"type": "Copy",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "MySqlSource",
-						"query": {
-							"value": "select 'caicaradonorte.tag.ong.br' AS database_name,itd.* from `caicaradonorte.tag.ong.br`.schedule itd",
-							"type": "Expression"
-						}
-					},
-					"sink": {
-						"type": "AzureSqlSink",
-						"writeBehavior": "upsert",
-						"upsertSettings": {
-							"useTempDB": true,
-							"keys": [
-								"id"
-							]
-						},
-						"sqlWriterUseTableLock": false,
-						"disableMetricsCollection": false
-					},
-					"enableStaging": false,
-					"translator": {
-						"type": "TabularTranslator",
-						"mappings": [
-							{
-								"source": {
-									"name": "id"
-								},
-								"sink": {
-									"name": "id",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "discipline_fk"
-								},
-								"sink": {
-									"name": "discipline_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "instructor_fk"
-								},
-								"sink": {
-									"name": "instructor_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "classroom_fk"
-								},
-								"sink": {
-									"name": "classroom_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "day"
-								},
-								"sink": {
-									"name": "day",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "month"
-								},
-								"sink": {
-									"name": "month",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "year"
-								},
-								"sink": {
-									"name": "year",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "week"
-								},
-								"sink": {
-									"name": "week",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "week_day"
-								},
-								"sink": {
-									"name": "week_day",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "schedule"
-								},
-								"sink": {
-									"name": "schedule",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "turn"
-								},
-								"sink": {
-									"name": "turn",
-									"type": "varchar"
-								}
-							},
-							{
-								"source": {
-									"name": "unavailable"
-								},
-								"sink": {
-									"name": "unavailable",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "fkid"
-								},
-								"sink": {
-									"name": "fkid",
-									"type": "varchar"
-								}
-							},
-							{
-								"source": {
-									"name": "hash"
-								},
-								"sink": {
-									"name": "hash",
-									"type": "bigint",
-									"precision": 19
-								}
-							},
-							{
-								"source": {
-									"name": "created_at"
-								},
-								"sink": {
-									"name": "created_at",
-									"type": "datetime",
-									"scale": 3,
-									"precision": 23
-								}
-							},
-							{
-								"source": {
-									"name": "updated_at"
-								},
-								"sink": {
-									"name": "updated_at",
-									"type": "datetime",
-									"scale": 3,
-									"precision": 23
-								}
-							},
-							{
-								"source": {
-									"name": "substitute_instructor_fk"
-								},
-								"sink": {
-									"name": "substitute_instructor_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "database_name"
-								},
-								"sink": {
-									"name": "database_name"
-								}
-							}
-						],
-						"typeConversion": true,
-						"typeConversionSettings": {
-							"allowDataTruncation": true,
-							"treatBooleanAsNumber": false
-						}
-					}
-				},
-				"inputs": [
-					{
-						"referenceName": "DB_gloria",
-						"type": "DatasetReference"
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "Raw_SCHEDULE",
-						"type": "DatasetReference"
-					}
-				]
-			},
-			{
-				"name": "schedule_copy1_copy2",
-				"type": "Copy",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "MySqlSource",
-						"query": {
-							"value": "select 'carmopolis.tag.ong.br' AS database_name,itd.* from `carmopolis.tag.ong.br`.schedule itd",
-							"type": "Expression"
-						}
-					},
-					"sink": {
-						"type": "AzureSqlSink",
-						"writeBehavior": "upsert",
-						"upsertSettings": {
-							"useTempDB": true,
-							"keys": [
-								"id"
-							]
-						},
-						"sqlWriterUseTableLock": false,
-						"disableMetricsCollection": false
-					},
-					"enableStaging": false,
-					"translator": {
-						"type": "TabularTranslator",
-						"mappings": [
-							{
-								"source": {
-									"name": "id"
-								},
-								"sink": {
-									"name": "id",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "discipline_fk"
-								},
-								"sink": {
-									"name": "discipline_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "instructor_fk"
-								},
-								"sink": {
-									"name": "instructor_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "classroom_fk"
-								},
-								"sink": {
-									"name": "classroom_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "day"
-								},
-								"sink": {
-									"name": "day",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "month"
-								},
-								"sink": {
-									"name": "month",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "year"
-								},
-								"sink": {
-									"name": "year",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "week"
-								},
-								"sink": {
-									"name": "week",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "week_day"
-								},
-								"sink": {
-									"name": "week_day",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "schedule"
-								},
-								"sink": {
-									"name": "schedule",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "turn"
-								},
-								"sink": {
-									"name": "turn",
-									"type": "varchar"
-								}
-							},
-							{
-								"source": {
-									"name": "unavailable"
-								},
-								"sink": {
-									"name": "unavailable",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "fkid"
-								},
-								"sink": {
-									"name": "fkid",
-									"type": "varchar"
-								}
-							},
-							{
-								"source": {
-									"name": "hash"
-								},
-								"sink": {
-									"name": "hash",
-									"type": "bigint",
-									"precision": 19
-								}
-							},
-							{
-								"source": {
-									"name": "created_at"
-								},
-								"sink": {
-									"name": "created_at",
-									"type": "datetime",
-									"scale": 3,
-									"precision": 23
-								}
-							},
-							{
-								"source": {
-									"name": "updated_at"
-								},
-								"sink": {
-									"name": "updated_at",
-									"type": "datetime",
-									"scale": 3,
-									"precision": 23
-								}
-							},
-							{
-								"source": {
-									"name": "substitute_instructor_fk"
-								},
-								"sink": {
-									"name": "substitute_instructor_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "database_name"
-								},
-								"sink": {
-									"name": "database_name"
-								}
-							}
-						],
-						"typeConversion": true,
-						"typeConversionSettings": {
-							"allowDataTruncation": true,
-							"treatBooleanAsNumber": false
-						}
-					}
-				},
-				"inputs": [
-					{
-						"referenceName": "DB_gloria",
-						"type": "DatasetReference"
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "Raw_SCHEDULE",
-						"type": "DatasetReference"
-					}
-				]
-			},
-			{
-				"name": "schedule_copy1_copy1_copy1",
-				"type": "Copy",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "MySqlSource",
-						"query": {
-							"value": "select 'boquim.tag.ong.br' AS database_name,itd.* from `boquim.tag.ong.br`.schedule itd",
-							"type": "Expression"
-						}
-					},
-					"sink": {
-						"type": "AzureSqlSink",
-						"writeBehavior": "upsert",
-						"upsertSettings": {
-							"useTempDB": true,
-							"keys": [
-								"id"
-							]
-						},
-						"sqlWriterUseTableLock": false,
-						"disableMetricsCollection": false
-					},
-					"enableStaging": false,
-					"translator": {
-						"type": "TabularTranslator",
-						"mappings": [
-							{
-								"source": {
-									"name": "id"
-								},
-								"sink": {
-									"name": "id",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "discipline_fk"
-								},
-								"sink": {
-									"name": "discipline_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "instructor_fk"
-								},
-								"sink": {
-									"name": "instructor_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "classroom_fk"
-								},
-								"sink": {
-									"name": "classroom_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "day"
-								},
-								"sink": {
-									"name": "day",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "month"
-								},
-								"sink": {
-									"name": "month",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "year"
-								},
-								"sink": {
-									"name": "year",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "week"
-								},
-								"sink": {
-									"name": "week",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "week_day"
-								},
-								"sink": {
-									"name": "week_day",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "schedule"
-								},
-								"sink": {
-									"name": "schedule",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "turn"
-								},
-								"sink": {
-									"name": "turn",
-									"type": "varchar"
-								}
-							},
-							{
-								"source": {
-									"name": "unavailable"
-								},
-								"sink": {
-									"name": "unavailable",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "fkid"
-								},
-								"sink": {
-									"name": "fkid",
-									"type": "varchar"
-								}
-							},
-							{
-								"source": {
-									"name": "hash"
-								},
-								"sink": {
-									"name": "hash",
-									"type": "bigint",
-									"precision": 19
-								}
-							},
-							{
-								"source": {
-									"name": "created_at"
-								},
-								"sink": {
-									"name": "created_at",
-									"type": "datetime",
-									"scale": 3,
-									"precision": 23
-								}
-							},
-							{
-								"source": {
-									"name": "updated_at"
-								},
-								"sink": {
-									"name": "updated_at",
-									"type": "datetime",
-									"scale": 3,
-									"precision": 23
-								}
-							},
-							{
-								"source": {
-									"name": "substitute_instructor_fk"
-								},
-								"sink": {
-									"name": "substitute_instructor_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "database_name"
-								},
-								"sink": {
-									"name": "database_name"
-								}
-							}
-						],
-						"typeConversion": true,
-						"typeConversionSettings": {
-							"allowDataTruncation": true,
-							"treatBooleanAsNumber": false
-						}
-					}
-				},
-				"inputs": [
-					{
-						"referenceName": "DB_gloria",
-						"type": "DatasetReference"
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "Raw_SCHEDULE",
-						"type": "DatasetReference"
-					}
-				]
-			},
-			{
-				"name": "schedule_copy1_copy2_copy1",
-				"type": "Copy",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "MySqlSource",
-						"query": {
-							"value": "select 'humbertodecampos.tag.ong.br' AS database_name,itd.* from `humbertodecampos.tag.ong.br`.schedule itd",
-							"type": "Expression"
-						}
-					},
-					"sink": {
-						"type": "AzureSqlSink",
-						"writeBehavior": "upsert",
-						"upsertSettings": {
-							"useTempDB": true,
-							"keys": [
-								"id"
-							]
-						},
-						"sqlWriterUseTableLock": false,
-						"disableMetricsCollection": false
-					},
-					"enableStaging": false,
-					"translator": {
-						"type": "TabularTranslator",
-						"mappings": [
-							{
-								"source": {
-									"name": "id"
-								},
-								"sink": {
-									"name": "id",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "discipline_fk"
-								},
-								"sink": {
-									"name": "discipline_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "instructor_fk"
-								},
-								"sink": {
-									"name": "instructor_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "classroom_fk"
-								},
-								"sink": {
-									"name": "classroom_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "day"
-								},
-								"sink": {
-									"name": "day",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "month"
-								},
-								"sink": {
-									"name": "month",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "year"
-								},
-								"sink": {
-									"name": "year",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "week"
-								},
-								"sink": {
-									"name": "week",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "week_day"
-								},
-								"sink": {
-									"name": "week_day",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "schedule"
-								},
-								"sink": {
-									"name": "schedule",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "turn"
-								},
-								"sink": {
-									"name": "turn",
-									"type": "varchar"
-								}
-							},
-							{
-								"source": {
-									"name": "unavailable"
-								},
-								"sink": {
-									"name": "unavailable",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "fkid"
-								},
-								"sink": {
-									"name": "fkid",
-									"type": "varchar"
-								}
-							},
-							{
-								"source": {
-									"name": "hash"
-								},
-								"sink": {
-									"name": "hash",
-									"type": "bigint",
-									"precision": 19
-								}
-							},
-							{
-								"source": {
-									"name": "created_at"
-								},
-								"sink": {
-									"name": "created_at",
-									"type": "datetime",
-									"scale": 3,
-									"precision": 23
-								}
-							},
-							{
-								"source": {
-									"name": "updated_at"
-								},
-								"sink": {
-									"name": "updated_at",
-									"type": "datetime",
-									"scale": 3,
-									"precision": 23
-								}
-							},
-							{
-								"source": {
-									"name": "substitute_instructor_fk"
-								},
-								"sink": {
-									"name": "substitute_instructor_fk",
-									"type": "int",
-									"precision": 10
-								}
-							},
-							{
-								"source": {
-									"name": "database_name"
-								},
-								"sink": {
-									"name": "database_name"
-								}
-							}
-						],
-						"typeConversion": true,
-						"typeConversionSettings": {
-							"allowDataTruncation": true,
-							"treatBooleanAsNumber": false
-						}
-					}
-				},
-				"inputs": [
-					{
-						"referenceName": "DB_gloria",
-						"type": "DatasetReference"
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "Raw_SCHEDULE",
-						"type": "DatasetReference"
-					}
-				]
 			}
 		],
 		"variables": {
