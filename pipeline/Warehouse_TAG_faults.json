@@ -622,9 +622,9 @@
 							"type": "Copy",
 							"dependsOn": [
 								{
-									"activity": "Student_discipline_if_copy1",
+									"activity": "school_identification",
 									"dependencyConditions": [
-										"Skipped"
+										"Completed"
 									]
 								}
 							],
