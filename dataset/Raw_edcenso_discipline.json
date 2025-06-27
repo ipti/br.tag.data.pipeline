@@ -1,0 +1,51 @@
+{
+	"name": "Raw_edcenso_discipline",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "name",
+				"type": "varchar"
+			},
+			{
+				"name": "edcenso_base_discipline_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "abbreviation",
+				"type": "varchar"
+			},
+			{
+				"name": "created_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "updated_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "database_name",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "raw",
+			"table": "edcenso_discipline"
+		}
+	}
+}

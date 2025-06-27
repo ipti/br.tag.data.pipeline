@@ -1,0 +1,71 @@
+{
+	"name": "Raw_edcenso_stage_vs_modality",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "name",
+				"type": "varchar"
+			},
+			{
+				"name": "alias",
+				"type": "varchar"
+			},
+			{
+				"name": "stage",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "edcenso_associated_stage_id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "is_edcenso_stage",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "created_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "updated_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "unified_frequency",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "aggregated_stage",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "database_name",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "raw",
+			"table": "edcenso_stage_vs_modality"
+		}
+	}
+}

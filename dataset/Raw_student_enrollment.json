@@ -1,0 +1,44 @@
+{
+	"name": "Raw_student_enrollment",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "classroom_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "school_inep_id_fk",
+				"type": "varchar"
+			},
+			{
+				"name": "enrollment_id",
+				"type": "varchar"
+			},
+			{
+				"name": "edcenso_stage_vs_modality_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "student_fk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "database_name",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "raw",
+			"table": "student_enrollment"
+		}
+	}
+}
