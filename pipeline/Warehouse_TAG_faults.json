@@ -62,6 +62,8 @@
 						{
 							"name": "Instructor_teaching_data",
 							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -117,6 +119,8 @@
 						{
 							"name": "Class_faults",
 							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -172,6 +176,8 @@
 						{
 							"name": "student_identification",
 							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -279,6 +285,8 @@
 						{
 							"name": "student_enrollment",
 							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "student_identification",
@@ -400,6 +408,8 @@
 						{
 							"name": "classroom",
 							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "Instructor_teaching_data",
@@ -595,6 +605,14 @@
 												"name": "database_name",
 												"type": "varchar"
 											}
+										},
+										{
+											"source": {
+												"name": "cep"
+											},
+											"sink": {
+												"name": "cep"
+											}
 										}
 									],
 									"typeConversion": true,
@@ -620,6 +638,8 @@
 						{
 							"name": "edcenso_discipline",
 							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "school_identification",
@@ -682,6 +702,8 @@
 						{
 							"name": "Student_discipline_if_copy1",
 							"type": "IfCondition",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "school_identification",
@@ -916,6 +938,8 @@
 						{
 							"name": "schedule",
 							"type": "Copy",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "Class_faults",

@@ -6,12 +6,6 @@
 		"pipelines": [
 			{
 				"pipelineReference": {
-					"referenceName": "Data-warehouse-tag",
-					"type": "PipelineReference"
-				}
-			},
-			{
-				"pipelineReference": {
 					"referenceName": "Warehouse_TAG_STAR_SCHEMA_partial_bulk",
 					"type": "PipelineReference"
 				}
