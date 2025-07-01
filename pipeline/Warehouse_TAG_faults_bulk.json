@@ -42,12 +42,6 @@
 						"dependencyConditions": [
 							"Succeeded"
 						]
-					},
-					{
-						"activity": "LastInsertDate",
-						"dependencyConditions": [
-							"Completed"
-						]
 					}
 				],
 				"userProperties": [],
@@ -1112,55 +1106,6 @@
 							]
 						}
 					]
-				}
-			},
-			{
-				"name": "GetLastInsertDate",
-				"type": "Lookup",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "AzureSqlSource",
-						"sqlReaderQuery": "select max(inserted_at) from [data-warehouse-tag].dbo_tia.F_ENROLLMENT;",
-						"queryTimeout": "02:00:00",
-						"partitionOption": "None"
-					},
-					"dataset": {
-						"referenceName": "F_ENROLLMENT_TIMESTAMP",
-						"type": "DatasetReference"
-					}
-				}
-			},
-			{
-				"name": "LastInsertDate",
-				"type": "SetVariable",
-				"dependsOn": [
-					{
-						"activity": "GetLastInsertDate",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"variableName": "LastInsertGloria",
-					"value": {
-						"value": "@formatDateTime(activity('GetLastInsertDate').output.firstRow[''], 'yyyy-MM-dd HH:mm:ss.fff')",
-						"type": "Expression"
-					}
 				}
 			}
 		],
