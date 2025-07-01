@@ -6851,12 +6851,6 @@
 								"dependencyConditions": [
 									"Succeeded"
 								]
-							},
-							{
-								"activity": "LastInsertDate",
-								"dependencyConditions": [
-									"Completed"
-								]
 							}
 						],
 						"userProperties": [],
@@ -6884,7 +6878,7 @@
 										"source": {
 											"type": "MySqlSource",
 											"query": {
-												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.instructor_teaching_data itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.instructor_teaching_data itd ",
 												"type": "Expression"
 											}
 										},
@@ -6935,7 +6929,7 @@
 										"source": {
 											"type": "MySqlSource",
 											"query": {
-												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.class_faults itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.class_faults itd ",
 												"type": "Expression"
 											}
 										},
@@ -6986,7 +6980,7 @@
 										"source": {
 											"type": "MySqlSource",
 											"query": {
-												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_identification itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_identification itd ",
 												"type": "Expression"
 											}
 										},
@@ -7096,7 +7090,7 @@
 										"source": {
 											"type": "MySqlSource",
 											"query": {
-												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_enrollment itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_enrollment itd ",
 												"type": "Expression"
 											}
 										},
@@ -7213,7 +7207,7 @@
 										"source": {
 											"type": "MySqlSource",
 											"query": {
-												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.classroom itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.classroom itd ",
 												"type": "Expression"
 											}
 										},
@@ -7333,7 +7327,7 @@
 										"source": {
 											"type": "MySqlSource",
 											"query": {
-												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.school_identification itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.school_identification itd ",
 												"type": "Expression"
 											}
 										},
@@ -7441,7 +7435,7 @@
 										"source": {
 											"type": "MySqlSource",
 											"query": {
-												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_discipline itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_discipline itd ",
 												"type": "Expression"
 											}
 										},
@@ -7510,7 +7504,7 @@
 													"source": {
 														"type": "MySqlSource",
 														"query": {
-															"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+															"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd",
 															"type": "Expression"
 														}
 													},
@@ -7664,7 +7658,7 @@
 													"source": {
 														"type": "MySqlSource",
 														"query": {
-															"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+															"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd ",
 															"type": "Expression"
 														}
 													},
@@ -7725,7 +7719,7 @@
 										"source": {
 											"type": "MySqlSource",
 											"query": {
-												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.schedule itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.schedule itd ",
 												"type": "Expression"
 											}
 										},
@@ -7942,56 +7936,6 @@
 								}
 							]
 						}
-					},
-					{
-						"name": "GetLastInsertDate",
-						"type": "Lookup",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "select max(inserted_at) from [data-warehouse-tag].dbo_tia.F_ENROLLMENT;",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "F_ENROLLMENT_TIMESTAMP",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						}
-					},
-					{
-						"name": "LastInsertDate",
-						"type": "SetVariable",
-						"dependsOn": [
-							{
-								"activity": "GetLastInsertDate",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"variableName": "LastInsertGloria",
-							"value": {
-								"value": "@formatDateTime(activity('GetLastInsertDate').output.firstRow[''], 'yyyy-MM-dd HH:mm:ss.fff')",
-								"type": "Expression"
-							}
-						}
 					}
 				],
 				"policy": {
@@ -8039,7 +7983,7 @@
 				"typeProperties": {
 					"recurrence": {
 						"frequency": "Hour",
-						"interval": 24,
+						"interval": 78,
 						"startTime": "2025-06-28T04:00:00",
 						"timeZone": "E. South America Standard Time"
 					}
@@ -8133,6 +8077,38 @@
 				}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Bulk_unique_Trigger')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "Warehouse_TAG_faults_bulk",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 15,
+						"startTime": "2025-07-01T04:00:00",
+						"endTime": "2025-07-02T01:26:00",
+						"timeZone": "SA Eastern Standard Time",
+						"schedule": {}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/Warehouse_TAG_faults_bulk')]"
+			]
 		}
 	]
 }
