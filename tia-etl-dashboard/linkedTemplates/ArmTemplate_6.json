@@ -7984,7 +7984,7 @@
 					"recurrence": {
 						"frequency": "Hour",
 						"interval": 24,
-						"startTime": "2025-07-02T04:00:00",
+						"startTime": "2025-07-02T01:00:00",
 						"timeZone": "E. South America Standard Time"
 					}
 				}
@@ -8108,6 +8108,36 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/Warehouse_TAG_faults_bulk')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Class_faults_Trigger')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "Warehouse_TAG_faults",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Hour",
+						"interval": 24,
+						"startTime": "2025-07-02T04:00:00",
+						"timeZone": "SA Eastern Standard Time"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/Warehouse_TAG_faults')]"
 			]
 		}
 	]
