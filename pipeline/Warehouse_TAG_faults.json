@@ -62,8 +62,6 @@
 						{
 							"name": "Instructor_teaching_data",
 							"type": "Copy",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -87,7 +85,8 @@
 									"upsertSettings": {
 										"useTempDB": true,
 										"keys": [
-											"id"
+											"id",
+											"database_name"
 										]
 									},
 									"sqlWriterUseTableLock": false,
@@ -119,8 +118,6 @@
 						{
 							"name": "Class_faults",
 							"type": "Copy",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -144,7 +141,8 @@
 									"upsertSettings": {
 										"useTempDB": true,
 										"keys": [
-											"id"
+											"id",
+											"database_name"
 										]
 									},
 									"sqlWriterUseTableLock": false,
@@ -176,8 +174,6 @@
 						{
 							"name": "student_identification",
 							"type": "Copy",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -201,7 +197,8 @@
 									"upsertSettings": {
 										"useTempDB": true,
 										"keys": [
-											"id"
+											"id",
+											"database_name"
 										]
 									},
 									"sqlWriterUseTableLock": false,
@@ -285,8 +282,6 @@
 						{
 							"name": "student_enrollment",
 							"type": "Copy",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "student_identification",
@@ -317,7 +312,8 @@
 									"upsertSettings": {
 										"useTempDB": true,
 										"keys": [
-											"student_fk"
+											"student_fk",
+											"database_name"
 										]
 									},
 									"sqlWriterUseTableLock": false,
@@ -408,8 +404,6 @@
 						{
 							"name": "classroom",
 							"type": "Copy",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "Instructor_teaching_data",
@@ -440,7 +434,8 @@
 									"upsertSettings": {
 										"useTempDB": true,
 										"keys": [
-											"id"
+											"id",
+											"database_name"
 										]
 									},
 									"sqlWriterUseTableLock": false,
@@ -508,6 +503,14 @@
 												"name": "edcenso_stage_vs_modality_fk",
 												"type": "varchar"
 											}
+										},
+										{
+											"source": {
+												"name": "school_year"
+											},
+											"sink": {
+												"name": "school_year"
+											}
 										}
 									],
 									"typeConversion": true,
@@ -556,7 +559,8 @@
 									"upsertSettings": {
 										"useTempDB": true,
 										"keys": [
-											"inep_id"
+											"inep_id",
+											"database_name"
 										]
 									},
 									"sqlWriterUseTableLock": false,
@@ -638,8 +642,6 @@
 						{
 							"name": "edcenso_discipline",
 							"type": "Copy",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "school_identification",
@@ -670,7 +672,8 @@
 									"upsertSettings": {
 										"useTempDB": true,
 										"keys": [
-											"id"
+											"id",
+											"database_name"
 										]
 									},
 									"sqlWriterUseTableLock": false,
@@ -702,8 +705,6 @@
 						{
 							"name": "Student_discipline_if_copy1",
 							"type": "IfCondition",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "school_identification",
@@ -745,7 +746,8 @@
 												"upsertSettings": {
 													"useTempDB": true,
 													"keys": [
-														"id"
+														"id",
+														"database_name"
 													]
 												},
 												"sqlWriterUseTableLock": false,
@@ -903,7 +905,8 @@
 												"upsertSettings": {
 													"useTempDB": true,
 													"keys": [
-														"id"
+														"id",
+														"database_name"
 													]
 												},
 												"sqlWriterUseTableLock": false,
@@ -938,8 +941,6 @@
 						{
 							"name": "schedule",
 							"type": "Copy",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "Class_faults",
@@ -970,7 +971,8 @@
 									"upsertSettings": {
 										"useTempDB": true,
 										"keys": [
-											"id"
+											"id",
+											"database_name"
 										]
 									},
 									"sqlWriterUseTableLock": false,
