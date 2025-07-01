@@ -7962,7 +7962,7 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"annotations": [],
-				"runtimeState": "Stopped",
+				"runtimeState": "Started",
 				"pipelines": [
 					{
 						"pipelineReference": {
@@ -7983,8 +7983,8 @@
 				"typeProperties": {
 					"recurrence": {
 						"frequency": "Hour",
-						"interval": 78,
-						"startTime": "2025-06-28T04:00:00",
+						"interval": 24,
+						"startTime": "2025-07-02T04:00:00",
 						"timeZone": "E. South America Standard Time"
 					}
 				}
