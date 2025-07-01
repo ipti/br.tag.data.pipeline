@@ -75,7 +75,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.instructor_teaching_data itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.instructor_teaching_data itd ",
 										"type": "Expression"
 									}
 								},
@@ -124,7 +124,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.class_faults itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.class_faults itd ",
 										"type": "Expression"
 									}
 								},
@@ -173,7 +173,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_identification itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_identification itd ",
 										"type": "Expression"
 									}
 								},
@@ -281,7 +281,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_enrollment itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_enrollment itd ",
 										"type": "Expression"
 									}
 								},
@@ -396,7 +396,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.classroom itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.classroom itd ",
 										"type": "Expression"
 									}
 								},
@@ -514,7 +514,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.school_identification itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.school_identification itd ",
 										"type": "Expression"
 									}
 								},
@@ -620,7 +620,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_discipline itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_discipline itd ",
 										"type": "Expression"
 									}
 								},
@@ -687,7 +687,7 @@
 											"source": {
 												"type": "MySqlSource",
 												"query": {
-													"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+													"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd",
 													"type": "Expression"
 												}
 											},
@@ -839,7 +839,7 @@
 											"source": {
 												"type": "MySqlSource",
 												"query": {
-													"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+													"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd ",
 													"type": "Expression"
 												}
 											},
@@ -898,7 +898,7 @@
 								"source": {
 									"type": "MySqlSource",
 									"query": {
-										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.schedule itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+										"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.schedule itd ",
 										"type": "Expression"
 									}
 								},

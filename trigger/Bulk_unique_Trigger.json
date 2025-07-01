@@ -1,0 +1,25 @@
+{
+	"name": "Bulk_unique_Trigger",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "Warehouse_TAG_faults_bulk",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Day",
+				"interval": 15,
+				"startTime": "2025-07-01T04:00:00",
+				"endTime": "2025-07-02T01:26:00",
+				"timeZone": "SA Eastern Standard Time"
+			}
+		}
+	}
+}
