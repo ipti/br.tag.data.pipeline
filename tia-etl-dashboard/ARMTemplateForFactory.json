@@ -957,947 +957,6 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/Data-warehouse-tag')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "CopyDataStudentTable",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "WITH CTE AS (\n    SELECT *,\n           ROW_NUMBER() OVER (PARTITION BY HASH ORDER BY ClasssYear DESC) AS RowNum\n    FROM Accumulated_Data\n)\nSELECT HASH,ID  ,StudentName , StudentStreet , StudentBolsaFamilia , StudentGender , StudentColor , StudentDeficiency , StudentBirthday , StudentNeighborhood ,\nStudentCep , StudentBus , StudentAddressCity , StudentMotherName, StudentFatherName , StudentLocality , SchoolId , LogDate \nFROM CTE\nLEFT JOIN F_Student sf\nON CTE.HASH = sf.F_HASH\nWHERE CTE.RowNum = 1 AND sf.F_HASH IS NULL;",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false
-							},
-							"enableStaging": false,
-							"dataIntegrationUnits": 2,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "HASH",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "F_HASH",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "ID",
-											"type": "int",
-											"physicalType": "int",
-											"precision": 10
-										},
-										"sink": {
-											"name": "Student_ID",
-											"type": "int",
-											"precision": 10
-										}
-									},
-									{
-										"source": {
-											"name": "StudentName",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Name",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentStreet",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Street_address",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentBolsaFamilia",
-											"type": "bit",
-											"physicalType": "bit"
-										},
-										"sink": {
-											"name": "Bolsa_familia_participator",
-											"type": "bit"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentGender",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Gender",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentColor",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Ethnicity",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentDeficiency",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Deficiency",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentBirthday",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Birthday",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentNeighborhood",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Neighborhood_address",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentCep",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "CEP",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentAddressCity",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "City_address",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentMotherName",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Mother_name",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentFatherName",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Father_name",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentLocality",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Residence_zone",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "SchoolId",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "School_id_fk",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "LogDate",
-											"type": "datetime",
-											"physicalType": "datetime",
-											"scale": 3,
-											"precision": 23
-										},
-										"sink": {
-											"name": "Log_lineage",
-											"type": "datetime",
-											"scale": 3,
-											"precision": 23
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "Accumulated_data",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "DB_studentTable",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "CopyDataSchoolTable",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "CopyDataStudentTable",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "WITH CTE AS (\n    SELECT *,\n           ROW_NUMBER() OVER (PARTITION BY SchoolName ORDER BY (SELECT NULL)) AS RowNum\n    FROM Accumulated_Data\n)\nSELECT SchoolId, SchoolName ,SchoolAddress ,SchoolNumber , SchoolCep , SchoolComplementAddress , SchoolComplementNeigborhood  ,SchoolLatitude , SchoolLongitude  \nFROM CTE\nLEFT JOIN D_School dc on CTE.SchoolId = dc.ID  \nWHERE RowNum = 1 AND dc.ID IS NULL ;",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false
-							},
-							"enableStaging": false,
-							"dataIntegrationUnits": 2,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "SchoolId",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "ID",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "SchoolName",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Name",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "SchoolAddress",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Address",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "SchoolNumber",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Number_address",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "SchoolCep",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "CEP",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "SchoolComplementAddress",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Address_complement",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "SchoolComplementNeigborhood",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Address_neighborhood",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "SchoolLatitude",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Latitude",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "SchoolLongitude",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Longitude",
-											"type": "varchar"
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "Accumulated_data",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "DB_school",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "CopyDataClassroomTable",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "CopyDataSchoolTable",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "  SELECT ad.HASH, ad.Class, ad.StudentStage, ad.StudentSerie, ad.ClasssYear, ad.StudentStatus\n  FROM Accumulated_Data ad\n  EXCEPT\n  SELECT dc.F_HASH, dc.Name, dc.Stage, dc.Serie, dc.Class_year, dc.Status\n  FROM D_Classroom dc",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"dataIntegrationUnits": 2,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "HASH",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "F_HASH",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "Class",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Name",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentStage",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Stage",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentSerie",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Serie",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "ClasssYear",
-											"type": "int",
-											"physicalType": "int",
-											"precision": 10
-										},
-										"sink": {
-											"name": "Class_year",
-											"type": "int",
-											"precision": 10
-										}
-									},
-									{
-										"source": {
-											"name": "StudentStatus",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Status",
-											"type": "varchar"
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "Accumulated_data",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "DB_classroom",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "CopyDataHealthTable",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "CopyDataClassroomTable",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "SELECT \n    ad.HASH,\n    ad.StudentHasCeliac,\n    ad.StudentHasDiabetes,\n    ad.StudentHasHypertension,\n    ad.StudentHasIronDeficiencyAnemia,\n    ad.StudentHasSickleCellAnemia,\n    ad.StudentHasLactoseIntolerance,\n    ad.StudentHasMalnutrition,\n    ad.StudentHasObesity,\n    ad.StudentDiferentHealthProblems,\n    DATEADD(HOUR, -3, SYSDATETIME()) AS LogDate\nFROM \n    Accumulated_Data ad\nJOIN \n    D_Student_health dsh ON ad.HASH = dsh.F_HASH\nWHERE \n    (ad.StudentHasCeliac IS NOT NULL\n    OR ad.StudentHasDiabetes IS NOT NULL\n    OR ad.StudentHasHypertension IS NOT NULL\n    OR ad.StudentHasIronDeficiencyAnemia IS NOT NULL\n    OR ad.StudentHasSickleCellAnemia IS NOT NULL\n    OR ad.StudentHasLactoseIntolerance IS NOT NULL\n    OR ad.StudentHasMalnutrition IS NOT NULL\n    OR ad.StudentHasObesity IS NOT NULL\n    OR (ad.StudentDiferentHealthProblems IS NOT NULL AND TRIM(ad.StudentDiferentHealthProblems) <> ''))\n    AND ad.LogDate > (\n        SELECT MAX(dsh_inner.LogDate)\n        FROM D_Student_health dsh_inner\n        WHERE dsh_inner.F_HASH = ad.HASH\n    )\nGROUP BY \n    ad.HASH,\n    ad.StudentHasCeliac,\n    ad.StudentHasDiabetes,\n    ad.StudentHasHypertension,\n    ad.StudentHasIronDeficiencyAnemia,\n    ad.StudentHasSickleCellAnemia,\n    ad.StudentHasLactoseIntolerance,\n    ad.StudentHasMalnutrition,\n    ad.StudentHasObesity,\n    ad.StudentDiferentHealthProblems;\n",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false
-							},
-							"enableStaging": false,
-							"dataIntegrationUnits": 2,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "HASH",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "F_HASH",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentHasCeliac",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Celiac_desease",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentHasDiabetes",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Diabetes_desase",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentHasHypertension",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Hypertension_desease",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentHasIronDeficiencyAnemia",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Iron_deficiency_anemia_desease",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentHasSickleCellAnemia",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Sickle_cell_anemia_desease",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentHasLactoseIntolerance",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Lactose_Intolerance_desease",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentHasMalnutrition",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Malnutrition_desease",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentHasObesity",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Obesity_desease",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentDiferentHealthProblems",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Other_health_problem",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "LogDate",
-											"physicalType": "datetime"
-										},
-										"sink": {
-											"name": "LogDate",
-											"type": "datetime",
-											"scale": 3,
-											"precision": 23
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "Accumulated_data",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "DB_studentHealth",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "CopyDataStudentVaccine",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "CopyDataHealthTable",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "select ad.HASH,ad.StudentVaccine, DATEADD(HOUR, -3, SYSDATETIME()) AS LogDate  \nfrom Accumulated_Data ad\nwhere Vaccine_id is not null and\nad.LogDate > (\n        SELECT MAX(dsv.LogDate)\n        FROM D_Student_vaccine dsv \n        WHERE dsv.F_HASH = ad.HASH\n    )\ngroup by HASH, StudentVaccine;",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "HASH",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "F_HASH",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "StudentVaccine",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Vaccine_name",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "LogDate",
-											"type": "datetime",
-											"physicalType": "datetime",
-											"scale": 3,
-											"precision": 23
-										},
-										"sink": {
-											"name": "LogDate",
-											"type": "datetime",
-											"scale": 3,
-											"precision": 23
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "Accumulated_data",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "DB_vaccine",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "CopyDataRegistration",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "CopyDataStudentVaccine",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "select ad.HASH, ad.DataLineageIngestion, ad.LogDate , ad.Database_name   \nfrom Accumulated_Data ad \nwhere ad.LogDate > (\nselect max(dr.LogDate)\nfrom D_Registration dr \nWHERE dr.F_HASH = ad.HASH\n)\ngroup by HASH, LogDate, Database_name  ,DataLineageIngestion;",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false
-							},
-							"enableStaging": false,
-							"dataIntegrationUnits": 2,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "HASH",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "F_HASH",
-											"type": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DataLineageIngestion",
-											"type": "datetime",
-											"physicalType": "datetime",
-											"scale": 3,
-											"precision": 23
-										},
-										"sink": {
-											"name": "DataIngestionTime",
-											"type": "datetime",
-											"scale": 3,
-											"precision": 23
-										}
-									},
-									{
-										"source": {
-											"name": "LogDate",
-											"type": "datetime",
-											"physicalType": "datetime",
-											"scale": 3,
-											"precision": 23
-										},
-										"sink": {
-											"name": "LogDate",
-											"type": "datetime",
-											"scale": 3,
-											"precision": 23
-										}
-									},
-									{
-										"source": {
-											"name": "Database_name",
-											"type": "varchar",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Database_name",
-											"type": "varchar"
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "Accumulated_data",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "DB_registration",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"annotations": [],
-				"lastPublishTime": "2024-06-06T19:33:16Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/Accumulated_data')]",
-				"[concat(variables('factoryId'), '/datasets/DB_studentTable')]",
-				"[concat(variables('factoryId'), '/datasets/DB_school')]",
-				"[concat(variables('factoryId'), '/datasets/DB_classroom')]",
-				"[concat(variables('factoryId'), '/datasets/DB_studentHealth')]",
-				"[concat(variables('factoryId'), '/datasets/DB_vaccine')]",
-				"[concat(variables('factoryId'), '/datasets/DB_registration')]"
-			]
-		},
-		{
 			"name": "[concat(parameters('factoryName'), '/Financeiro-RH')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -9197,6 +8256,1297 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Warehouse_TAG_faults')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "DatabaseNames",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "BasesAtualizadas17_02_2025",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "LoopCopyBulkIncremental",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "DatabaseNames",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "LastInsertDate",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('DatabaseNames').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 3,
+							"activities": [
+								{
+									"name": "Instructor_teaching_data",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "MySqlSource",
+											"query": {
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.instructor_teaching_data itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"type": "Expression"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "upsert",
+											"upsertSettings": {
+												"useTempDB": true,
+												"keys": [
+													"id",
+													"database_name"
+												]
+											},
+											"sqlWriterUseTableLock": false,
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DB_gloria",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "Raw_Instructor_teaching_data",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								},
+								{
+									"name": "Class_faults",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "MySqlSource",
+											"query": {
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.class_faults itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"type": "Expression"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "upsert",
+											"upsertSettings": {
+												"useTempDB": true,
+												"keys": [
+													"id",
+													"database_name"
+												]
+											},
+											"sqlWriterUseTableLock": false,
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DB_gloria",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "Raw_class_faults",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								},
+								{
+									"name": "student_identification",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "MySqlSource",
+											"query": {
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_identification itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"type": "Expression"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "upsert",
+											"upsertSettings": {
+												"useTempDB": true,
+												"keys": [
+													"id",
+													"database_name"
+												]
+											},
+											"sqlWriterUseTableLock": false,
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "id"
+													},
+													"sink": {
+														"name": "id",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "school_inep_id_fk"
+													},
+													"sink": {
+														"name": "school_inep_id_fk",
+														"type": "varchar"
+													}
+												},
+												{
+													"source": {
+														"name": "created_at"
+													},
+													"sink": {
+														"name": "created_at",
+														"type": "datetime",
+														"scale": 3,
+														"precision": 23
+													}
+												},
+												{
+													"source": {
+														"name": "updated_at"
+													},
+													"sink": {
+														"name": "updated_at",
+														"type": "datetime",
+														"scale": 3,
+														"precision": 23
+													}
+												},
+												{
+													"source": {
+														"name": "database_name"
+													},
+													"sink": {
+														"name": "database_name",
+														"type": "varchar"
+													}
+												}
+											],
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DB_gloria",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "Raw_student_identification",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								},
+								{
+									"name": "student_enrollment",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "student_identification",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "MySqlSource",
+											"query": {
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.student_enrollment itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"type": "Expression"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "upsert",
+											"upsertSettings": {
+												"useTempDB": true,
+												"keys": [
+													"student_fk",
+													"database_name"
+												]
+											},
+											"sqlWriterUseTableLock": false,
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "classroom_fk"
+													},
+													"sink": {
+														"name": "classroom_fk",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "school_inep_id_fk"
+													},
+													"sink": {
+														"name": "school_inep_id_fk",
+														"type": "varchar"
+													}
+												},
+												{
+													"source": {
+														"name": "enrollment_id"
+													},
+													"sink": {
+														"name": "enrollment_id",
+														"type": "varchar"
+													}
+												},
+												{
+													"source": {
+														"name": "edcenso_stage_vs_modality_fk"
+													},
+													"sink": {
+														"name": "edcenso_stage_vs_modality_fk",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "student_fk"
+													},
+													"sink": {
+														"name": "student_fk",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "database_name"
+													},
+													"sink": {
+														"name": "database_name",
+														"type": "varchar"
+													}
+												}
+											],
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DB_gloria",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "Raw_student_enrollment",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								},
+								{
+									"name": "classroom",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "Instructor_teaching_data",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "MySqlSource",
+											"query": {
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.classroom itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"type": "Expression"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "upsert",
+											"upsertSettings": {
+												"useTempDB": true,
+												"keys": [
+													"id",
+													"database_name"
+												]
+											},
+											"sqlWriterUseTableLock": false,
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "id"
+													},
+													"sink": {
+														"name": "id",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "created_at"
+													},
+													"sink": {
+														"name": "created_at",
+														"type": "datetime",
+														"scale": 3,
+														"precision": 23
+													}
+												},
+												{
+													"source": {
+														"name": "school_inep_fk"
+													},
+													"sink": {
+														"name": "school_inep_fk",
+														"type": "varchar"
+													}
+												},
+												{
+													"source": {
+														"name": "updated_at"
+													},
+													"sink": {
+														"name": "updated_at",
+														"type": "datetime",
+														"scale": 3,
+														"precision": 23
+													}
+												},
+												{
+													"source": {
+														"name": "database_name"
+													},
+													"sink": {
+														"name": "database_name",
+														"type": "varchar"
+													}
+												},
+												{
+													"source": {
+														"name": "edcenso_stage_vs_modality_fk"
+													},
+													"sink": {
+														"name": "edcenso_stage_vs_modality_fk",
+														"type": "varchar"
+													}
+												},
+												{
+													"source": {
+														"name": "school_year"
+													},
+													"sink": {
+														"name": "school_year"
+													}
+												}
+											],
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DB_gloria",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "Raw_classroom",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								},
+								{
+									"name": "school_identification",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "MySqlSource",
+											"query": {
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.school_identification itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"type": "Expression"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "upsert",
+											"upsertSettings": {
+												"useTempDB": true,
+												"keys": [
+													"inep_id",
+													"database_name"
+												]
+											},
+											"sqlWriterUseTableLock": false,
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "inep_id"
+													},
+													"sink": {
+														"name": "inep_id",
+														"type": "varchar"
+													}
+												},
+												{
+													"source": {
+														"name": "created_at"
+													},
+													"sink": {
+														"name": "created_at",
+														"type": "datetime",
+														"scale": 3,
+														"precision": 23
+													}
+												},
+												{
+													"source": {
+														"name": "updated_at"
+													},
+													"sink": {
+														"name": "updated_at",
+														"type": "datetime",
+														"scale": 3,
+														"precision": 23
+													}
+												},
+												{
+													"source": {
+														"name": "database_name"
+													},
+													"sink": {
+														"name": "database_name",
+														"type": "varchar"
+													}
+												},
+												{
+													"source": {
+														"name": "cep"
+													},
+													"sink": {
+														"name": "cep"
+													}
+												}
+											],
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DB_gloria",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "Raw_school_identification",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								},
+								{
+									"name": "edcenso_discipline",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "school_identification",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "MySqlSource",
+											"query": {
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_discipline itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"type": "Expression"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "upsert",
+											"upsertSettings": {
+												"useTempDB": true,
+												"keys": [
+													"id",
+													"database_name"
+												]
+											},
+											"sqlWriterUseTableLock": false,
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DB_gloria",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "Raw_edcenso_discipline",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								},
+								{
+									"name": "Student_discipline_if_copy1",
+									"type": "IfCondition",
+									"dependsOn": [
+										{
+											"activity": "school_identification",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@not(equals(item().DatabaseName, 'altodorodrigues.tag.ong.br'))\n",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "stage_vs_modality_copy1_copy1",
+												"type": "Copy",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "MySqlSource",
+														"query": {
+															"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+															"type": "Expression"
+														}
+													},
+													"sink": {
+														"type": "AzureSqlSink",
+														"writeBehavior": "upsert",
+														"upsertSettings": {
+															"useTempDB": true,
+															"keys": [
+																"id",
+																"database_name"
+															]
+														},
+														"sqlWriterUseTableLock": false,
+														"disableMetricsCollection": false
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"mappings": [
+															{
+																"source": {
+																	"name": "id"
+																},
+																"sink": {
+																	"name": "id",
+																	"type": "int",
+																	"precision": 10
+																}
+															},
+															{
+																"source": {
+																	"name": "alias"
+																},
+																"sink": {
+																	"name": "alias",
+																	"type": "varchar"
+																}
+															},
+															{
+																"source": {
+																	"name": "edcenso_associated_stage_id"
+																},
+																"sink": {
+																	"name": "edcenso_associated_stage_id",
+																	"type": "int",
+																	"precision": 10
+																}
+															},
+															{
+																"source": {
+																	"name": "name"
+																},
+																"sink": {
+																	"name": "name",
+																	"type": "varchar"
+																}
+															},
+															{
+																"source": {
+																	"name": "created_at"
+																},
+																"sink": {
+																	"name": "created_at",
+																	"type": "datetime",
+																	"scale": 3,
+																	"precision": 23
+																}
+															},
+															{
+																"source": {
+																	"name": "updated_at"
+																},
+																"sink": {
+																	"name": "updated_at",
+																	"type": "datetime",
+																	"scale": 3,
+																	"precision": 23
+																}
+															},
+															{
+																"source": {
+																	"name": "stage"
+																},
+																"sink": {
+																	"name": "stage",
+																	"type": "int",
+																	"precision": 10
+																}
+															},
+															{
+																"source": {
+																	"name": "is_edcenso_stage"
+																},
+																"sink": {
+																	"name": "is_edcenso_stage",
+																	"type": "int",
+																	"precision": 10
+																}
+															},
+															{
+																"source": {
+																	"name": "database_name"
+																},
+																"sink": {
+																	"name": "database_name",
+																	"type": "varchar"
+																}
+															},
+															{
+																"source": {
+																	"name": "unified_frequency"
+																},
+																"sink": {
+																	"name": "unified_frequency",
+																	"type": "int",
+																	"precision": 10
+																}
+															}
+														],
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "DB_gloria",
+														"type": "DatasetReference",
+														"parameters": {}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "Raw_edcenso_stage_vs_modality",
+														"type": "DatasetReference",
+														"parameters": {}
+													}
+												]
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "stage_vs_modality_copy1",
+												"type": "Copy",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "MySqlSource",
+														"query": {
+															"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.edcenso_stage_vs_modality itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+															"type": "Expression"
+														}
+													},
+													"sink": {
+														"type": "AzureSqlSink",
+														"writeBehavior": "upsert",
+														"upsertSettings": {
+															"useTempDB": true,
+															"keys": [
+																"id",
+																"database_name"
+															]
+														},
+														"sqlWriterUseTableLock": false,
+														"disableMetricsCollection": false
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "DB_gloria",
+														"type": "DatasetReference",
+														"parameters": {}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "Raw_edcenso_stage_vs_modality",
+														"type": "DatasetReference",
+														"parameters": {}
+													}
+												]
+											}
+										]
+									}
+								},
+								{
+									"name": "schedule",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "Class_faults",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "MySqlSource",
+											"query": {
+												"value": "select '@{item().DatabaseName}' AS database_name,itd.* from `@{item().DatabaseName}`.schedule itd where itd.updated_at > '@{variables('LastInsertGloria')}'",
+												"type": "Expression"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "upsert",
+											"upsertSettings": {
+												"useTempDB": true,
+												"keys": [
+													"id",
+													"database_name"
+												]
+											},
+											"sqlWriterUseTableLock": false,
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "id"
+													},
+													"sink": {
+														"name": "id",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "discipline_fk"
+													},
+													"sink": {
+														"name": "discipline_fk",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "instructor_fk"
+													},
+													"sink": {
+														"name": "instructor_fk",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "classroom_fk"
+													},
+													"sink": {
+														"name": "classroom_fk",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "day"
+													},
+													"sink": {
+														"name": "day",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "month"
+													},
+													"sink": {
+														"name": "month",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "year"
+													},
+													"sink": {
+														"name": "year",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "week"
+													},
+													"sink": {
+														"name": "week",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "week_day"
+													},
+													"sink": {
+														"name": "week_day",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "schedule"
+													},
+													"sink": {
+														"name": "schedule",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "turn"
+													},
+													"sink": {
+														"name": "turn",
+														"type": "varchar"
+													}
+												},
+												{
+													"source": {
+														"name": "unavailable"
+													},
+													"sink": {
+														"name": "unavailable",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "fkid"
+													},
+													"sink": {
+														"name": "fkid",
+														"type": "varchar"
+													}
+												},
+												{
+													"source": {
+														"name": "hash"
+													},
+													"sink": {
+														"name": "hash",
+														"type": "bigint",
+														"precision": 19
+													}
+												},
+												{
+													"source": {
+														"name": "created_at"
+													},
+													"sink": {
+														"name": "created_at",
+														"type": "datetime",
+														"scale": 3,
+														"precision": 23
+													}
+												},
+												{
+													"source": {
+														"name": "updated_at"
+													},
+													"sink": {
+														"name": "updated_at",
+														"type": "datetime",
+														"scale": 3,
+														"precision": 23
+													}
+												},
+												{
+													"source": {
+														"name": "substitute_instructor_fk"
+													},
+													"sink": {
+														"name": "substitute_instructor_fk",
+														"type": "int",
+														"precision": 10
+													}
+												},
+												{
+													"source": {
+														"name": "database_name"
+													},
+													"sink": {
+														"name": "database_name"
+													}
+												}
+											],
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DB_gloria",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "Raw_SCHEDULE",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "GetLastInsertDate",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select max(inserted_at) from [data-warehouse-tag].dbo_tia.F_ENROLLMENT;",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "F_ENROLLMENT_TIMESTAMP",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "LastInsertDate",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "GetLastInsertDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "LastInsertGloria",
+							"value": {
+								"value": "@formatDateTime(activity('GetLastInsertDate').output.firstRow[''], 'yyyy-MM-dd HH:mm:ss.fff')",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"LastInsertGloria": {
+						"type": "String"
+					},
+					"lista_ids": {
+						"type": "String"
+					},
+					"executionTimestamp": {
+						"type": "String"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/BasesAtualizadas17_02_2025')]",
+				"[concat(variables('factoryId'), '/datasets/F_ENROLLMENT_TIMESTAMP')]",
+				"[concat(variables('factoryId'), '/datasets/DB_gloria')]",
+				"[concat(variables('factoryId'), '/datasets/Raw_Instructor_teaching_data')]",
+				"[concat(variables('factoryId'), '/datasets/Raw_class_faults')]",
+				"[concat(variables('factoryId'), '/datasets/Raw_student_identification')]",
+				"[concat(variables('factoryId'), '/datasets/Raw_student_enrollment')]",
+				"[concat(variables('factoryId'), '/datasets/Raw_classroom')]",
+				"[concat(variables('factoryId'), '/datasets/Raw_school_identification')]",
+				"[concat(variables('factoryId'), '/datasets/Raw_edcenso_discipline')]",
+				"[concat(variables('factoryId'), '/datasets/Raw_SCHEDULE')]",
+				"[concat(variables('factoryId'), '/datasets/Raw_edcenso_stage_vs_modality')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Accumulated_data')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -12000,6 +12350,669 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Raw_Instructor_teaching_data')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "register_type",
+						"type": "varchar"
+					},
+					{
+						"name": "school_inep_id_fk",
+						"type": "varchar"
+					},
+					{
+						"name": "instructor_inep_id",
+						"type": "varchar"
+					},
+					{
+						"name": "instructor_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "classroom_inep_id",
+						"type": "varchar"
+					},
+					{
+						"name": "classroom_id_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "role",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "contract_type",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "discipline_1_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_2_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_3_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_4_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_5_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_6_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_7_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_8_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_9_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_10_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_11_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_12_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_13_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_14_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_15_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "hash",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "hash_instructor",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "hash_classroom",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "regent",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "created_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "updated_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "raw",
+					"table": "instructor_teaching_data"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Raw_SCHEDULE')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "instructor_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "discipline_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "classroom_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "day",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "month",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "year",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "week",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "week_day",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "schedule",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "turn",
+						"type": "varchar"
+					},
+					{
+						"name": "unavailable",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "diary",
+						"type": "text"
+					},
+					{
+						"name": "fkid",
+						"type": "varchar"
+					},
+					{
+						"name": "hash",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "created_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "updated_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "substitute_instructor_fk",
+						"type": "int",
+						"precision": 10
+					}
+				],
+				"typeProperties": {
+					"schema": "raw",
+					"table": "schedule"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Raw_class_faults')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "student_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "schedule_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "fkid",
+						"type": "varchar"
+					},
+					{
+						"name": "justification",
+						"type": "varchar"
+					},
+					{
+						"name": "created_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "updated_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "raw",
+					"table": "class_faults"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Raw_classroom')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "school_inep_fk",
+						"type": "varchar"
+					},
+					{
+						"name": "created_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "updated_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "database_name",
+						"type": "varchar"
+					},
+					{
+						"name": "edcenso_stage_vs_modality_fk",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "raw",
+					"table": "classroom"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Raw_edcenso_discipline')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "name",
+						"type": "varchar"
+					},
+					{
+						"name": "edcenso_base_discipline_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "abbreviation",
+						"type": "varchar"
+					},
+					{
+						"name": "created_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "updated_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "database_name",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "raw",
+					"table": "edcenso_discipline"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Raw_edcenso_stage_vs_modality')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "name",
+						"type": "varchar"
+					},
+					{
+						"name": "alias",
+						"type": "varchar"
+					},
+					{
+						"name": "stage",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "edcenso_associated_stage_id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "is_edcenso_stage",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "created_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "updated_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "unified_frequency",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "aggregated_stage",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "database_name",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "raw",
+					"table": "edcenso_stage_vs_modality"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Raw_school_identification')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "inep_id",
+						"type": "varchar"
+					},
+					{
+						"name": "cep",
+						"type": "varchar"
+					},
+					{
+						"name": "created_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "updated_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "database_name",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "raw",
+					"table": "school_identification"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Raw_student_enrollment')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "classroom_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "school_inep_id_fk",
+						"type": "varchar"
+					},
+					{
+						"name": "enrollment_id",
+						"type": "varchar"
+					},
+					{
+						"name": "edcenso_stage_vs_modality_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "student_fk",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "database_name",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "raw",
+					"table": "student_enrollment"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Raw_student_identification')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "school_inep_id_fk",
+						"type": "varchar"
+					},
+					{
+						"name": "created_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "updated_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "database_name",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "raw",
+					"table": "student_identification"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/accumulated_data_bug_fix')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -13152,15 +14165,8 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"annotations": [],
-				"runtimeState": "Started",
+				"runtimeState": "Stopped",
 				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "Data-warehouse-tag",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					},
 					{
 						"pipelineReference": {
 							"referenceName": "Warehouse_TAG_STAR_SCHEMA_partial_bulk",
@@ -13187,7 +14193,6 @@
 				}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Data-warehouse-tag')]",
 				"[concat(variables('factoryId'), '/pipelines/Warehouse_TAG_STAR_SCHEMA_partial_bulk')]",
 				"[concat(variables('factoryId'), '/pipelines/Warehouse_TAG_faults')]"
 			]
@@ -13283,7 +14288,7 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/Warehouse_TAG_faults')]",
+			"name": "[concat(parameters('factoryName'), '/Warehouse_TAG_faults_bulk')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
@@ -13368,13 +14373,7 @@
 										},
 										"sink": {
 											"type": "AzureSqlSink",
-											"writeBehavior": "upsert",
-											"upsertSettings": {
-												"useTempDB": true,
-												"keys": [
-													"id"
-												]
-											},
+											"writeBehavior": "insert",
 											"sqlWriterUseTableLock": false,
 											"disableMetricsCollection": false
 										},
@@ -13425,13 +14424,7 @@
 										},
 										"sink": {
 											"type": "AzureSqlSink",
-											"writeBehavior": "upsert",
-											"upsertSettings": {
-												"useTempDB": true,
-												"keys": [
-													"id"
-												]
-											},
+											"writeBehavior": "insert",
 											"sqlWriterUseTableLock": false,
 											"disableMetricsCollection": false
 										},
@@ -13482,13 +14475,7 @@
 										},
 										"sink": {
 											"type": "AzureSqlSink",
-											"writeBehavior": "upsert",
-											"upsertSettings": {
-												"useTempDB": true,
-												"keys": [
-													"id"
-												]
-											},
+											"writeBehavior": "insert",
 											"sqlWriterUseTableLock": false,
 											"disableMetricsCollection": false
 										},
@@ -13598,13 +14585,7 @@
 										},
 										"sink": {
 											"type": "AzureSqlSink",
-											"writeBehavior": "upsert",
-											"upsertSettings": {
-												"useTempDB": true,
-												"keys": [
-													"student_fk"
-												]
-											},
+											"writeBehavior": "insert",
 											"sqlWriterUseTableLock": false,
 											"disableMetricsCollection": false
 										},
@@ -13721,13 +14702,7 @@
 										},
 										"sink": {
 											"type": "AzureSqlSink",
-											"writeBehavior": "upsert",
-											"upsertSettings": {
-												"useTempDB": true,
-												"keys": [
-													"id"
-												]
-											},
+											"writeBehavior": "insert",
 											"sqlWriterUseTableLock": false,
 											"disableMetricsCollection": false
 										},
@@ -13793,6 +14768,14 @@
 														"name": "edcenso_stage_vs_modality_fk",
 														"type": "varchar"
 													}
+												},
+												{
+													"source": {
+														"name": "school_year"
+													},
+													"sink": {
+														"name": "school_year"
+													}
 												}
 											],
 											"typeConversion": true,
@@ -13839,13 +14822,7 @@
 										},
 										"sink": {
 											"type": "AzureSqlSink",
-											"writeBehavior": "upsert",
-											"upsertSettings": {
-												"useTempDB": true,
-												"keys": [
-													"inep_id"
-												]
-											},
+											"writeBehavior": "insert",
 											"sqlWriterUseTableLock": false,
 											"disableMetricsCollection": false
 										},
@@ -13892,6 +14869,14 @@
 														"name": "database_name",
 														"type": "varchar"
 													}
+												},
+												{
+													"source": {
+														"name": "cep"
+													},
+													"sink": {
+														"name": "cep"
+													}
 												}
 											],
 											"typeConversion": true,
@@ -13921,9 +14906,9 @@
 									"type": "Copy",
 									"dependsOn": [
 										{
-											"activity": "Student_discipline_if_copy1",
+											"activity": "school_identification",
 											"dependencyConditions": [
-												"Skipped"
+												"Completed"
 											]
 										}
 									],
@@ -13945,13 +14930,7 @@
 										},
 										"sink": {
 											"type": "AzureSqlSink",
-											"writeBehavior": "upsert",
-											"upsertSettings": {
-												"useTempDB": true,
-												"keys": [
-													"id"
-												]
-											},
+											"writeBehavior": "insert",
 											"sqlWriterUseTableLock": false,
 											"disableMetricsCollection": false
 										},
@@ -14020,13 +14999,7 @@
 													},
 													"sink": {
 														"type": "AzureSqlSink",
-														"writeBehavior": "upsert",
-														"upsertSettings": {
-															"useTempDB": true,
-															"keys": [
-																"id"
-															]
-														},
+														"writeBehavior": "insert",
 														"sqlWriterUseTableLock": false,
 														"disableMetricsCollection": false
 													},
@@ -14180,13 +15153,7 @@
 													},
 													"sink": {
 														"type": "AzureSqlSink",
-														"writeBehavior": "upsert",
-														"upsertSettings": {
-															"useTempDB": true,
-															"keys": [
-																"id"
-															]
-														},
+														"writeBehavior": "insert",
 														"sqlWriterUseTableLock": false,
 														"disableMetricsCollection": false
 													},
@@ -14247,13 +15214,7 @@
 										},
 										"sink": {
 											"type": "AzureSqlSink",
-											"writeBehavior": "upsert",
-											"upsertSettings": {
-												"useTempDB": true,
-												"keys": [
-													"id"
-												]
-											},
+											"writeBehavior": "insert",
 											"sqlWriterUseTableLock": false,
 											"disableMetricsCollection": false
 										},
@@ -14545,669 +15506,6 @@
 				"[concat(variables('factoryId'), '/datasets/Raw_edcenso_discipline')]",
 				"[concat(variables('factoryId'), '/datasets/Raw_SCHEDULE')]",
 				"[concat(variables('factoryId'), '/datasets/Raw_edcenso_stage_vs_modality')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Raw_SCHEDULE')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "id",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "instructor_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "classroom_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "day",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "month",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "year",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "week",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "week_day",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "schedule",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "turn",
-						"type": "varchar"
-					},
-					{
-						"name": "unavailable",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "diary",
-						"type": "text"
-					},
-					{
-						"name": "fkid",
-						"type": "varchar"
-					},
-					{
-						"name": "hash",
-						"type": "bigint",
-						"precision": 19
-					},
-					{
-						"name": "created_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "updated_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "substitute_instructor_fk",
-						"type": "int",
-						"precision": 10
-					}
-				],
-				"typeProperties": {
-					"schema": "raw",
-					"table": "schedule"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Raw_class_faults')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "id",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "student_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "schedule_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "fkid",
-						"type": "varchar"
-					},
-					{
-						"name": "justification",
-						"type": "varchar"
-					},
-					{
-						"name": "created_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "updated_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					}
-				],
-				"typeProperties": {
-					"schema": "raw",
-					"table": "class_faults"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Raw_Instructor_teaching_data')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "register_type",
-						"type": "varchar"
-					},
-					{
-						"name": "school_inep_id_fk",
-						"type": "varchar"
-					},
-					{
-						"name": "instructor_inep_id",
-						"type": "varchar"
-					},
-					{
-						"name": "instructor_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "classroom_inep_id",
-						"type": "varchar"
-					},
-					{
-						"name": "classroom_id_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "role",
-						"type": "smallint",
-						"precision": 5
-					},
-					{
-						"name": "contract_type",
-						"type": "smallint",
-						"precision": 5
-					},
-					{
-						"name": "discipline_1_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_2_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_3_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_4_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_5_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_6_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_7_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_8_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_9_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_10_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_11_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_12_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_13_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_14_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "discipline_15_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "id",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "hash",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "hash_instructor",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "hash_classroom",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "regent",
-						"type": "tinyint",
-						"precision": 3
-					},
-					{
-						"name": "created_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "updated_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					}
-				],
-				"typeProperties": {
-					"schema": "raw",
-					"table": "instructor_teaching_data"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Raw_student_identification')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "id",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "school_inep_id_fk",
-						"type": "varchar"
-					},
-					{
-						"name": "created_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "updated_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "database_name",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "raw",
-					"table": "student_identification"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Raw_student_enrollment')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "classroom_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "school_inep_id_fk",
-						"type": "varchar"
-					},
-					{
-						"name": "enrollment_id",
-						"type": "varchar"
-					},
-					{
-						"name": "edcenso_stage_vs_modality_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "student_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "database_name",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "raw",
-					"table": "student_enrollment"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Raw_classroom')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "id",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "school_inep_fk",
-						"type": "varchar"
-					},
-					{
-						"name": "created_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "updated_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "database_name",
-						"type": "varchar"
-					},
-					{
-						"name": "edcenso_stage_vs_modality_fk",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "raw",
-					"table": "classroom"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Raw_school_identification')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "inep_id",
-						"type": "varchar"
-					},
-					{
-						"name": "cep",
-						"type": "varchar"
-					},
-					{
-						"name": "created_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "updated_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "database_name",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "raw",
-					"table": "school_identification"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Raw_edcenso_stage_vs_modality')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "id",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "name",
-						"type": "varchar"
-					},
-					{
-						"name": "alias",
-						"type": "varchar"
-					},
-					{
-						"name": "stage",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "edcenso_associated_stage_id",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "is_edcenso_stage",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "created_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "updated_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "unified_frequency",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "aggregated_stage",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "database_name",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "raw",
-					"table": "edcenso_stage_vs_modality"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Raw_edcenso_discipline')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "id",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "name",
-						"type": "varchar"
-					},
-					{
-						"name": "edcenso_base_discipline_fk",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "abbreviation",
-						"type": "varchar"
-					},
-					{
-						"name": "created_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "updated_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "database_name",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "raw",
-					"table": "edcenso_discipline"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
 			]
 		}
 	]
