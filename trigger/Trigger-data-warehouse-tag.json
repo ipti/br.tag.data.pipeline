@@ -2,7 +2,7 @@
 	"name": "Trigger-data-warehouse-tag",
 	"properties": {
 		"annotations": [],
-		"runtimeState": "Stopped",
+		"runtimeState": "Started",
 		"pipelines": [
 			{
 				"pipelineReference": {
@@ -22,7 +22,7 @@
 			"recurrence": {
 				"frequency": "Hour",
 				"interval": 24,
-				"startTime": "2025-06-28T04:00:00",
+				"startTime": "2025-07-02T04:00:00",
 				"timeZone": "E. South America Standard Time"
 			}
 		}
