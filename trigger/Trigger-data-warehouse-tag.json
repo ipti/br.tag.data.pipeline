@@ -9,12 +9,6 @@
 					"referenceName": "Warehouse_TAG_STAR_SCHEMA_partial_bulk",
 					"type": "PipelineReference"
 				}
-			},
-			{
-				"pipelineReference": {
-					"referenceName": "Warehouse_TAG_faults",
-					"type": "PipelineReference"
-				}
 			}
 		],
 		"type": "ScheduleTrigger",
