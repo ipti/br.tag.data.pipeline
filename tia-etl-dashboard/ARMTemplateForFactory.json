@@ -8888,6 +8888,314 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Warehouse_TAG_student_faults_bulk')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "DatabaseNames",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select id, school_inep_fk , database_name from raw.classroom",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "classroom_raw_query",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "LoopCopyBulkIncremental",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "DatabaseNames",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "LastInsertDate",
+								"dependencyConditions": [
+									"Completed"
+								]
+							},
+							{
+								"activity": "ExecutionTimeStamp",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('DatabaseNames').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 3,
+							"activities": [
+								{
+									"name": "STUDENT_FAULT_ELEMENTARY_1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "MySqlSource",
+											"query": {
+												"value": "SELECT\n    CONCAT(MIN(t.id), '-', c.id, '-', si.school_inep_id_fk, '-', si.id) AS HASH_ID,\n    MIN(t.id) AS F_HASH_ID,\n    CONCAT(si.id, '-', si.school_inep_id_fk, '-', se.classroom_fk) AS student_id,\n    c.school_year,\n    t.`month`,\n    'elementary school' AS discipline_id,\n    (\n        SELECT COUNT(DISTINCT s_inner.day)\n        FROM class_faults cf_inner\n        JOIN schedule s_inner ON s_inner.id = cf_inner.schedule_fk\n        WHERE cf_inner.student_fk = si.id\n        AND s_inner.classroom_fk = c.id\n        AND s_inner.month = t.month\n        AND s_inner.unavailable = 0\n    ) AS total_faults_per_day,\n    NULL AS total_faults_per_discipline,\n    '@{variables('executionTimestamp')}' as inserted_at,\n    MAX(t.updated_at) AS updated_at,\n    COUNT(DISTINCT t.day) AS scheduled_student_class_days,\n    CONCAT(MIN(t.id), '-', c.id, '-', si.school_inep_id_fk,'-' ,itd.instructor_fk) AS class_id\nFROM `@{item().database_name}`.schedule t\nJOIN `@{item().database_name}`.classroom c ON c.id = t.classroom_fk\nJOIN `@{item().database_name}`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `@{item().database_name}`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `@{item().database_name}`.student_identification si ON se.student_fk = si.id\nleft join `@{item().database_name}`.instructor_teaching_data itd on c.id = itd.classroom_id_fk\nWHERE t.unavailable = 0 \nand c.id = @{item().id}\nand t.month = 1\nand si.school_inep_id_fk = @{item().school_inep_fk}\n-- AND (\n--    SELECT MAX(cf.updated_at)\n--    FROM `@{item().database_name}`.class_faults cf\n--    JOIN `@{item().database_name}`.schedule s_cf ON s_cf.id = cf.schedule_fk\n--    WHERE cf.student_fk = si.id\n--    AND s_cf.classroom_fk = c.id\n--    AND s_cf.month = t.month\n-- ) > '2024-07-06 00:00:00'\nGROUP BY c.id, si.id, t.month, se.school_inep_id_fk, se.classroom_fk;",
+												"type": "Expression"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "upsert",
+											"upsertSettings": {
+												"useTempDB": true,
+												"keys": [
+													"HASH_ID"
+												]
+											},
+											"sqlWriterUseTableLock": false,
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DB_gloria",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "F_ENROLLMENT",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								},
+								{
+									"name": "STUDENT_FAULT_FUNDAMENTAL 1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "MySqlSource",
+											"query": {
+												"value": "SELECT\n    CONCAT(MIN(t.id), '-', c.id, '-', se.school_inep_id_fk, '-', si.id, '-', t.discipline_fk, '-', c.school_year) AS HASH_ID,\n    MIN(t.id) AS F_HASH_ID,\n    CONCAT(si.id, '-', si.school_inep_id_fk, '-', se.classroom_fk) AS student_id,\n    concat (si.id, '-', si.school_inep_id_fk,'-' ,t.discipline_fk,'-',se.classroom_fk) as 'discipline_id',\n    ed.name,\n    (\n        SELECT COUNT(DISTINCT s_inner.day)\n        FROM class_faults cf_inner\n        JOIN schedule s_inner ON s_inner.id = cf_inner.schedule_fk\n        WHERE cf_inner.student_fk = si.id\n        AND s_inner.classroom_fk = c.id\n        AND s_inner.discipline_fk = t.discipline_fk\n        AND s_inner.month = t.month\n        AND s_inner.unavailable = 0\n    ) AS total_faults_per_day,\n    (\n        SELECT COUNT(cf_inner.id)\n        FROM class_faults cf_inner\n        JOIN schedule s_inner ON s_inner.id = cf_inner.schedule_fk\n        WHERE cf_inner.student_fk = si.id\n        AND s_inner.classroom_fk = c.id\n        AND s_inner.discipline_fk = t.discipline_fk\n        AND s_inner.month = t.month\n        AND s_inner.unavailable = 0\n    ) AS total_faults_per_discipline,\n    now() AS inserted_at,\n    MAX(t.updated_at) AS updated_at,\n    COUNT(DISTINCT t.day) AS scheduled_student_class_days,\n    CONCAT(MIN(t.id), '-', c.id, '-', si.school_inep_id_fk, '-', t.discipline_fk, '-', itd.instructor_fk) AS class_id\nFROM `@{item().database_name}`.schedule t\nJOIN `@{item().database_name}`.classroom c ON c.id = t.classroom_fk\nJOIN `@{item().database_name}`.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk\nJOIN `@{item().database_name}`.student_enrollment se ON se.classroom_fk = t.classroom_fk\nJOIN `@{item().database_name}`.student_identification si ON se.student_fk = si.id\nJOIN `@{item().database_name}`.edcenso_discipline ed ON t.discipline_fk = ed.id\nleft join `@{item().database_name}`.instructor_teaching_data itd on c.id = itd.classroom_id_fk\nWHERE t.unavailable = 0\nAND t.month = 1\nand c.id = @{item().id}\nAND si.school_inep_id_fk = @{item().school_inep_fk}\nAND (svm.unified_frequency = 0 OR svm.id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84))\n-- AND (\n--    SELECT MAX(cf.updated_at)\n--    FROM `@{item().database_name}`.class_faults cf\n--    JOIN `@{item().database_name}`.schedule s_cf ON s_cf.id = cf.schedule_fk\n--    WHERE cf.student_fk = si.id\n--    AND s_cf.classroom_fk = c.id\n--    AND s_cf.discipline_fk = t.discipline_fk  -- Específico por disciplina\n--    AND s_cf.month = t.month\n-- ) > '2024-07-01 00:00:00'\nGROUP BY c.id, si.id, t.discipline_fk, t.month, se.school_inep_id_fk, se.classroom_fk, c.school_year;",
+												"type": "Expression"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "upsert",
+											"upsertSettings": {
+												"useTempDB": true,
+												"keys": [
+													"HASH_ID"
+												]
+											},
+											"sqlWriterUseTableLock": false,
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DB_gloria",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "F_ENROLLMENT",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "GetLastInsertDate",
+						"type": "Lookup",
+						"state": "Inactive",
+						"onInactiveMarkAs": "Succeeded",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select max(inserted_at) from [data-warehouse-tag].dbo_tia.F_ENROLLMENT;",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "F_ENROLLMENT_TIMESTAMP",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "LastInsertDate",
+						"type": "SetVariable",
+						"state": "Inactive",
+						"onInactiveMarkAs": "Succeeded",
+						"dependsOn": [
+							{
+								"activity": "GetLastInsertDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "LastInsertGloria",
+							"value": {
+								"value": "@formatDateTime(activity('GetLastInsertDate').output.firstRow[''], 'yyyy-MM-dd HH:mm:ss.fff')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "SetExecutionTimestamp",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "MySqlSource",
+								"query": "select now() from student_identification"
+							},
+							"dataset": {
+								"referenceName": "DB_gloria",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "ExecutionTimeStamp",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "SetExecutionTimestamp",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "executionTimestamp",
+							"value": {
+								"value": "@formatDateTime(activity('SetExecutionTimestamp').output.firstRow['now()'], 'yyyy-MM-dd HH:mm:ss.fff')",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"LastInsertGloria": {
+						"type": "String"
+					},
+					"lista_ids": {
+						"type": "String"
+					},
+					"executionTimestamp": {
+						"type": "String"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/classroom_raw_query')]",
+				"[concat(variables('factoryId'), '/datasets/F_ENROLLMENT_TIMESTAMP')]",
+				"[concat(variables('factoryId'), '/datasets/DB_gloria')]",
+				"[concat(variables('factoryId'), '/datasets/F_ENROLLMENT')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Accumulated_data')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -12607,6 +12915,62 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorageBUF')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/classroom_raw_query')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "school_inep_fk",
+						"type": "varchar"
+					},
+					{
+						"name": "created_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "updated_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "database_name",
+						"type": "varchar"
+					},
+					{
+						"name": "edcenso_stage_vs_modality_fk",
+						"type": "varchar"
+					},
+					{
+						"name": "school_year",
+						"type": "int",
+						"precision": 10
+					}
+				],
+				"typeProperties": {
+					"schema": "raw",
+					"table": "classroom"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
 			]
 		},
 		{
