@@ -81,6 +81,73 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/F_STUDENT_CLASS')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "HASH_ID",
+						"type": "varchar"
+					},
+					{
+						"name": "F_HASH_ID",
+						"type": "varchar"
+					},
+					{
+						"name": "student_id",
+						"type": "varchar"
+					},
+					{
+						"name": "discipline_id",
+						"type": "varchar"
+					},
+					{
+						"name": "total_faults_per_day",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "total_faults_per_discipline",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "inserted_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "updated_at",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "scheduled_student_class_days",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "class_id",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo_tia",
+					"table": "F_STUDENT_CLASS"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/JsonTeste3Bases')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -1131,73 +1198,6 @@
 						"startTime": "2024-08-30T00:00:00",
 						"timeZone": "E. South America Standard Time"
 					}
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/F_STUDENT_CLASS')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "HASH_ID",
-						"type": "varchar"
-					},
-					{
-						"name": "F_HASH_ID",
-						"type": "varchar"
-					},
-					{
-						"name": "student_id",
-						"type": "varchar"
-					},
-					{
-						"name": "discipline_id",
-						"type": "varchar"
-					},
-					{
-						"name": "total_faults_per_day",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "total_faults_per_discipline",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "inserted_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "updated_at",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "scheduled_student_class_days",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "class_id",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo_tia",
-					"table": "F_STUDENT_CLASS"
 				}
 			},
 			"dependsOn": []
