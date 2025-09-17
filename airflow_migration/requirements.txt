@@ -1,0 +1,12 @@
+# Database providers
+apache-airflow-providers-mysql==6.2.2
+apache-airflow-providers-odbc==4.9.2
+
+# Database drivers
+pyodbc==5.1.0
+pymysql
+
+# DBT and Cosmos
+dbt-core==1.8.2
+dbt-sqlserver==1.8.2
+astronomer-cosmos==1.4.3
