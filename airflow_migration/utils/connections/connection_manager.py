@@ -2,18 +2,18 @@ import os
 import subprocess
 import pymysql
 import pyodbc
-import sqlalchemy
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import QueuePool
+from sqlalchemy.engine import Engine, Connection
 from contextlib import contextmanager
-from typing import Optional, Dict, Any, Union, Generator
+from typing import Optional, Dict, Any, Generator
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from dotenv import load_dotenv
+from utils.logs.logging_functions import get_logger
+import urllib
 
-# Import the logger we created
-from airflow_logger import get_logger
 
 
 @dataclass
@@ -64,8 +64,8 @@ class DatabaseConnectionManager:
         )
         
         # Initialize connection pools
-        self._mysql_engines: Dict[str, sqlalchemy.Engine] = {}
-        self._sqlserver_engine: Optional[sqlalchemy.Engine] = None
+        self._mysql_engines: Dict[str, Engine] = {}
+        self._sqlserver_engine: Optional[Engine] = None
         
         # Setup configurations
         self._setup_database_configs()
@@ -208,7 +208,7 @@ class DatabaseConnectionManager:
             }
         )
     
-    def _create_mysql_engine(self, source_name: str) -> sqlalchemy.Engine:
+    def _create_mysql_engine(self, source_name: str) -> Engine:
         """
         Create MySQL engine with connection pooling.
         
@@ -248,33 +248,36 @@ class DatabaseConnectionManager:
         
         return engine
     
-    def _create_sqlserver_engine(self) -> sqlalchemy.Engine:
+    def _create_sqlserver_engine(self) -> Engine:
         """
-        Create SQL Server engine with connection pooling.
-        
-        Returns:
-            SQLAlchemy engine
+        Create SQL Server engine with reliable ODBC connection string
+        (works in VSCode, scripts, and Airflow)
         """
         config = self.sqlserver_config
-        
-        connection_string = (
-            f"mssql+pyodbc://{config.username}:{config.password}@"
-            f"{config.host}:{config.port}/{config.database}?"
-            f"driver={config.driver}&timeout={self.connection_timeout}"
+
+        # Monta a string de conexão ODBC com URL encoding
+        conn_str = (
+            f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+            f"SERVER={config.host},{config.port};"
+            f"DATABASE={config.database};"
+            f"UID={config.username};"
+            f"PWD={config.password};"
+            f"Encrypt=yes;"
+            f"TrustServerCertificate=yes;"
+            f"Connection Timeout={self.connection_timeout};"
         )
-        
+        odbc_url = urllib.parse.quote_plus(conn_str)
+
+        # Cria engine SQLAlchemy
         engine = create_engine(
-            connection_string,
+            f"mssql+pyodbc:///?odbc_connect={odbc_url}",
             poolclass=QueuePool,
             pool_size=5,
             max_overflow=10,
             pool_pre_ping=True,
-            pool_recycle=3600,
-            connect_args={
-                'timeout': self.connection_timeout
-            }
+            pool_recycle=3600
         )
-        
+
         self.logger.info(
             f"SQL Server engine created",
             {
@@ -284,10 +287,10 @@ class DatabaseConnectionManager:
                 "environment": "PROD" if (self.is_production or self.hotfix_mode) else "DEV"
             }
         )
-        
+
         return engine
     
-    def get_mysql_engine(self, source_name: str) -> sqlalchemy.Engine:
+    def get_mysql_engine(self, source_name: str) -> Engine:
         """
         Get MySQL engine for specified source.
         
@@ -302,7 +305,7 @@ class DatabaseConnectionManager:
         
         return self._mysql_engines[source_name]
     
-    def get_sqlserver_engine(self) -> sqlalchemy.Engine:
+    def get_sqlserver_engine(self) -> Engine:
         """
         Get SQL Server engine.
         
@@ -315,7 +318,7 @@ class DatabaseConnectionManager:
         return self._sqlserver_engine
     
     @contextmanager
-    def mysql_connection(self, source_name: str) -> Generator[sqlalchemy.Connection, None, None]:
+    def mysql_connection(self, source_name: str) -> Generator[Connection, None, None]:
         """
         Context manager for MySQL connections.
         
@@ -353,7 +356,7 @@ class DatabaseConnectionManager:
                 connection.close()
     
     @contextmanager
-    def sqlserver_connection(self) -> Generator[sqlalchemy.Connection, None, None]:
+    def sqlserver_connection(self) -> Generator[Connection, None, None]:
         """
         Context manager for SQL Server connections.
         
@@ -432,23 +435,37 @@ class DatabaseConnectionManager:
         self,
         source_name: str,
         query: str,
-        params: Optional[Dict[str, Any]] = None
+        params: Optional[Dict[str, Any]] = None,
+        database: Optional[str] = None
     ) -> Any:
         """
-        Execute query on MySQL source.
+        Execute query on MySQL source with optional database specification.
         
         Args:
             source_name: Name of the MySQL source
             query: SQL query to execute
             params: Query parameters
+            database: Optional database name (overrides config database)
         
         Returns:
             Query result
         """
         start_time = time.time()
         
+        # Get the source config
+        source_config = self.mysql_configs.get(source_name)
+        if not source_config:
+            raise ValueError(f"MySQL source '{source_name}' not found")
+        
+        target_database = database or source_config.database
+        
         try:
             with self.mysql_connection(source_name) as conn:
+                # Set database context if different from default
+                if database and database != source_config.database:
+                    conn.execute(text(f"USE `{database}`"))
+                
+                # Execute query
                 if params:
                     result = conn.execute(text(query), params)
                 else:
@@ -463,8 +480,10 @@ class DatabaseConnectionManager:
                         f"MySQL query executed successfully",
                         {
                             "source": source_name,
+                            "database": target_database,
                             "rows_returned": len(rows),
-                            "execution_time_seconds": round(execution_time, 2)
+                            "execution_time_seconds": round(execution_time, 2),
+                            "query_type": "SELECT"
                         }
                     )
                     return rows
@@ -473,12 +492,16 @@ class DatabaseConnectionManager:
                     affected_rows = result.rowcount
                     execution_time = time.time() - start_time
                     
+                    operation = query.strip().split()[0].upper()
+                    
                     self.logger.info(
                         f"MySQL query executed successfully",
                         {
                             "source": source_name,
+                            "database": target_database,
                             "affected_rows": affected_rows,
-                            "execution_time_seconds": round(execution_time, 2)
+                            "execution_time_seconds": round(execution_time, 2),
+                            "query_type": operation
                         }
                     )
                     return affected_rows
@@ -490,7 +513,9 @@ class DatabaseConnectionManager:
                 exception=e,
                 extra_data={
                     "source": source_name,
-                    "execution_time_seconds": round(execution_time, 2)
+                    "database": target_database,
+                    "execution_time_seconds": round(execution_time, 2),
+                    "query_preview": query[:100] + "..." if len(query) > 100 else query
                 }
             )
             raise
@@ -498,211 +523,78 @@ class DatabaseConnectionManager:
     def execute_sqlserver_query(
         self,
         query: str,
-        params: Optional[Dict[str, Any]] = None
+        params: Optional[Dict[str, Any]] = None,
+        schema: Optional[str] = None,
+        top_n: Optional[int] = None
     ) -> Any:
         """
-        Execute query on SQL Server warehouse.
-        
+        Execute query on SQL Server using existing engine.
+
         Args:
             query: SQL query to execute
             params: Query parameters
-        
+            schema: Optional schema name
+            top_n: Limit for SELECT queries
+
         Returns:
             Query result
         """
         start_time = time.time()
-        
+        target_schema = schema or self.sqlserver_config.schema
+
         try:
             with self.sqlserver_connection() as conn:
-                if params:
-                    result = conn.execute(text(query), params)
-                else:
-                    result = conn.execute(text(query))
-                
-                # Fetch results if it's a SELECT query
-                if query.strip().upper().startswith('SELECT'):
+                safe_query = query
+                if top_n and query.strip().upper().startswith("SELECT"):
+                    safe_query = query.replace("SELECT", f"SELECT TOP {top_n}", 1)
+
+                result = conn.execute(text(safe_query), params or {})
+
+                if query.strip().upper().startswith("SELECT"):
                     rows = result.fetchall()
                     execution_time = time.time() - start_time
-                    
                     self.logger.info(
-                        f"SQL Server query executed successfully",
+                        "SQL Server query executed successfully",
                         {
                             "rows_returned": len(rows),
                             "execution_time_seconds": round(execution_time, 2),
-                            "schema": self.sqlserver_config.schema
+                            "database": self.sqlserver_config.database,
+                            "schema": target_schema,
+                            "query_type": "SELECT"
                         }
                     )
                     return rows
                 else:
-                    # For INSERT, UPDATE, DELETE queries
                     affected_rows = result.rowcount
                     execution_time = time.time() - start_time
-                    
+                    operation = query.strip().split()[0].upper()
                     self.logger.info(
-                        f"SQL Server query executed successfully",
+                        "SQL Server query executed successfully",
                         {
                             "affected_rows": affected_rows,
                             "execution_time_seconds": round(execution_time, 2),
-                            "schema": self.sqlserver_config.schema
+                            "database": self.sqlserver_config.database,
+                            "schema": target_schema,
+                            "query_type": operation
                         }
                     )
                     return affected_rows
-                    
+
         except Exception as e:
             execution_time = time.time() - start_time
             self.logger.error(
-                f"SQL Server query execution failed",
+                "SQL Server query execution failed",
                 exception=e,
                 extra_data={
                     "execution_time_seconds": round(execution_time, 2),
-                    "schema": self.sqlserver_config.schema
+                    "database": self.sqlserver_config.database,
+                    "schema": target_schema,
+                    "query_preview": query[:100] + "..." if len(query) > 100 else query
                 }
             )
             raise
     
-    def copy_data(
-        self,
-        source_name: str,
-        source_query: str,
-        target_table: str,
-        batch_size: int = 10000,
-        truncate_target: bool = False
-    ):
-        """
-        Copy data from MySQL source to SQL Server warehouse.
-        
-        Args:
-            source_name: Name of the MySQL source
-            source_query: SQL query to extract data from source
-            target_table: Target table name in SQL Server
-            batch_size: Number of rows to process in each batch
-            truncate_target: Whether to truncate target table before insert
-        """
-        start_time = time.time()
-        total_rows_copied = 0
-        
-        try:
-            self.logger.info(
-                f"Starting data copy operation",
-                {
-                    "source": source_name,
-                    "target_table": target_table,
-                    "batch_size": batch_size,
-                    "truncate_target": truncate_target
-                }
-            )
-            
-            # Truncate target table if requested
-            if truncate_target:
-                truncate_query = f"TRUNCATE TABLE {self.sqlserver_config.schema}.{target_table}"
-                self.execute_sqlserver_query(truncate_query)
-                self.logger.info(f"Target table truncated: {target_table}")
-            
-            # Get source data
-            source_rows = self.execute_mysql_query(source_name, source_query)
-            
-            if not source_rows:
-                self.logger.info("No data found in source query")
-                return
-            
-            # Get column names from first row
-            columns = list(source_rows[0].keys())
-            
-            # Process data in batches
-            for i in range(0, len(source_rows), batch_size):
-                batch = source_rows[i:i + batch_size]
-                
-                # Prepare insert query
-                placeholders = ', '.join([f':{col}' for col in columns])
-                insert_query = (
-                    f"INSERT INTO {self.sqlserver_config.schema}.{target_table} "
-                    f"({', '.join(columns)}) VALUES ({placeholders})"
-                )
-                
-                # Execute batch insert
-                with self.sqlserver_connection() as conn:
-                    conn.execute(text(insert_query), [dict(row) for row in batch])
-                    conn.commit()
-                
-                total_rows_copied += len(batch)
-                
-                self.logger.debug(
-                    f"Batch processed",
-                    {
-                        "batch_number": (i // batch_size) + 1,
-                        "rows_in_batch": len(batch),
-                        "total_copied": total_rows_copied
-                    }
-                )
-            
-            execution_time = time.time() - start_time
-            
-            self.logger.info(
-                f"Data copy completed successfully",
-                {
-                    "source": source_name,
-                    "target_table": target_table,
-                    "total_rows_copied": total_rows_copied,
-                    "execution_time_seconds": round(execution_time, 2)
-                }
-            )
-            
-        except Exception as e:
-            execution_time = time.time() - start_time
-            self.logger.error(
-                f"Data copy failed",
-                exception=e,
-                extra_data={
-                    "source": source_name,
-                    "target_table": target_table,
-                    "rows_copied": total_rows_copied,
-                    "execution_time_seconds": round(execution_time, 2)
-                }
-            )
-            raise
-    
-    def close_all_connections(self):
-        """Close all database connections and dispose engines."""
-        try:
-            # Close MySQL engines
-            for source_name, engine in self._mysql_engines.items():
-                engine.dispose()
-                self.logger.info(f"MySQL engine disposed for source: {source_name}")
-            
-            # Close SQL Server engine
-            if self._sqlserver_engine:
-                self._sqlserver_engine.dispose()
-                self.logger.info("SQL Server engine disposed")
-            
-            # Clear engine references
-            self._mysql_engines.clear()
-            self._sqlserver_engine = None
-            
-            self.logger.info("All database connections closed")
-            
-        except Exception as e:
-            self.logger.error("Error closing database connections", exception=e)
-    
-    def get_available_mysql_sources(self) -> list:
-        """
-        Get list of available MySQL sources.
-        
-        Returns:
-            List of available MySQL source names
-        """
-        return list(self.mysql_configs.keys())
-    
-    def mysql_connection_exists(self, source_name: str) -> bool:
-        """
-        Check if MySQL source exists.
-        
-        Args:
-            source_name: Name of the MySQL source
-        
-        Returns:
-            True if source exists
-        """
-        return source_name in self.mysql_configs
+    def get_connection_info(self) -> Dict[str, Any]:
         """
         Get current connection configuration info.
         
@@ -714,9 +606,12 @@ class DatabaseConnectionManager:
             "is_production": self.is_production,
             "hotfix_mode": self.hotfix_mode,
             "connection_timeout": self.connection_timeout,
-            "sqlserver_environment": "PROD" if (self.is_production or self.hotfix_mode) else "DEV",
+            "environment_type": "PROD" if (self.is_production or self.hotfix_mode) else "DEV",
+            "sqlserver_host": self.sqlserver_config.host,
+            "sqlserver_database": self.sqlserver_config.database,
             "sqlserver_schema": self.sqlserver_config.schema,
-            "mysql_sources": list(self.mysql_configs.keys())
+            "mysql_sources": list(self.mysql_configs.keys()),
+            "mysql_sources_count": len(self.mysql_configs)
         }
 
 
