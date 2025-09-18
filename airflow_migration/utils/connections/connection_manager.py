@@ -13,12 +13,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 from utils.logs.logging_functions import get_logger
 import urllib
-
-
+import socket
 
 @dataclass
 class DatabaseConfig:
-    """Database configuration dataclass."""
+    """
+    Dataclass for storing database configuration parameters.
+    """
     host: str
     port: int
     database: str
@@ -27,33 +28,26 @@ class DatabaseConfig:
     driver: Optional[str] = None
     schema: Optional[str] = None
 
-
 class DatabaseConnectionManager:
     """
-    Manages database connections for MySQL sources and SQL Server warehouse.
-    Automatically switches between prod/dev based on git branch.
+    Handles connections to MySQL sources and SQL Server warehouse.
+    Automatically switches between production and development environments based on the current git branch.
     """
-    
     def __init__(self, hotfix_mode: bool = False, connection_timeout: int = 720):
         """
-        Initialize the connection manager.
+        Initializes the connection manager, loads environment variables, detects the current git branch,
+        and sets up database configurations.
         
         Args:
-            hotfix_mode: If True, always use production warehouse even in dev branches
-            connection_timeout: Connection timeout in seconds (default 12 minutes)
+            hotfix_mode: If True, always use production warehouse even on development branches.
+            connection_timeout: Connection timeout in seconds (default is 12 minutes).
         """
         self.logger = get_logger("db_connections")
         self.hotfix_mode = hotfix_mode
         self.connection_timeout = connection_timeout
-        
-        # Load environment variables
         self._load_environment()
-        
-        # Detect current branch
         self.current_branch = self._get_current_branch()
         self.is_production = self._is_production_branch()
-        
-        # Log environment detection
         self.logger.info(
             f"Environment detected",
             {
@@ -62,22 +56,19 @@ class DatabaseConnectionManager:
                 "hotfix_mode": self.hotfix_mode
             }
         )
-        
-        # Initialize connection pools
         self._mysql_engines: Dict[str, Engine] = {}
         self._sqlserver_engine: Optional[Engine] = None
-        
-        # Setup configurations
         self._setup_database_configs()
     
     def _load_environment(self):
-        """Load environment variables from .env file."""
+        """
+        Loads environment variables from a .env file if present, otherwise uses system environment variables.
+        """
         env_path = Path(__file__).parent / '.env'
         if env_path.exists():
             load_dotenv(env_path)
             self.logger.info("Environment variables loaded from .env file")
         else:
-            # Try loading from root directory
             root_env = Path.cwd() / '.env'
             if root_env.exists():
                 load_dotenv(root_env)
@@ -87,10 +78,7 @@ class DatabaseConnectionManager:
     
     def _get_current_branch(self) -> str:
         """
-        Get the current git branch.
-        
-        Returns:
-            Current branch name or 'unknown' if not in a git repository
+        Returns the current git branch name, or 'main' if not in a git repository.
         """
         try:
             result = subprocess.run(
@@ -99,7 +87,6 @@ class DatabaseConnectionManager:
                 text=True,
                 timeout=10
             )
-            
             if result.returncode == 0:
                 branch = result.stdout.strip()
                 self.logger.debug(f"Current git branch detected: {branch}")
@@ -107,62 +94,108 @@ class DatabaseConnectionManager:
             else:
                 self.logger.warning("Failed to get git branch, assuming production")
                 return "main"
-                
         except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
             self.logger.warning(f"Error detecting git branch", exception=e)
             return "unknown"
     
     def _is_production_branch(self) -> bool:
         """
-        Check if current branch is production.
-        
-        Returns:
-            True if current branch is main/master
+        Determines if the current branch is a production branch ('main' or 'master').
         """
         return self.current_branch.lower() in ['main', 'master']
     
-    def _setup_database_configs(self):
-        """Setup database configurations based on environment."""
+    def _is_local_environment(self) -> bool:
+        """
+        Checks if the code is running outside Docker by attempting to resolve 'host.docker.internal'.
+        Returns True if running locally (Mac/Windows), otherwise False.
+        """
         try:
-            # MySQL configurations - supports multiple sources including local Docker
+            import socket
+            socket.gethostbyname("host.docker.internal")
+            return True
+        except socket.error:
+            return False
+
+    def _is_running_in_docker(self) -> bool:
+        """
+        Determines if the code is running inside a Docker container using several detection methods.
+        """
+        try:
+            if os.path.exists('/.dockerenv'):
+                return True
+            if os.path.exists('/proc/1/cgroup'):
+                with open('/proc/1/cgroup', 'r') as f:
+                    content = f.read()
+                    if 'docker' in content or 'containerd' in content:
+                        return True
+            docker_env_vars = ['DOCKER_CONTAINER', 'CONTAINER', 'KUBERNETES_SERVICE_HOST']
+            if any(os.getenv(var) for var in docker_env_vars):
+                return True
+            return False
+        except Exception as e:
+            self.logger.warning(f"Error detecting Docker environment: {e}")
+            return False
+
+    def _resolve_mysql_host(self, configured_host: str) -> str:
+        """
+        Resolves the MySQL host based on the current environment.
+        Returns the appropriate host for connection.
+        """
+        if configured_host not in ['mysql-container', 'mysql', 'db']:
+            return configured_host
+        if self._is_running_in_docker():
+            self.logger.info(f"Running inside Docker, using container name: {configured_host}")
+            return configured_host
+        try:
+            socket.gethostbyname(configured_host)
+            self.logger.info(f"Container name {configured_host} resolved successfully")
+            return configured_host
+        except socket.gaierror:
+            self.logger.info(f"Container name {configured_host} not resolvable, using localhost")
+            return "localhost"
+    
+    def _setup_database_configs(self):
+        """
+        Sets up database configurations for MySQL sources and SQL Server warehouse
+        based on the current environment and available environment variables.
+        """
+        try:
             self.mysql_configs = {}
-            
-            # Airflow MySQL (for metadata or other operations)
             if all([os.getenv('MYSQL_HOST'), os.getenv('MYSQL_USER'), os.getenv('MYSQL_PASSWORD')]):
+                raw_host = os.getenv('MYSQL_HOST')
+                mysql_host = self._resolve_mysql_host(raw_host)
                 self.mysql_configs['airflow_mysql'] = DatabaseConfig(
-                    host=os.getenv('MYSQL_HOST'),
+                    host=mysql_host,
                     port=int(os.getenv('MYSQL_PORT', 3306)),
                     database=os.getenv('MYSQL_DATABASE'),
                     username=os.getenv('MYSQL_USER'),
                     password=os.getenv('MYSQL_PASSWORD')
                 )
-            
-            # Additional MySQL sources - dynamically discover from environment
             source_counter = 1
             while True:
                 host_key = f'MYSQL_SOURCE{source_counter}_HOST'
-                if not os.getenv(host_key):
+                raw_source_host = os.getenv(host_key)
+                if not raw_source_host:
                     break
-                
+                resolved_source_host = self._resolve_mysql_host(raw_source_host)
                 self.mysql_configs[f'mysql_source_{source_counter}'] = DatabaseConfig(
-                    host=os.getenv(host_key),
+                    host=resolved_source_host,
                     port=int(os.getenv(f'MYSQL_SOURCE{source_counter}_PORT', 3306)),
                     database=os.getenv(f'MYSQL_SOURCE{source_counter}_DATABASE'),
                     username=os.getenv(f'MYSQL_SOURCE{source_counter}_USER'),
                     password=os.getenv(f'MYSQL_SOURCE{source_counter}_PASSWORD')
                 )
                 source_counter += 1
-            
-            # SQL Server warehouse configuration - flexible schema handling
             self._setup_sqlserver_config()
-            
         except (ValueError, TypeError) as e:
             self.logger.error("Error setting up database configurations", exception=e)
             raise
     
     def _setup_sqlserver_config(self):
-        """Setup SQL Server configuration with intelligent schema selection."""
-        # Base SQL Server connection (same for prod and dev)
+        """
+        Sets up the SQL Server configuration, selecting the appropriate schema
+        based on the environment and hotfix mode.
+        """
         base_config = {
             'host': os.getenv('SQLSERVER_HOST'),
             'port': int(os.getenv('SQLSERVER_PORT', 1433)),
@@ -171,33 +204,23 @@ class DatabaseConnectionManager:
             'password': os.getenv('SQLSERVER_PASSWORD'),
             'driver': os.getenv('SQLSERVER_DRIVER', 'ODBC Driver 18 for SQL Server')
         }
-        
-        # Determine schema based on environment and hotfix mode
         if self.is_production or self.hotfix_mode:
-            # Production: use production schema or fallback to main schema
             schema = os.getenv('SQLSERVER_PROD_SCHEMA') or os.getenv('AIRFLOW_SCHEMA', 'dbo')
             env_type = "PRODUCTION"
         else:
-            # Development: prioritize dev schema, fallback to airflow schema, then dbo
             dev_schema = os.getenv('SQLSERVER_DEV_SCHEMA')
             airflow_schema = os.getenv('AIRFLOW_SCHEMA')
-            
             if dev_schema:
                 schema = dev_schema
             elif airflow_schema and airflow_schema != 'dbo':
-                # Use airflow schema if it's not the default dbo
                 schema = airflow_schema
             else:
-                # Fallback to a dev-specific schema or dbo
                 schema = 'dev_schema'
-            
             env_type = "DEVELOPMENT"
-        
         self.sqlserver_config = DatabaseConfig(
             schema=schema,
             **base_config
         )
-        
         self.logger.info(
             f"Using {env_type} SQL Server warehouse",
             {
@@ -210,52 +233,48 @@ class DatabaseConnectionManager:
     
     def _create_mysql_engine(self, source_name: str) -> Engine:
         """
-        Create MySQL engine with connection pooling.
+        Creates a SQLAlchemy engine for a MySQL source with connection pooling.
         
         Args:
-            source_name: Name of the MySQL source
+            source_name: Name of the MySQL source.
         
         Returns:
-            SQLAlchemy engine
+            SQLAlchemy engine instance.
         """
         config = self.mysql_configs.get(source_name)
         if not config:
             raise ValueError(f"MySQL source '{source_name}' not configured")
-        
         connection_string = (
             f"mysql+pymysql://{config.username}:{config.password}@"
             f"{config.host}:{config.port}/{config.database}"
         )
-        
         engine = create_engine(
             connection_string,
             poolclass=QueuePool,
             pool_size=5,
             max_overflow=10,
             pool_pre_ping=True,
-            pool_recycle=3600,  # Recycle connections every hour
+            pool_recycle=3600,
             connect_args={
                 'connect_timeout': 30,
                 'read_timeout': self.connection_timeout,
                 'write_timeout': self.connection_timeout
             }
         )
-        
         self.logger.info(
             f"MySQL engine created for source: {source_name}",
             {"host": config.host, "database": config.database}
         )
-        
         return engine
     
     def _create_sqlserver_engine(self) -> Engine:
         """
-        Create SQL Server engine with reliable ODBC connection string
-        (works in VSCode, scripts, and Airflow)
+        Creates a SQLAlchemy engine for SQL Server using a reliable ODBC connection string.
+        
+        Returns:
+            SQLAlchemy engine instance.
         """
         config = self.sqlserver_config
-
-        # Monta a string de conexão ODBC com URL encoding
         conn_str = (
             f"DRIVER={{ODBC Driver 18 for SQL Server}};"
             f"SERVER={config.host},{config.port};"
@@ -267,8 +286,6 @@ class DatabaseConnectionManager:
             f"Connection Timeout={self.connection_timeout};"
         )
         odbc_url = urllib.parse.quote_plus(conn_str)
-
-        # Cria engine SQLAlchemy
         engine = create_engine(
             f"mssql+pyodbc:///?odbc_connect={odbc_url}",
             poolclass=QueuePool,
@@ -277,7 +294,6 @@ class DatabaseConnectionManager:
             pool_pre_ping=True,
             pool_recycle=3600
         )
-
         self.logger.info(
             f"SQL Server engine created",
             {
@@ -287,64 +303,56 @@ class DatabaseConnectionManager:
                 "environment": "PROD" if (self.is_production or self.hotfix_mode) else "DEV"
             }
         )
-
         return engine
     
     def get_mysql_engine(self, source_name: str) -> Engine:
         """
-        Get MySQL engine for specified source.
+        Retrieves the SQLAlchemy engine for the specified MySQL source.
         
         Args:
-            source_name: Name of the MySQL source
+            source_name: Name of the MySQL source.
         
         Returns:
-            SQLAlchemy engine
+            SQLAlchemy engine instance.
         """
         if source_name not in self._mysql_engines:
             self._mysql_engines[source_name] = self._create_mysql_engine(source_name)
-        
         return self._mysql_engines[source_name]
     
     def get_sqlserver_engine(self) -> Engine:
         """
-        Get SQL Server engine.
+        Retrieves the SQLAlchemy engine for SQL Server.
         
         Returns:
-            SQLAlchemy engine
+            SQLAlchemy engine instance.
         """
         if self._sqlserver_engine is None:
             self._sqlserver_engine = self._create_sqlserver_engine()
-        
         return self._sqlserver_engine
     
     @contextmanager
     def mysql_connection(self, source_name: str) -> Generator[Connection, None, None]:
         """
-        Context manager for MySQL connections.
+        Context manager for establishing and closing a MySQL connection.
         
         Args:
-            source_name: Name of the MySQL source
+            source_name: Name of the MySQL source.
         
         Yields:
-            SQLAlchemy connection
+            SQLAlchemy connection object.
         """
         engine = self.get_mysql_engine(source_name)
         connection = None
-        
         try:
             start_time = time.time()
             connection = engine.connect()
-            
             self.logger.debug(f"MySQL connection established for source: {source_name}")
-            
             yield connection
-            
             execution_time = time.time() - start_time
             self.logger.debug(
                 f"MySQL connection closed for source: {source_name}",
                 {"execution_time_seconds": round(execution_time, 2)}
             )
-            
         except Exception as e:
             self.logger.error(
                 f"MySQL connection error for source: {source_name}",
@@ -358,28 +366,23 @@ class DatabaseConnectionManager:
     @contextmanager
     def sqlserver_connection(self) -> Generator[Connection, None, None]:
         """
-        Context manager for SQL Server connections.
+        Context manager for establishing and closing a SQL Server connection.
         
         Yields:
-            SQLAlchemy connection
+            SQLAlchemy connection object.
         """
         engine = self.get_sqlserver_engine()
         connection = None
-        
         try:
             start_time = time.time()
             connection = engine.connect()
-            
             self.logger.debug("SQL Server connection established")
-            
             yield connection
-            
             execution_time = time.time() - start_time
             self.logger.debug(
                 "SQL Server connection closed",
                 {"execution_time_seconds": round(execution_time, 2)}
             )
-            
         except Exception as e:
             self.logger.error("SQL Server connection error", exception=e)
             raise
@@ -389,22 +392,20 @@ class DatabaseConnectionManager:
     
     def test_mysql_connection(self, source_name: str) -> bool:
         """
-        Test MySQL connection health.
+        Tests the health of a MySQL connection by executing a simple query.
         
         Args:
-            source_name: Name of the MySQL source
+            source_name: Name of the MySQL source.
         
         Returns:
-            True if connection is healthy
+            True if the connection is healthy, False otherwise.
         """
         try:
             with self.mysql_connection(source_name) as conn:
                 result = conn.execute(text("SELECT 1"))
                 result.fetchone()
-                
             self.logger.info(f"MySQL connection test successful for source: {source_name}")
             return True
-            
         except Exception as e:
             self.logger.error(
                 f"MySQL connection test failed for source: {source_name}",
@@ -414,19 +415,17 @@ class DatabaseConnectionManager:
     
     def test_sqlserver_connection(self) -> bool:
         """
-        Test SQL Server connection health.
+        Tests the health of a SQL Server connection by executing a simple query.
         
         Returns:
-            True if connection is healthy
+            True if the connection is healthy, False otherwise.
         """
         try:
             with self.sqlserver_connection() as conn:
                 result = conn.execute(text("SELECT 1"))
                 result.fetchone()
-                
             self.logger.info("SQL Server connection test successful")
             return True
-            
         except Exception as e:
             self.logger.error("SQL Server connection test failed", exception=e)
             return False
@@ -439,43 +438,33 @@ class DatabaseConnectionManager:
         database: Optional[str] = None
     ) -> Any:
         """
-        Execute query on MySQL source with optional database specification.
+        Executes a SQL query on a MySQL source, optionally specifying a database.
         
         Args:
-            source_name: Name of the MySQL source
-            query: SQL query to execute
-            params: Query parameters
-            database: Optional database name (overrides config database)
+            source_name: Name of the MySQL source.
+            query: SQL query to execute.
+            params: Optional query parameters.
+            database: Optional database name to override the default.
         
         Returns:
-            Query result
+            Query result (rows for SELECT, affected row count for DML).
         """
         start_time = time.time()
-        
-        # Get the source config
         source_config = self.mysql_configs.get(source_name)
         if not source_config:
             raise ValueError(f"MySQL source '{source_name}' not found")
-        
         target_database = database or source_config.database
-        
         try:
             with self.mysql_connection(source_name) as conn:
-                # Set database context if different from default
                 if database and database != source_config.database:
                     conn.execute(text(f"USE `{database}`"))
-                
-                # Execute query
                 if params:
                     result = conn.execute(text(query), params)
                 else:
                     result = conn.execute(text(query))
-                
-                # Fetch results if it's a SELECT query
                 if query.strip().upper().startswith('SELECT'):
                     rows = result.fetchall()
                     execution_time = time.time() - start_time
-                    
                     self.logger.info(
                         f"MySQL query executed successfully",
                         {
@@ -488,12 +477,9 @@ class DatabaseConnectionManager:
                     )
                     return rows
                 else:
-                    # For INSERT, UPDATE, DELETE queries
                     affected_rows = result.rowcount
                     execution_time = time.time() - start_time
-                    
                     operation = query.strip().split()[0].upper()
-                    
                     self.logger.info(
                         f"MySQL query executed successfully",
                         {
@@ -505,7 +491,6 @@ class DatabaseConnectionManager:
                         }
                     )
                     return affected_rows
-                    
         except Exception as e:
             execution_time = time.time() - start_time
             self.logger.error(
@@ -528,28 +513,25 @@ class DatabaseConnectionManager:
         top_n: Optional[int] = None
     ) -> Any:
         """
-        Execute query on SQL Server using existing engine.
-
+        Executes a SQL query on SQL Server, optionally specifying schema and limiting results.
+        
         Args:
-            query: SQL query to execute
-            params: Query parameters
-            schema: Optional schema name
-            top_n: Limit for SELECT queries
-
+            query: SQL query to execute.
+            params: Optional query parameters.
+            schema: Optional schema name.
+            top_n: Optional limit for SELECT queries.
+        
         Returns:
-            Query result
+            Query result (rows for SELECT, affected row count for DML).
         """
         start_time = time.time()
         target_schema = schema or self.sqlserver_config.schema
-
         try:
             with self.sqlserver_connection() as conn:
                 safe_query = query
                 if top_n and query.strip().upper().startswith("SELECT"):
                     safe_query = query.replace("SELECT", f"SELECT TOP {top_n}", 1)
-
                 result = conn.execute(text(safe_query), params or {})
-
                 if query.strip().upper().startswith("SELECT"):
                     rows = result.fetchall()
                     execution_time = time.time() - start_time
@@ -579,7 +561,6 @@ class DatabaseConnectionManager:
                         }
                     )
                     return affected_rows
-
         except Exception as e:
             execution_time = time.time() - start_time
             self.logger.error(
@@ -596,10 +577,7 @@ class DatabaseConnectionManager:
     
     def get_connection_info(self) -> Dict[str, Any]:
         """
-        Get current connection configuration info.
-        
-        Returns:
-            Dictionary with connection information
+        Returns a dictionary containing the current connection configuration information.
         """
         return {
             "current_branch": self.current_branch,
@@ -614,18 +592,16 @@ class DatabaseConnectionManager:
             "mysql_sources_count": len(self.mysql_configs)
         }
 
-
-# Utility function to create database manager instance
 def get_db_manager(hotfix_mode: bool = False, connection_timeout: int = 720) -> DatabaseConnectionManager:
     """
-    Create and return a DatabaseConnectionManager instance.
+    Creates and returns a DatabaseConnectionManager instance.
     
     Args:
-        hotfix_mode: If True, use production warehouse even in dev branches
-        connection_timeout: Connection timeout in seconds
+        hotfix_mode: If True, use production warehouse even on development branches.
+        connection_timeout: Connection timeout in seconds.
     
     Returns:
-        DatabaseConnectionManager instance
+        DatabaseConnectionManager instance.
     """
     return DatabaseConnectionManager(
         hotfix_mode=hotfix_mode,
