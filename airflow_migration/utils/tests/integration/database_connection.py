@@ -16,16 +16,16 @@ Includes both unit tests (with mocks) and integration tests (real connections)
 
 Usage:
     # Run all tests
-    python -m pytest utils/tests/test_database_connections.py -v
+    python -m pytest utils/tests/integration/database_connection.py -v
 
     # Run only unit tests
-    python -m pytest utils/tests/test_database_connections.py::TestDatabaseConnectionManagerUnit -v
+    python -m pytest utils/tests/integration/database_connection.py::TestDatabaseConnectionManagerUnit -v
 
     # Run only integration tests
-    python -m pytest utils/tests/test_database_connections.py::TestDatabaseConnectionManagerIntegration -v
+    python -m pytest utils/tests/integration/database_connection.py::TestDatabaseConnectionManagerIntegration -v
 
     # Run as script for manual testing
-    python utils/tests/test_database_connections.py
+    python utils/tests/integration/database_connection.py
 """
 
 from utils.connections.connection_manager import (
