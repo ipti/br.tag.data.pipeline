@@ -1,0 +1,834 @@
+import os
+import yaml
+import pandas as pd
+from typing import Optional, Dict, Any, List, Union, Tuple
+from datetime import datetime, timedelta
+from pathlib import Path
+from dataclasses import dataclass, field
+from sqlalchemy import text, MetaData, Table, inspect
+from sqlalchemy.engine import Connection
+from contextlib import contextmanager
+import hashlib
+
+from .connection_manager import DatabaseConnectionManager, get_db_manager
+from utils.logs.logging_functions import get_logger
+
+
+@dataclass
+class TableMapping:
+    """
+    Configuration for table column mapping between source and target.
+    """
+    source_columns: Optional[Dict[str, str]] = None
+    target_columns: Optional[List[str]] = None
+    column_transformations: Optional[Dict[str, str]] = None
+    where_clause: Optional[str] = None
+
+
+@dataclass
+class IncrementalConfig:
+    """
+    Configuration for incremental loading.
+    """
+    source_timestamp_column: str
+    target_timestamp_column: str
+    lookback_hours: int = 24
+    batch_size: int = 10000
+    full_refresh: bool = False
+
+
+@dataclass
+class UpsertConfig:
+    """
+    Configuration for UPSERT operations defining which columns to use for matching records.
+    """
+    source_key_columns: List[str]
+    target_key_columns: Optional[List[str]] = None
+    
+    def __post_init__(self):
+        """If target_key_columns not specified, use same names as source_key_columns"""
+        if self.target_key_columns is None:
+            self.target_key_columns = self.source_key_columns.copy()
+
+
+@dataclass
+class LoadResult:
+    """
+    Result information from load operations.
+    """
+    success: bool
+    rows_processed: int = 0
+    rows_inserted: int = 0
+    rows_updated: int = 0
+    execution_time_seconds: float = 0.0
+    error_message: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+class CopyAndLoader:
+    """
+    Handles batch and incremental data loading between MySQL sources and SQL Server warehouse.
+    Integrates with dbt source configurations for SQL Server schema management.
+    """
+
+    def __init__(self, db_manager: Optional[DatabaseConnectionManager] = None):
+        """
+        Initialize the copy and loader with database connection manager.
+        
+        Args:
+            db_manager: Optional database connection manager. If None, creates a new instance.
+        """
+        self.logger = get_logger("copy_and_loader")
+        self.db_manager = db_manager or get_db_manager()
+        self.dbt_sources_config = self._load_dbt_sources_config()
+        
+        self._schema_cache: Dict[str, Dict[str, Any]] = {}
+        
+        self.logger.info("CopyAndLoader initialized", {
+            "environment": self.db_manager.get_connection_info()["environment_type"],
+            "sqlserver_schema": self.db_manager.sqlserver_config.schema,
+            "dbt_sources_loaded": len(self.dbt_sources_config) > 0
+        })
+
+    def _load_dbt_sources_config(self) -> Dict[str, Any]:
+        """
+        Load dbt sources configuration from YAML file.
+        
+        Returns:
+            Dictionary containing dbt sources configuration.
+        """
+        try:
+            dbt_sources_path = Path("dbt/models/sources/dbo_tia.yml")
+            
+            if not dbt_sources_path.exists():
+                alternative_paths = [
+                    Path.cwd() / "dbt/models/sources/dbo_tia.yml",
+                    Path(__file__).parent.parent / "dbt/models/sources/dbo_tia.yml"
+                ]
+                
+                for path in alternative_paths:
+                    if path.exists():
+                        dbt_sources_path = path
+                        break
+                else:
+                    self.logger.warning(
+                        "dbt sources configuration file not found",
+                        {"searched_paths": [str(p) for p in [dbt_sources_path] + alternative_paths]}
+                    )
+                    return {}
+            
+            with open(dbt_sources_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+                
+            self.logger.info(
+                "dbt sources configuration loaded successfully",
+                {"config_file": str(dbt_sources_path)}
+            )
+            return config
+            
+        except Exception as e:
+            self.logger.error(
+                "Failed to load dbt sources configuration",
+                exception=e
+            )
+            return {}
+
+    def _get_table_schema(self, connection: Connection, table_name: str, 
+                         schema: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get table schema information with caching.
+        
+        Args:
+            connection: Database connection
+            table_name: Name of the table
+            schema: Optional schema name
+            
+        Returns:
+            Dictionary with table schema information
+        """
+        cache_key = f"{schema or 'default'}.{table_name}"
+        
+        if cache_key in self._schema_cache:
+            return self._schema_cache[cache_key]
+        
+        try:
+            inspector = inspect(connection)
+            columns = inspector.get_columns(table_name, schema=schema)
+            
+            schema_info = {
+                'columns': {col['name']: col for col in columns},
+                'column_names': [col['name'] for col in columns],
+                'primary_keys': inspector.get_pk_constraint(table_name, schema=schema)['constrained_columns']
+            }
+            
+            self._schema_cache[cache_key] = schema_info
+            return schema_info
+            
+        except Exception as e:
+            self.logger.error(
+                "Failed to get table schema",
+                exception=e,
+                extra_data={"table": table_name, "schema": schema}
+            )
+            return {'columns': {}, 'column_names': [], 'primary_keys': []}
+
+    def _get_dbt_table_config(self, table_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get table configuration from dbt sources.
+        
+        Args:
+            table_name: Name of the table
+            
+        Returns:
+            Table configuration dictionary or None if not found
+        """
+        try:
+            if not self.dbt_sources_config or 'sources' not in self.dbt_sources_config:
+                return None
+            
+            for source in self.dbt_sources_config['sources']:
+                if 'tables' in source:
+                    for table in source['tables']:
+                        if table['name'] == table_name:
+                            return table
+            return None
+            
+        except Exception as e:
+            self.logger.error(
+                "Error retrieving dbt table configuration",
+                exception=e,
+                extra_data={"table_name": table_name}
+            )
+            return None
+
+    def _build_select_query(self, source_table: str, table_mapping: Optional[TableMapping] = None,
+                           incremental_config: Optional[IncrementalConfig] = None,
+                           last_timestamp: Optional[datetime] = None) -> str:
+        """
+        Build SELECT query for source data extraction.
+        
+        Args:
+            source_table: Source table name
+            table_mapping: Optional column mapping configuration
+            incremental_config: Optional incremental loading configuration
+            last_timestamp: Last timestamp for incremental loading
+            
+        Returns:
+            SQL SELECT query string
+        """
+        if table_mapping and table_mapping.source_columns:
+            columns = []
+            for source_col, target_col in table_mapping.source_columns.items():
+                if table_mapping.column_transformations and source_col in table_mapping.column_transformations:
+                    transformation = table_mapping.column_transformations[source_col]
+                    columns.append(f"{transformation} AS {target_col}")
+                else:
+                    columns.append(f"{source_col} AS {target_col}")
+            select_clause = ", ".join(columns)
+        else:
+            select_clause = "*"
+        
+        query = f"SELECT {select_clause} FROM {source_table}"
+        
+        where_conditions = []
+        
+        if table_mapping and table_mapping.where_clause:
+            where_conditions.append(table_mapping.where_clause)
+        
+        if incremental_config and last_timestamp:
+            safe_timestamp = last_timestamp - timedelta(hours=incremental_config.lookback_hours)
+            timestamp_condition = f"{incremental_config.source_timestamp_column} > '{safe_timestamp.strftime('%Y-%m-%d %H:%M:%S')}'"
+            where_conditions.append(timestamp_condition)
+        
+        if where_conditions:
+            query += " WHERE " + " AND ".join(where_conditions)
+        
+        if incremental_config:
+            query += f" ORDER BY {incremental_config.source_timestamp_column}"
+        
+        return query
+
+    def _get_last_timestamp(self, target_table: str, timestamp_column: str, 
+                           schema: Optional[str] = None) -> Optional[datetime]:
+        """
+        Get the last timestamp from target table for incremental loading.
+        
+        Args:
+            target_table: Target table name
+            timestamp_column: Timestamp column name
+            schema: Optional schema name
+            
+        Returns:
+            Last timestamp or None if table is empty
+        """
+        try:
+            target_schema = schema or self.db_manager.sqlserver_config.schema
+            query = f"""
+                SELECT MAX({timestamp_column}) as max_timestamp 
+                FROM {target_schema}.{target_table}
+            """
+            
+            result = self.db_manager.execute_sqlserver_query(query, top_n=1)
+            
+            if result and len(result) > 0 and result[0][0]:
+                last_timestamp = result[0][0]
+                self.logger.info(
+                    "Retrieved last timestamp from target table",
+                    {
+                        "table": f"{target_schema}.{target_table}",
+                        "last_timestamp": str(last_timestamp),
+                        "timestamp_column": timestamp_column
+                    }
+                )
+                return last_timestamp
+            else:
+                self.logger.info(
+                    "No data found in target table, will perform full load",
+                    {"table": f"{target_schema}.{target_table}"}
+                )
+                return None
+                
+        except Exception as e:
+            self.logger.warning(
+                "Could not retrieve last timestamp, performing full load",
+                exception=e,
+                extra_data={"table": target_table, "column": timestamp_column}
+            )
+            return None
+
+    def _perform_upsert(self, df: pd.DataFrame, target_table: str, 
+                       upsert_config: UpsertConfig, schema: str, 
+                       table_mapping: Optional[TableMapping] = None,
+                       connection: Optional[Connection] = None) -> Tuple[int, int]:
+        """
+        Perform UPSERT operation using SQL Server MERGE statement.
+        
+        This method creates a temporary table with the new data and uses SQL Server's MERGE
+        statement to either UPDATE existing records or INSERT new ones based on the key columns
+        defined in upsert_config.
+        
+        Args:
+            df: DataFrame with data to upsert
+            target_table: Target table name
+            upsert_config: Configuration specifying source and target key columns for matching
+            schema: Target schema name
+            table_mapping: Optional column mapping between source and target
+            connection: Optional database connection (if None, creates new one)
+            
+        Returns:
+            Tuple of (rows_inserted, rows_updated)
+        """
+        if df.empty:
+            return 0, 0
+        
+        temp_table = f"#{target_table}_temp_{hashlib.md5(str(datetime.now()).encode()).hexdigest()[:8]}"
+        
+        should_close_conn = connection is None
+        if connection is None:
+            engine = self.db_manager.get_sqlserver_engine()
+            connection = engine.connect()
+        
+        try:
+            create_temp_sql = f"""
+            SELECT TOP 0 * 
+            INTO {temp_table}
+            FROM {schema}.{target_table}
+            """
+            connection.execute(text(create_temp_sql))
+            
+            df.to_sql(
+                temp_table.replace('#', ''), 
+                connection, 
+                if_exists='append', 
+                index=False,
+                method='multi'
+            )
+            
+            all_columns = df.columns.tolist()
+            
+            source_key_cols = upsert_config.source_key_columns
+            target_key_cols = upsert_config.target_key_columns
+            
+            if table_mapping and table_mapping.source_columns:
+                mapped_source_keys = []
+                mapped_target_keys = []
+                for i, source_key in enumerate(source_key_cols):
+                    if source_key in table_mapping.source_columns:
+                        mapped_source_keys.append(table_mapping.source_columns[source_key])
+                        mapped_target_keys.append(target_key_cols[i])
+                    else:
+                        mapped_source_keys.append(source_key)
+                        mapped_target_keys.append(target_key_cols[i])
+                
+                actual_source_keys = mapped_source_keys
+                actual_target_keys = mapped_target_keys
+            else:
+                actual_source_keys = source_key_cols
+                actual_target_keys = target_key_cols
+            
+            join_conditions = []
+            for source_col, target_col in zip(actual_source_keys, actual_target_keys):
+                join_conditions.append(f"target.{target_col} = source.{source_col}")
+            join_condition = " AND ".join(join_conditions)
+            
+            non_key_columns = [col for col in all_columns if col not in actual_source_keys]
+            
+            update_assignments = []
+            for col in non_key_columns:
+                update_assignments.append(f"{col} = source.{col}")
+            update_clause = ", ".join(update_assignments) if update_assignments else "dummy_column = dummy_column"
+            
+            insert_columns = ", ".join(all_columns)
+            insert_values = ", ".join([f"source.{col}" for col in all_columns])
+            
+            merge_sql = f"""
+            MERGE {schema}.{target_table} AS target
+            USING {temp_table} AS source
+            ON {join_condition}
+            WHEN MATCHED THEN
+                UPDATE SET {update_clause}
+            WHEN NOT MATCHED THEN
+                INSERT ({insert_columns})
+                VALUES ({insert_values})
+            OUTPUT $action;
+            """
+            
+            result = connection.execute(text(merge_sql))
+            
+            rows_inserted = 0
+            rows_updated = 0
+            
+            for row in result:
+                action = row[0]
+                if action == 'INSERT':
+                    rows_inserted += 1
+                elif action == 'UPDATE':
+                    rows_updated += 1
+            
+            self.logger.info(
+                "UPSERT operation completed",
+                {
+                    "target_table": f"{schema}.{target_table}",
+                    "source_key_columns": source_key_cols,
+                    "target_key_columns": target_key_cols,
+                    "rows_inserted": rows_inserted,
+                    "rows_updated": rows_updated,
+                    "total_rows_processed": len(df)
+                }
+            )
+            
+            return rows_inserted, rows_updated
+            
+        except Exception as e:
+            self.logger.error(
+                "UPSERT operation failed",
+                exception=e,
+                extra_data={
+                    "target_table": f"{schema}.{target_table}",
+                    "source_key_columns": source_key_cols,
+                    "target_key_columns": target_key_cols,
+                    "rows_in_batch": len(df)
+                }
+            )
+            raise
+        finally:
+            try:
+                connection.execute(text(f"DROP TABLE IF EXISTS {temp_table}"))
+            except:
+                pass
+            
+            if should_close_conn:
+                connection.close()
+
+    def incremental_load(
+        self,
+        source_name: str,
+        source_table: Optional[str],
+        target_table: str,
+        incremental_config: IncrementalConfig,
+        table_mapping: Optional[TableMapping] = None,
+        target_schema: Optional[str] = None,
+        upsert_config: Optional[UpsertConfig] = None,
+        source_query: Optional[str] = None
+    ) -> LoadResult:
+        """
+        Performs incremental data loading from a MySQL source table to a SQL Server target table.
+
+        This method supports both full and incremental loads, using a timestamp column to filter new records.
+        It can also process custom queries and perform upsert operations if configured.
+        Data is loaded in batches for efficiency, and detailed logging is provided for each step.
+
+        Args:
+            source_name (str): Name of the MySQL source connection.
+            source_table (Optional[str]): Name of the source table in MySQL. Required unless using source_query.
+            target_table (str): Name of the target table in SQL Server.
+            incremental_config (IncrementalConfig): Configuration for incremental loading (timestamp column, batch size, etc).
+            table_mapping (Optional[TableMapping]): Optional mapping between source and target columns.
+            target_schema (Optional[str]): Optional schema name for the target table in SQL Server.
+            upsert_config (Optional[UpsertConfig]): Optional configuration for upsert (merge) operations.
+            source_query (Optional[str]): Optional custom SQL query to extract source data. If provided, source_table is ignored.
+
+        Returns:
+            LoadResult: Object containing details about the load operation (success, rows processed, inserted, updated, execution time, errors).
+
+        Example:
+            >>> loader = get_copy_loader()
+            >>> inc_config = IncrementalConfig(
+            ...     source_timestamp_column="updated_at",
+            ...     target_timestamp_column="updated_at",
+            ...     lookback_hours=24,
+            ...     batch_size=10000,
+            ...     full_refresh=False
+            ... )
+            >>> result = loader.incremental_load(
+            ...     source_name="airflow_mysql",
+            ...     source_table="users",
+            ...     target_table="users",
+            ...     incremental_config=inc_config
+            ... )
+"""
+        start_time = datetime.now()
+        result = LoadResult(success=False)
+        
+        try:
+            schema = target_schema or self.db_manager.sqlserver_config.schema
+            
+            self.logger.info(
+                "Starting incremental load operation",
+                {
+                    "source_name": source_name,
+                    "source_table": source_table,
+                    "target_table": f"{schema}.{target_table}",
+                    "source_timestamp_column": incremental_config.source_timestamp_column,
+                    "target_timestamp_column": incremental_config.target_timestamp_column,
+                    "full_refresh": incremental_config.full_refresh,
+                    "batch_size": incremental_config.batch_size,
+                    "upsert_enabled": upsert_config is not None,
+                    "upsert_source_keys": upsert_config.source_key_columns if upsert_config else None,
+                    "upsert_target_keys": upsert_config.target_key_columns if upsert_config else None,
+                    "custom_query": bool(source_query)
+                }
+            )
+
+            last_timestamp = None
+            if not incremental_config.full_refresh and not source_query:
+                last_timestamp = self._get_last_timestamp(
+                    target_table, incremental_config.target_timestamp_column, schema
+                )
+
+            if source_query:
+                if not incremental_config.full_refresh:
+                    self.logger.warning(
+                        "Incremental filter not applied automatically for custom query. "
+                        "Make sure to include your own WHERE clause using the timestamp column."
+                    )
+                query = source_query
+            else:
+                if not source_table:
+                    raise ValueError("source_table must be provided if not using source_query")
+                query = self._build_select_query(
+                    source_table, table_mapping, incremental_config, last_timestamp
+                )
+
+            source_data = self.db_manager.execute_mysql_query(source_name, query)
+
+            if not source_data:
+                self.logger.info("No new data found for incremental load")
+                result.success = True
+                result.rows_processed = 0
+                return result
+
+            total_rows = len(source_data)
+            result.rows_processed = total_rows
+
+            if table_mapping and table_mapping.target_columns:
+                columns = table_mapping.target_columns
+            else:
+                with self.db_manager.mysql_connection(source_name) as conn:
+                    temp_result = conn.execute(text(f"SELECT * FROM {source_table} LIMIT 1"))
+                    columns = list(temp_result.keys())
+
+            df = pd.DataFrame(source_data, columns=columns)
+            batch_size = incremental_config.batch_size
+            engine = self.db_manager.get_sqlserver_engine()
+            total_inserted = 0
+            total_updated = 0
+
+            for i in range(0, len(df), batch_size):
+                batch_df = df.iloc[i:i + batch_size]
+                
+                if upsert_config:
+                    inserted, updated = self._process_upsert_batch(
+                        batch_df, target_table, upsert_config, schema, table_mapping
+                    )
+                    total_inserted += inserted
+                    total_updated += updated
+                else:
+                    batch_df.to_sql(
+                        target_table,
+                        engine,
+                        schema=schema,
+                        if_exists='append',
+                        index=False,
+                        method='multi'
+                    )
+                    total_inserted += len(batch_df)
+
+                self.logger.debug(f"Processed batch {i//batch_size + 1}, rows: {len(batch_df)}")
+
+            result.rows_inserted = total_inserted
+            result.rows_updated = total_updated
+            result.success = True
+            execution_time = (datetime.now() - start_time).total_seconds()
+            result.execution_time_seconds = execution_time
+
+            self.logger.info(
+                "Incremental load completed successfully",
+                {
+                    "source_name": source_name,
+                    "source_table": source_table,
+                    "target_table": f"{schema}.{target_table}",
+                    "rows_processed": result.rows_processed,
+                    "rows_inserted": result.rows_inserted,
+                    "rows_updated": result.rows_updated,
+                    "execution_time_seconds": round(execution_time, 2),
+                    "batches_processed": (total_rows // batch_size) + 1
+                }
+            )
+
+        except Exception as e:
+            execution_time = (datetime.now() - start_time).total_seconds()
+            result.execution_time_seconds = execution_time
+            result.error_message = str(e)
+            
+            self.logger.error(
+                "Incremental load failed",
+                exception=e,
+                extra_data={
+                    "source_name": source_name,
+                    "source_table": source_table,
+                    "target_table": target_table,
+                    "execution_time_seconds": round(execution_time, 2)
+                }
+            )
+
+        return result
+    
+    def batch_loader(
+        self,
+        source_type: str,
+        source_schema: str,
+        source_table: str,
+        target_schema: str,
+        target_table: str,
+        source_name: Optional[str] = None,
+        table_mapping: Optional[TableMapping] = None,
+        chunk_size: int = 10000,
+        if_exists: str = "append",
+    ) -> LoadResult:
+        """
+        Generic batch loader to move data from MySQL or SQL Server into SQL Server.
+
+        This function fetches data from the source (MySQL or SQL Server) and loads it into a
+        SQL Server target table. The target table is created automatically if it does not exist,
+        based on inferred data types. Note that constraints, primary keys, and indexes are not
+        automatically created.
+
+        Args:
+            source_type: "mysql" or "sqlserver".
+            source_schema: Source schema (used only for SQL Server sources).
+            source_table: Source table name.
+            target_schema: Destination schema in SQL Server.
+            target_table: Destination table in SQL Server.
+            source_name: MySQL source name (required if source_type="mysql").
+            table_mapping: Optional TableMapping object to transform columns or apply where clauses.
+            chunk_size: Number of rows per insert batch.
+            if_exists: Behavior if target table exists: "append", "replace", or "fail".
+
+        Returns:
+            LoadResult: Contains success status, rows processed/inserted, execution time, and error message if any.
+        """
+        start_time = datetime.now()
+        result = LoadResult(success=False)
+
+        try:
+            # Construir query de origem
+            if source_type.lower() == "sqlserver":
+                query = f"SELECT * FROM {source_schema}.{source_table}"
+            elif source_type.lower() == "mysql":
+                query = f"SELECT * FROM {source_table}"  
+            else:
+                raise ValueError(f"Unsupported source_type: {source_type}")
+
+            source_data = self.db_manager.fetch_data(
+                source_type=source_type,
+                query=query,
+                source_name=source_name,
+                schema=source_schema if source_type == "sqlserver" else None,
+            )
+
+            if not source_data:
+                self.logger.info(
+                    "Batch load concluído: Nenhum dado encontrado na tabela origem",
+                    {"source": f"{source_schema}.{source_table}", "target": f"{target_schema}.{target_table}"}
+                )
+                result.success = True
+                result.rows_processed = 0
+                result.execution_time_seconds = (datetime.now() - start_time).total_seconds()
+                return result
+
+            columns = list(source_data[0].keys())
+            df = pd.DataFrame(source_data, columns=columns)
+            result.rows_processed = len(df)
+
+            if table_mapping and hasattr(table_mapping, "transform"):
+                df = table_mapping.transform(df)
+
+            engine = self.db_manager.get_sqlserver_engine()
+            df.to_sql(
+                target_table,
+                engine,
+                schema=target_schema,
+                if_exists=if_exists,
+                index=False,
+                chunksize=chunk_size,
+                method="multi",
+            )
+
+            result.rows_inserted = result.rows_processed
+            result.success = True
+            execution_time = (datetime.now() - start_time).total_seconds()
+            result.execution_time_seconds = execution_time
+
+            self.logger.info(
+                "Batch load concluído com sucesso",
+                {
+                    "source_type": source_type,
+                    "source": f"{source_schema}.{source_table}",
+                    "target": f"{target_schema}.{target_table}",
+                    "rows_processed": result.rows_processed,
+                    "rows_inserted": result.rows_inserted,
+                    "execution_time_seconds": round(execution_time, 2),
+                    "query_preview": query[:100] + "..." if len(query) > 100 else query
+                },
+            )
+
+        except Exception as e:
+            execution_time = (datetime.now() - start_time).total_seconds()
+            result.error_message = str(e)
+            result.execution_time_seconds = execution_time
+            self.logger.error(
+                "Batch load falhou",
+                exception=e,
+                extra_data={
+                    "source_type": source_type,
+                    "source": f"{source_schema}.{source_table}",
+                    "target": f"{target_schema}.{target_table}",
+                    "rows_processed": result.rows_processed,
+                    "execution_time_seconds": round(execution_time, 2),
+                    "query_preview": query[:100] + "..." if len(query) > 100 else query
+                }
+            )
+
+        return result
+
+
+    def validate_table_compatibility(self, source_name: str, source_table: str,
+                                   target_table: str, table_mapping: Optional[TableMapping] = None,
+                                   target_schema: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Validate compatibility between source and target tables.
+        
+        Args:
+            source_name: MySQL source name
+            source_table: Source table name
+            target_table: Target table name
+            table_mapping: Optional column mapping
+            target_schema: Optional target schema
+            
+        Returns:
+            Dictionary with validation results
+        """
+        try:
+            validation_result = {
+                "compatible": False,
+                "issues": [],
+                "recommendations": [],
+                "source_columns": [],
+                "target_columns": [],
+                "mapping_coverage": 0.0
+            }
+            
+            with self.db_manager.mysql_connection(source_name) as source_conn:
+                source_schema = self._get_table_schema(source_conn, source_table)
+                validation_result["source_columns"] = source_schema["column_names"]
+            
+            schema = target_schema or self.db_manager.sqlserver_config.schema
+            with self.db_manager.sqlserver_connection() as target_conn:
+                target_schema_info = self._get_table_schema(target_conn, target_table, schema)
+                validation_result["target_columns"] = target_schema_info["column_names"]
+            
+            if table_mapping and table_mapping.source_columns:
+                missing_source = set(table_mapping.source_columns.keys()) - set(source_schema["column_names"])
+                if missing_source:
+                    validation_result["issues"].append(f"Missing source columns: {list(missing_source)}")
+                
+                missing_target = set(table_mapping.source_columns.values()) - set(target_schema_info["column_names"])
+                if missing_target:
+                    validation_result["issues"].append(f"Missing target columns: {list(missing_target)}")
+                
+                validation_result["mapping_coverage"] = len(table_mapping.source_columns) / len(source_schema["column_names"])
+            else:
+                common_columns = set(source_schema["column_names"]).intersection(set(target_schema_info["column_names"]))
+                validation_result["mapping_coverage"] = len(common_columns) / len(source_schema["column_names"])
+                
+                if validation_result["mapping_coverage"] < 0.5:
+                    validation_result["issues"].append("Low column compatibility - consider explicit mapping")
+            
+            validation_result["compatible"] = len(validation_result["issues"]) == 0
+            
+            if not validation_result["compatible"]:
+                validation_result["recommendations"].append("Review column mappings and data types")
+                validation_result["recommendations"].append("Consider using TableMapping to handle differences")
+            
+            self.logger.info(
+                "Table compatibility validation completed",
+                {
+                    "source_table": source_table,
+                    "target_table": f"{schema}.{target_table}",
+                    "compatible": validation_result["compatible"],
+                    "mapping_coverage": round(validation_result["mapping_coverage"], 2),
+                    "issues_count": len(validation_result["issues"])
+                }
+            )
+            
+            return validation_result
+            
+        except Exception as e:
+            self.logger.error(
+                "Table compatibility validation failed",
+                exception=e,
+                extra_data={"source_table": source_table, "target_table": target_table}
+            )
+            return {
+                "compatible": False,
+                "issues": [f"Validation error: {str(e)}"],
+                "recommendations": ["Fix validation errors before proceeding"],
+                "source_columns": [],
+                "target_columns": [],
+                "mapping_coverage": 0.0
+            }
+
+
+
+def get_copy_loader(db_manager: Optional[DatabaseConnectionManager] = None) -> CopyAndLoader:
+    """
+    Factory function to create CopyAndLoader instance.
+    
+    Args:
+        db_manager: Optional database connection manager
+        
+    Returns:
+        CopyAndLoader instance
+    """
+    return CopyAndLoader(db_manager)
