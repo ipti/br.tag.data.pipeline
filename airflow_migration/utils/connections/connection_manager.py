@@ -615,6 +615,67 @@ class DatabaseConnectionManager:
             "mysql_sources": list(self.mysql_configs.keys()),
             "mysql_sources_count": len(self.mysql_configs),
         }
+    
+    def fetch_data(
+        self,
+        source_type: str,
+        query: str,
+        source_name: Optional[str] = None,
+        params: Optional[Dict[str, Any]] = None,
+        database: Optional[str] = None,
+        schema: Optional[str] = None,
+        top_n: Optional[int] = None,
+    ):
+        """
+        Fetch data from either MySQL or SQL Server.
+
+        Args:
+            source_type: "mysql" or "sqlserver".
+            query: SQL query to execute.
+            source_name: MySQL source name (ignored if sqlserver).
+            params: Optional query parameters.
+            database: Optional override database (MySQL only).
+            schema: Optional schema (SQL Server only).
+            top_n: Optional limit for SELECT queries (SQL Server only).
+
+        Returns:
+            List of rows (dict-like objects).
+        """
+        if source_type.lower() == "mysql":
+            if not source_name:
+                raise ValueError("For MySQL, 'source_name' must be provided.")
+            return self.execute_mysql_query(
+                source_name=source_name,
+                query=query,
+                params=params,
+                database=database,
+            )
+        elif source_type.lower() == "sqlserver":
+            return self.execute_sqlserver_query(
+                query=query,
+                params=params,
+                schema=schema,
+                top_n=top_n,
+            )
+        else:
+            raise ValueError(f"Unsupported source_type: {source_type}")
+
+    @contextmanager
+    def get_connection(self, source_type: str, source_name: Optional[str] = None):
+        """
+        Generic context manager to open connection to MySQL or SQL Server.
+        """
+        if source_type.lower() == "mysql":
+            if not source_name:
+                raise ValueError("For MySQL, 'source_name' must be provided.")
+            with self.mysql_connection(source_name) as conn:
+                yield conn
+        elif source_type.lower() == "sqlserver":
+            with self.sqlserver_connection() as conn:
+                yield conn
+        else:
+            raise ValueError(f"Unsupported source_type: {source_type}")
+
 
 
 def get_db_manager(
