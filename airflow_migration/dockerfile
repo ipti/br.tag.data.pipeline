@@ -1,9 +1,7 @@
-# Start from the official Airflow image
 FROM apache/airflow:3.0.0
-# Switch to root to install system dependencies
+
 USER root
-# Install Microsoft ODBC Driver for SQL Server dependencies AND MySQL client
-# This is more reliable than freetds
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        curl \
@@ -14,18 +12,17 @@ RUN apt-get update \
        default-mysql-client \
        libmysqlclient-dev \
        pkg-config \
+       git \
     && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
     && curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
 
-# Switch back to the airflow user
 USER airflow
 
 # Set environment variable to locate the driver
 ENV ODBC_DRIVER_18_FOR_SQL_SERVER=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.1.so.1.1
 
-# Copy requirements file and install Python packages
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
