@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from utils.connections.copy_and_loader import (
+from utils.connections.writer import (
     CopyAndLoader,
     LoadResult,
     IncrementalConfig,
