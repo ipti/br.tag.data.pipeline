@@ -11,7 +11,7 @@ from contextlib import contextmanager
 import hashlib
 
 from .connection_manager import DatabaseConnectionManager, get_db_manager
-from utils.logs.logging_functions import get_logger
+from airflow_migration.utils.logs.logging_functions import get_logger
 
 
 @dataclass
@@ -80,7 +80,7 @@ class CopyAndLoader:
             db_manager: Optional database connection manager. If None, creates a new instance.
             dbt_config_file: Optional path to dbt sources config file. If None, defaults to 'dbo_tia.yml'
         """
-        self.logger = get_logger("copy_and_loader")
+        self.logger = get_logger("writer")
         self.db_manager = db_manager or get_db_manager()
         self.dbt_config_file = dbt_config_file or "dbo_tia.yml"
         self.dbt_sources_config = self._load_dbt_sources_config()
@@ -95,47 +95,32 @@ class CopyAndLoader:
         })
 
     def _load_dbt_sources_config(self) -> Dict[str, Any]:
-        """
-        Load dbt sources configuration from YAML file.
-        
-        Returns:
-            Dictionary containing dbt sources configuration.
-        """
         try:
-            dbt_sources_path = Path(f"dbt/models/sources/{self.dbt_config_file}")
-            
+            project_root = Path(__file__).resolve().parent.parent.parent
+            dbt_sources_path = project_root / "dbt/models/sources" / self.dbt_config_file
+
             if not dbt_sources_path.exists():
-                alternative_paths = [
-                    Path.cwd() / f"dbt/models/sources/{self.dbt_config_file}",
-                    Path(__file__).parent.parent / f"dbt/models/sources/{self.dbt_config_file}"
-                ]
-                
-                for path in alternative_paths:
-                    if path.exists():
-                        dbt_sources_path = path
-                        break
-                else:
-                    self.logger.warning(
-                        "dbt sources configuration file not found",
-                        {
-                            "config_file": self.dbt_config_file,
-                            "searched_paths": [str(p) for p in [dbt_sources_path] + alternative_paths]
-                        }
-                    )
-                    return {}
-            
-            with open(dbt_sources_path, 'r', encoding='utf-8') as f:
+                self.logger.warning(
+                    "dbt sources configuration file not found",
+                    {
+                        "config_file": self.dbt_config_file,
+                        "searched_path": str(dbt_sources_path)
+                    }
+                )
+                return {}
+
+            with open(dbt_sources_path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
-                
+
             self.logger.info(
                 "dbt sources configuration loaded successfully",
                 {
                     "config_file": str(dbt_sources_path),
-                    "sources_found": len(config.get('sources', []))
+                    "sources_found": len(config.get("sources", []))
                 }
             )
             return config
-            
+
         except Exception as e:
             self.logger.error(
                 "Failed to load dbt sources configuration",
@@ -143,6 +128,7 @@ class CopyAndLoader:
                 extra_data={"config_file": self.dbt_config_file}
             )
             return {}
+
 
     def load_additional_dbt_config(self, config_file: str) -> Dict[str, Any]:
         """
@@ -417,6 +403,30 @@ class CopyAndLoader:
                 extra_data={"table": target_table, "column": timestamp_column}
             )
             return None
+        
+    def _insert_dataframe_direct(self, df: pd.DataFrame, target_table: str, schema: str) -> int:
+        """
+        Insere DataFrame usando SQL direto, evitando problemas do pandas to_sql()
+        """
+        if df.empty:
+            return 0
+        
+        # Preparar SQL INSERT
+        columns = list(df.columns)
+        columns_str = ', '.join(f"[{col}]" for col in columns)
+        placeholders = ', '.join([':' + col for col in columns])
+        
+        sql = f"INSERT INTO [{schema}].[{target_table}] ({columns_str}) VALUES ({placeholders})"
+        
+        # Converter DataFrame para lista de dicionários
+        records = df.to_dict('records')
+        
+        # Usar sua engine que já funciona
+        engine = self.db_manager.get_sqlserver_engine()
+        
+        with engine.begin() as conn:
+            result = conn.execute(text(sql), records)
+            return len(records)
 
     def _perform_upsert(self, df: pd.DataFrame, target_table: str, 
                        upsert_config: UpsertConfig, schema: str, 
@@ -442,15 +452,16 @@ class CopyAndLoader:
         """
         if df.empty:
             return 0, 0
-        
+
         temp_table = f"#{target_table}_temp_{hashlib.md5(str(datetime.now()).encode()).hexdigest()[:8]}"
-        
+
         should_close_conn = connection is None
         if connection is None:
             engine = self.db_manager.get_sqlserver_engine()
-            connection = engine.connect()
-        
+            connection = engine.begin()  
+
         try:
+            # Criar temp table
             create_temp_sql = f"""
             SELECT TOP 0 * 
             INTO {temp_table}
@@ -458,12 +469,12 @@ class CopyAndLoader:
             """
             connection.execute(text(create_temp_sql))
             
-            df.to_sql(
+            self._insert_dataframe_direct(
+                df, 
                 temp_table.replace('#', ''), 
-                connection, 
-                if_exists='append', 
-                index=False,
-                method='multi'
+                '', 
+                connection,
+                chunk_size=2000  
             )
             
             all_columns = df.columns.tolist()
@@ -575,40 +586,24 @@ class CopyAndLoader:
     ) -> LoadResult:
         """
         Performs incremental data loading from a MySQL source table to a SQL Server target table.
-
-        This method supports both full and incremental loads, using a timestamp column to filter new records.
-        It can also process custom queries and perform upsert operations if configured.
-        Data is loaded in batches for efficiency, and detailed logging is provided for each step.
-
+        
+        Now supports automatic timestamp injection in custom queries using placeholders:
+        - {last_timestamp} - Gets replaced with the actual last timestamp from target
+        - {safe_timestamp} - Gets replaced with last_timestamp minus lookback_hours
+        
         Args:
             source_name (str): Name of the MySQL source connection.
             source_table (Optional[str]): Name of the source table in MySQL. Required unless using source_query.
             target_table (str): Name of the target table in SQL Server.
-            incremental_config (IncrementalConfig): Configuration for incremental loading (timestamp column, batch size, etc).
+            incremental_config (IncrementalConfig): Configuration for incremental loading.
             table_mapping (Optional[TableMapping]): Optional mapping between source and target columns.
             target_schema (Optional[str]): Optional schema name for the target table in SQL Server.
-            upsert_config (Optional[UpsertConfig]): Optional configuration for upsert (merge) operations.
-            source_query (Optional[str]): Optional custom SQL query to extract source data. If provided, source_table is ignored.
-
+            upsert_config (Optional[UpsertConfig]): Optional configuration for upsert operations.
+            source_query (Optional[str]): Optional custom SQL query. Can use {last_timestamp} and {safe_timestamp} placeholders.
+        
         Returns:
-            LoadResult: Object containing details about the load operation (success, rows processed, inserted, updated, execution time, errors).
-
-        Example:
-            >>> loader = get_copy_loader()
-            >>> inc_config = IncrementalConfig(
-            ...     source_timestamp_column="updated_at",
-            ...     target_timestamp_column="updated_at",
-            ...     lookback_hours=24,
-            ...     batch_size=10000,
-            ...     full_refresh=False
-            ... )
-            >>> result = loader.incremental_load(
-            ...     source_name="airflow_mysql",
-            ...     source_table="users",
-            ...     target_table="users",
-            ...     incremental_config=inc_config
-            ... )
-"""
+            LoadResult: Object containing details about the load operation.
+        """
         start_time = datetime.now()
         result = LoadResult(success=False)
         
@@ -626,25 +621,45 @@ class CopyAndLoader:
                     "full_refresh": incremental_config.full_refresh,
                     "batch_size": incremental_config.batch_size,
                     "upsert_enabled": upsert_config is not None,
-                    "upsert_source_keys": upsert_config.source_key_columns if upsert_config else None,
-                    "upsert_target_keys": upsert_config.target_key_columns if upsert_config else None,
                     "custom_query": bool(source_query)
                 }
             )
 
+            # SEMPRE buscar o último timestamp (mesmo com source_query)
             last_timestamp = None
-            if not incremental_config.full_refresh and not source_query:
+            safe_timestamp = None
+            
+            if not incremental_config.full_refresh:
                 last_timestamp = self._get_last_timestamp(
                     target_table, incremental_config.target_timestamp_column, schema
                 )
-
-            if source_query:
-                if not incremental_config.full_refresh:
-                    self.logger.warning(
-                        "Incremental filter not applied automatically for custom query. "
-                        "Make sure to include your own WHERE clause using the timestamp column."
+                
+                # Calcular timestamp seguro (com lookback)
+                if last_timestamp:
+                    safe_timestamp = last_timestamp - timedelta(hours=incremental_config.lookback_hours)
+                    
+                    self.logger.info(
+                        "Timestamp information retrieved",
+                        {
+                            "last_timestamp": str(last_timestamp),
+                            "safe_timestamp": str(safe_timestamp),
+                            "lookback_hours": incremental_config.lookback_hours
+                        }
                     )
-                query = source_query
+                else:
+                    # Primeira execução - usar timestamp muito antigo
+                    safe_timestamp = datetime(1900, 1, 1)
+                    self.logger.info("First execution detected - will fetch all records")
+
+            # Construir ou processar a query
+            if source_query:
+                # Processar placeholders na query customizada
+                query = self._process_query_placeholders(
+                    source_query, 
+                    last_timestamp, 
+                    safe_timestamp, 
+                    incremental_config.full_refresh
+                )
             else:
                 if not source_table:
                     raise ValueError("source_table must be provided if not using source_query")
@@ -652,49 +667,45 @@ class CopyAndLoader:
                     source_table, table_mapping, incremental_config, last_timestamp
                 )
 
+            self.logger.debug("Executing query", {"query_preview": query[:200] + "..." if len(query) > 200 else query})
+
+            # Executar query no source
             source_data = self.db_manager.execute_mysql_query(source_name, query)
 
             if not source_data:
                 self.logger.info("No new data found for incremental load")
                 result.success = True
                 result.rows_processed = 0
+                result.execution_time_seconds = (datetime.now() - start_time).total_seconds()
                 return result
 
             total_rows = len(source_data)
             result.rows_processed = total_rows
 
+            # Determinar colunas
             if table_mapping and table_mapping.target_columns:
                 columns = table_mapping.target_columns
             else:
-                with self.db_manager.mysql_connection(source_name) as conn:
-                    temp_result = conn.execute(text(f"SELECT * FROM {source_table} LIMIT 1"))
-                    columns = list(temp_result.keys())
+                columns = list(source_data[0].keys())
 
             df = pd.DataFrame(source_data, columns=columns)
             batch_size = incremental_config.batch_size
-            engine = self.db_manager.get_sqlserver_engine()
             total_inserted = 0
             total_updated = 0
 
+            # Processar em lotes
             for i in range(0, len(df), batch_size):
                 batch_df = df.iloc[i:i + batch_size]
                 
                 if upsert_config:
-                    inserted, updated = self._process_upsert_batch(
+                    inserted, updated = self._perform_upsert(
                         batch_df, target_table, upsert_config, schema, table_mapping
                     )
                     total_inserted += inserted
                     total_updated += updated
                 else:
-                    batch_df.to_sql(
-                        target_table,
-                        engine,
-                        schema=schema,
-                        if_exists='append',
-                        index=False,
-                        method='multi'
-                    )
-                    total_inserted += len(batch_df)
+                    batch_inserted = self._insert_dataframe_direct(batch_df, target_table, schema)
+                    total_inserted += batch_inserted
 
                 self.logger.debug(f"Processed batch {i//batch_size + 1}, rows: {len(batch_df)}")
 
@@ -735,6 +746,65 @@ class CopyAndLoader:
             )
 
         return result
+
+
+    def _process_query_placeholders(
+        self, 
+        source_query: str, 
+        last_timestamp: Optional[datetime],
+        safe_timestamp: Optional[datetime],
+        full_refresh: bool
+    ) -> str:
+        """
+        Process placeholders in custom source query with simple value replacement.
+        
+        Available placeholders:
+        - {last_timestamp} - Exact last timestamp from target table or default
+        - {safe_timestamp} - Last timestamp minus lookback hours or default
+        - {default_timestamp} - Always '1900-01-01 00:00:00'
+        
+        Args:
+            source_query: The custom SQL query with placeholders
+            last_timestamp: Last timestamp from target table (None if table empty/doesn't exist)
+            safe_timestamp: Safe timestamp (with lookback applied)
+            full_refresh: Whether this is a full refresh
+            
+        Returns:
+            Processed query with placeholders replaced by actual timestamp values
+        """
+        # Definir valores dos placeholders
+        if full_refresh or last_timestamp is None:
+            # Full refresh OU primeira execução (tabela vazia/inexistente)
+            last_ts_str = '1900-01-01 00:00:00'
+            safe_ts_str = '1900-01-01 00:00:00'
+            execution_mode = "full_refresh" if full_refresh else "first_execution"
+        else:
+            # Execução incremental normal
+            last_ts_str = last_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            safe_ts_str = safe_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            execution_mode = "incremental"
+        
+        # Substituição simples de placeholders
+        processed_query = source_query.replace(
+            "{last_timestamp}", f"'{last_ts_str}'"
+        ).replace(
+            "{safe_timestamp}", f"'{safe_ts_str}'"
+        ).replace(
+            "{default_timestamp}", "'1900-01-01 00:00:00'"
+        )
+        
+        self.logger.debug(
+            "Query placeholders replaced",
+            {
+                "execution_mode": execution_mode,
+                "last_timestamp_replaced": last_ts_str,
+                "safe_timestamp_replaced": safe_ts_str,
+                "original_last_timestamp": last_timestamp,
+                "query_preview": processed_query[:200] + "..." if len(processed_query) > 200 else processed_query
+            }
+        )
+        
+        return processed_query
     
     def batch_loader(
         self,
@@ -807,15 +877,10 @@ class CopyAndLoader:
                 df = table_mapping.transform(df)
 
             engine = self.db_manager.get_sqlserver_engine()
-            df.to_sql(
-                target_table,
-                engine,
-                schema=target_schema,
-                if_exists=if_exists,
-                index=False,
-                chunksize=chunk_size,
-                method="multi",
-            )
+            with engine.begin() as conn:
+                for i in range(0, len(df), chunk_size):
+                    chunk_df = df.iloc[i:i + chunk_size]
+                    self._insert_dataframe_direct(chunk_df, target_table, schema, conn)  # Reutiliza mesma conexão
 
             result.rows_inserted = result.rows_processed
             result.success = True
