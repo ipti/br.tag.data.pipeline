@@ -404,34 +404,82 @@ class CopyAndLoader:
             )
             return None
         
-    def _insert_dataframe_direct(self, df: pd.DataFrame, target_table: str, schema: str) -> int:
-        """
-        Insere DataFrame usando SQL direto, evitando problemas do pandas to_sql()
-        """
-        if df.empty:
-            return 0
-        
-        # Preparar SQL INSERT
-        columns = list(df.columns)
-        columns_str = ', '.join(f"[{col}]" for col in columns)
-        placeholders = ', '.join([':' + col for col in columns])
-        
-        sql = f"INSERT INTO [{schema}].[{target_table}] ({columns_str}) VALUES ({placeholders})"
-        
-        # Converter DataFrame para lista de dicionários
-        records = df.to_dict('records')
-        
-        # Usar sua engine que já funciona
-        engine = self.db_manager.get_sqlserver_engine()
-        
-        with engine.begin() as conn:
-            result = conn.execute(text(sql), records)
-            return len(records)
+    def _insert_dataframe_direct(self, df: pd.DataFrame, target_table: str, schema: str, connection=None) -> int:
+            """
+            Inserts a pandas DataFrame directly into a SQL Server table.
+
+            This method builds an INSERT statement using the DataFrame columns and inserts all rows.
+            If the target table is a temporary table (name starts with '#'), schema is ignored.
+            Returns the number of rows inserted.
+
+            Args:
+                df (pd.DataFrame): DataFrame containing the data to insert.
+                target_table (str): Name of the target table in SQL Server.
+                schema (str): Target schema name (ignored for temp tables).
+                connection: Optional SQLAlchemy Connection object. If None, a new connection is created.
+
+            Returns:
+                int: Number of rows inserted.
+
+            Example:
+                If df contains:
+                    | id | name |
+                    |----|------|
+                    | 1  | John |
+                    | 2  | Jane |
+                and target_table is "users", the function will insert both rows into [schema].[users].
+            """
+            if df.empty:
+                self.logger.info(
+                    "No data to insert - DataFrame is empty",
+                    {"target_table": target_table, "schema": schema}
+                )
+                return 0
+
+            columns = list(df.columns)
+            columns_str = ', '.join(f"[{col}]" for col in columns)
+            placeholders = ', '.join([':' + col for col in columns])
+
+            if target_table.startswith('#'):
+                table_ref = target_table
+            elif schema and schema.strip():
+                table_ref = f"[{schema}].[{target_table}]"
+            else:
+                table_ref = f"[{target_table}]"
+
+            sql = f"INSERT INTO {table_ref} ({columns_str}) VALUES ({placeholders})"
+            records = df.to_dict('records')
+
+            self.logger.info(
+                "Inserting DataFrame into table",
+                {
+                    "target_table": table_ref,
+                    "rows_to_insert": len(records),
+                    "columns": columns
+                }
+            )
+
+            if connection:
+                result = connection.execute(text(sql), records)
+                self.logger.info(
+                    "Insert completed using provided connection",
+                    {"rows_inserted": len(records)}
+                )
+                return len(records)
+            else:
+                engine = self.db_manager.get_sqlserver_engine()
+                with engine.begin() as conn:
+                    result = conn.execute(text(sql), records)
+                    self.logger.info(
+                        "Insert completed using new connection",
+                        {"rows_inserted": len(records)}
+                    )
+                    return len(records)
 
     def _perform_upsert(self, df: pd.DataFrame, target_table: str, 
-                       upsert_config: UpsertConfig, schema: str, 
-                       table_mapping: Optional[TableMapping] = None,
-                       connection: Optional[Connection] = None) -> Tuple[int, int]:
+                    upsert_config: UpsertConfig, schema: str, 
+                    table_mapping: Optional[TableMapping] = None,
+                    connection: Optional[Connection] = None) -> Tuple[int, int]:
         """
         Perform UPSERT operation using SQL Server MERGE statement.
         
@@ -453,125 +501,178 @@ class CopyAndLoader:
         if df.empty:
             return 0, 0
 
-        temp_table = f"#{target_table}_temp_{hashlib.md5(str(datetime.now()).encode()).hexdigest()[:8]}"
-
-        should_close_conn = connection is None
         if connection is None:
             engine = self.db_manager.get_sqlserver_engine()
-            connection = engine.begin()  
+            
+            with engine.begin() as conn:
+                return self._execute_upsert_with_connection(
+                    conn, df, target_table, upsert_config, schema, table_mapping
+                )
+        else:
+            return self._execute_upsert_with_connection(
+                conn, df, target_table, upsert_config, schema, table_mapping
+            )
 
-        try:
-            # Criar temp table
-            create_temp_sql = f"""
-            SELECT TOP 0 * 
-            INTO {temp_table}
-            FROM {schema}.{target_table}
+
+
+    def _execute_upsert_with_connection(self, connection, df: pd.DataFrame, target_table: str,
+                                            upsert_config: UpsertConfig, schema: str,
+                                            table_mapping: Optional[TableMapping] = None) -> Tuple[int, int]:
             """
-            connection.execute(text(create_temp_sql))
-            
-            self._insert_dataframe_direct(
-                df, 
-                temp_table.replace('#', ''), 
-                '', 
-                connection,
-                chunk_size=2000  
-            )
-            
-            all_columns = df.columns.tolist()
-            
-            source_key_cols = upsert_config.source_key_columns
-            target_key_cols = upsert_config.target_key_columns
-            
-            if table_mapping and table_mapping.source_columns:
-                mapped_source_keys = []
-                mapped_target_keys = []
-                for i, source_key in enumerate(source_key_cols):
-                    if source_key in table_mapping.source_columns:
-                        mapped_source_keys.append(table_mapping.source_columns[source_key])
-                        mapped_target_keys.append(target_key_cols[i])
-                    else:
-                        mapped_source_keys.append(source_key)
-                        mapped_target_keys.append(target_key_cols[i])
-                
-                actual_source_keys = mapped_source_keys
-                actual_target_keys = mapped_target_keys
-            else:
-                actual_source_keys = source_key_cols
-                actual_target_keys = target_key_cols
-            
-            join_conditions = []
-            for source_col, target_col in zip(actual_source_keys, actual_target_keys):
-                join_conditions.append(f"target.{target_col} = source.{source_col}")
-            join_condition = " AND ".join(join_conditions)
-            
-            non_key_columns = [col for col in all_columns if col not in actual_source_keys]
-            
-            update_assignments = []
-            for col in non_key_columns:
-                update_assignments.append(f"{col} = source.{col}")
-            update_clause = ", ".join(update_assignments) if update_assignments else "dummy_column = dummy_column"
-            
-            insert_columns = ", ".join(all_columns)
-            insert_values = ", ".join([f"source.{col}" for col in all_columns])
-            
-            merge_sql = f"""
-            MERGE {schema}.{target_table} AS target
-            USING {temp_table} AS source
-            ON {join_condition}
-            WHEN MATCHED THEN
-                UPDATE SET {update_clause}
-            WHEN NOT MATCHED THEN
-                INSERT ({insert_columns})
-                VALUES ({insert_values})
-            OUTPUT $action;
+            Executes the UPSERT (MERGE) operation in SQL Server using a provided connection.
+
+            This method creates a temporary table with the new data, then performs a MERGE statement
+            to update existing records or insert new ones based on the key columns defined in upsert_config.
+            After the operation, the temporary table is dropped.
+
+            Args:
+                connection: SQLAlchemy Connection object to SQL Server.
+                df (pd.DataFrame): DataFrame containing the data to upsert.
+                target_table (str): Name of the target table in SQL Server.
+                upsert_config (UpsertConfig): Configuration specifying source and target key columns for matching.
+                schema (str): Target schema name.
+                table_mapping (Optional[TableMapping]): Optional mapping between source and target columns.
+
+            Returns:
+                Tuple[int, int]: Number of rows inserted and updated, respectively.
+
+            Example:
+                Suppose df contains:
+                    | id | name | updated_at |
+                    |----|------|------------|
+                    | 1  | John | 2024-01-01 |
+                    | 2  | Jane | 2024-01-02 |
+
+                And upsert_config specifies 'id' as the key column.
+                The function will:
+                    1. Create a temp table with the same structure as target_table.
+                    2. Insert df into the temp table.
+                    3. Run a MERGE statement to update rows in target_table where id matches,
+                    or insert new rows if id does not exist.
+                    4. Return (rows_inserted, rows_updated).
             """
+            if df.empty:
+                self.logger.info(
+                    "No data to upsert - DataFrame is empty",
+                    {"target_table": target_table, "schema": schema}
+                )
+                return 0, 0
+
+            temp_table = f"{target_table}_temp_{hashlib.md5(str(datetime.now()).encode()).hexdigest()[:8]}"
             
-            result = connection.execute(text(merge_sql))
-            
-            rows_inserted = 0
-            rows_updated = 0
-            
-            for row in result:
-                action = row[0]
-                if action == 'INSERT':
-                    rows_inserted += 1
-                elif action == 'UPDATE':
-                    rows_updated += 1
-            
-            self.logger.info(
-                "UPSERT operation completed",
-                {
-                    "target_table": f"{schema}.{target_table}",
-                    "source_key_columns": source_key_cols,
-                    "target_key_columns": target_key_cols,
-                    "rows_inserted": rows_inserted,
-                    "rows_updated": rows_updated,
-                    "total_rows_processed": len(df)
-                }
-            )
-            
-            return rows_inserted, rows_updated
-            
-        except Exception as e:
-            self.logger.error(
-                "UPSERT operation failed",
-                exception=e,
-                extra_data={
-                    "target_table": f"{schema}.{target_table}",
-                    "source_key_columns": source_key_cols,
-                    "target_key_columns": target_key_cols,
-                    "rows_in_batch": len(df)
-                }
-            )
-            raise
-        finally:
             try:
-                connection.execute(text(f"DROP TABLE IF EXISTS {temp_table}"))
-            except:
-                pass
-            
-            if should_close_conn:
-                connection.close()
+                connection.execute(text("SET LOCK_TIMEOUT 30000"))
+                self.logger.info(
+                    "Creating temporary table for upsert",
+                    {"temp_table": temp_table, "target_table": target_table}
+                )
+                create_temp_sql = f"""
+                SELECT TOP 0 *
+                INTO #{temp_table}
+                FROM {schema}.{target_table}
+                """
+                connection.execute(text(create_temp_sql))
+                
+                self._insert_dataframe_direct(df, f"#{temp_table}", "", connection)
+                self.logger.info(
+                    "Inserted data into temporary table",
+                    {"temp_table": temp_table, "rows": len(df)}
+                )
+                
+                all_columns = df.columns.tolist()
+                source_key_cols = upsert_config.source_key_columns
+                target_key_cols = upsert_config.target_key_columns
+
+                if table_mapping and table_mapping.source_columns:
+                    mapped_source_keys = []
+                    mapped_target_keys = []
+                    for i, source_key in enumerate(source_key_cols):
+                        if source_key in table_mapping.source_columns:
+                            mapped_source_keys.append(table_mapping.source_columns[source_key])
+                            mapped_target_keys.append(target_key_cols[i])
+                        else:
+                            mapped_source_keys.append(source_key)
+                            mapped_target_keys.append(target_key_cols[i])
+                    actual_source_keys = mapped_source_keys
+                    actual_target_keys = mapped_target_keys
+                else:
+                    actual_source_keys = source_key_cols
+                    actual_target_keys = target_key_cols
+
+                join_conditions = []
+                for source_col, target_col in zip(actual_source_keys, actual_target_keys):
+                    join_conditions.append(f"target.[{target_col}] = source.[{source_col}]")
+                join_condition = " AND ".join(join_conditions)
+
+                self.logger.info(
+                    "Preparing MERGE statement for upsert",
+                    {
+                        "target_table": target_table,
+                        "merge_keys": actual_target_keys,
+                        "source_keys": actual_source_keys,
+                        "non_key_columns": [col for col in all_columns if col not in actual_source_keys]
+                    }
+                )
+
+                non_key_columns = [col for col in all_columns if col not in actual_source_keys]
+                
+                if non_key_columns:
+                    update_assignments = []
+                    for col in non_key_columns:
+                        update_assignments.append(f"[{col}] = source.[{col}]")
+                    update_clause = ", ".join(update_assignments)
+                else:
+                    update_clause = f"[{actual_target_keys[0]}] = source.[{actual_source_keys[0]}]"
+
+                insert_columns = ", ".join([f"[{col}]" for col in all_columns])
+                insert_values = ", ".join([f"source.[{col}]" for col in all_columns])
+
+                merge_sql = f"""
+                MERGE {schema}.{target_table} AS target
+                USING #{temp_table} AS source
+                ON {join_condition}
+                WHEN MATCHED THEN
+                    UPDATE SET {update_clause}
+                WHEN NOT MATCHED THEN
+                    INSERT ({insert_columns})
+                    VALUES ({insert_values})
+                OUTPUT $action;
+                """
+                
+                self.logger.info(
+                    "Executing MERGE statement",
+                    {"merge_sql_preview": merge_sql[:200] + "..." if len(merge_sql) > 200 else merge_sql}
+                )
+
+                result = connection.execute(text(merge_sql))
+                
+                actions = list(result)
+                rows_inserted = sum(1 for row in actions if row[0] == 'INSERT')
+                rows_updated = sum(1 for row in actions if row[0] == 'UPDATE')
+
+                self.logger.info(
+                    "Upsert completed",
+                    {
+                        "rows_inserted": rows_inserted,
+                        "rows_updated": rows_updated,
+                        "target_table": target_table
+                    }
+                )
+                
+                return rows_inserted, rows_updated
+                
+            finally:
+                try:
+                    connection.execute(text(f"DROP TABLE IF EXISTS #{temp_table}"))
+                    self.logger.info(
+                        "Temporary table dropped after upsert",
+                        {"temp_table": temp_table}
+                    )
+                except Exception as e:
+                    self.logger.warning(
+                        "Failed to drop temporary table after upsert",
+                        {"temp_table": temp_table, "error": str(e)}
+                    )
 
     def incremental_load(
         self,
@@ -625,7 +726,6 @@ class CopyAndLoader:
                 }
             )
 
-            # SEMPRE buscar o último timestamp (mesmo com source_query)
             last_timestamp = None
             safe_timestamp = None
             
@@ -634,7 +734,6 @@ class CopyAndLoader:
                     target_table, incremental_config.target_timestamp_column, schema
                 )
                 
-                # Calcular timestamp seguro (com lookback)
                 if last_timestamp:
                     safe_timestamp = last_timestamp - timedelta(hours=incremental_config.lookback_hours)
                     
@@ -647,18 +746,16 @@ class CopyAndLoader:
                         }
                     )
                 else:
-                    # Primeira execução - usar timestamp muito antigo
                     safe_timestamp = datetime(1900, 1, 1)
                     self.logger.info("First execution detected - will fetch all records")
 
-            # Construir ou processar a query
             if source_query:
-                # Processar placeholders na query customizada
                 query = self._process_query_placeholders(
                     source_query, 
                     last_timestamp, 
                     safe_timestamp, 
-                    incremental_config.full_refresh
+                    incremental_config.full_refresh,
+                    incremental_config.source_timestamp_column
                 )
             else:
                 if not source_table:
@@ -669,7 +766,6 @@ class CopyAndLoader:
 
             self.logger.debug("Executing query", {"query_preview": query[:200] + "..." if len(query) > 200 else query})
 
-            # Executar query no source
             source_data = self.db_manager.execute_mysql_query(source_name, query)
 
             if not source_data:
@@ -682,7 +778,6 @@ class CopyAndLoader:
             total_rows = len(source_data)
             result.rows_processed = total_rows
 
-            # Determinar colunas
             if table_mapping and table_mapping.target_columns:
                 columns = table_mapping.target_columns
             else:
@@ -693,7 +788,6 @@ class CopyAndLoader:
             total_inserted = 0
             total_updated = 0
 
-            # Processar em lotes
             for i in range(0, len(df), batch_size):
                 batch_df = df.iloc[i:i + batch_size]
                 
@@ -753,56 +847,52 @@ class CopyAndLoader:
         source_query: str, 
         last_timestamp: Optional[datetime],
         safe_timestamp: Optional[datetime],
-        full_refresh: bool
+        full_refresh: bool,
+        source_timestamp_column: str
     ) -> str:
         """
-        Process placeholders in custom source query with simple value replacement.
-        
-        Available placeholders:
-        - {last_timestamp} - Exact last timestamp from target table or default
-        - {safe_timestamp} - Last timestamp minus lookback hours or default
-        - {default_timestamp} - Always '1900-01-01 00:00:00'
-        
+        Replaces timestamp placeholders in a custom SQL query for incremental loads.
+
+        This function supports two placeholders:
+        - {safe_timestamp}: Replaced with the safe timestamp string (last_timestamp minus lookback_hours, or '1900-01-01 00:00:00' for full refresh/first execution).
+        - {last_timestamp}: (Not currently used, but can be added for future needs.)
+
+        If this is the first execution (no last_timestamp) and not a full refresh, it also modifies the WHERE clause to include records where the timestamp column is NULL.
+
         Args:
-            source_query: The custom SQL query with placeholders
-            last_timestamp: Last timestamp from target table (None if table empty/doesn't exist)
-            safe_timestamp: Safe timestamp (with lookback applied)
-            full_refresh: Whether this is a full refresh
-            
+            source_query (str): The custom SQL query containing placeholders.
+            last_timestamp (Optional[datetime]): The last timestamp found in the target table.
+            safe_timestamp (Optional[datetime]): The safe timestamp for incremental loading.
+            full_refresh (bool): If True, performs a full refresh (loads all records).
+            source_timestamp_column (str): The name of the timestamp column in the source table.
+
         Returns:
-            Processed query with placeholders replaced by actual timestamp values
+            str: The processed query with placeholders replaced.
+
+        Example:
+            If source_query is:
+                "SELECT * FROM users WHERE (updated_at > '{safe_timestamp}')"
+            and this is the first execution (no last_timestamp, not full_refresh),
+            the result will be:
+                "SELECT * FROM users WHERE (updated_at > '1900-01-01 00:00:00' OR updated_at IS NULL)"
         """
-        # Definir valores dos placeholders
-        if full_refresh or last_timestamp is None:
-            # Full refresh OU primeira execução (tabela vazia/inexistente)
-            last_ts_str = '1900-01-01 00:00:00'
+        is_first_execution = last_timestamp is None
+        
+        if full_refresh or is_first_execution:
             safe_ts_str = '1900-01-01 00:00:00'
             execution_mode = "full_refresh" if full_refresh else "first_execution"
         else:
-            # Execução incremental normal
-            last_ts_str = last_timestamp.strftime('%Y-%m-%d %H:%M:%S')
             safe_ts_str = safe_timestamp.strftime('%Y-%m-%d %H:%M:%S')
             execution_mode = "incremental"
         
-        # Substituição simples de placeholders
         processed_query = source_query.replace(
-            "{last_timestamp}", f"'{last_ts_str}'"
-        ).replace(
             "{safe_timestamp}", f"'{safe_ts_str}'"
-        ).replace(
-            "{default_timestamp}", "'1900-01-01 00:00:00'"
         )
         
-        self.logger.debug(
-            "Query placeholders replaced",
-            {
-                "execution_mode": execution_mode,
-                "last_timestamp_replaced": last_ts_str,
-                "safe_timestamp_replaced": safe_ts_str,
-                "original_last_timestamp": last_timestamp,
-                "query_preview": processed_query[:200] + "..." if len(processed_query) > 200 else processed_query
-            }
-        )
+        if is_first_execution and not full_refresh:
+            old_where = f"WHERE ({source_timestamp_column} > '{safe_ts_str}')"
+            new_where = f"WHERE ({source_timestamp_column} > '{safe_ts_str}' OR {source_timestamp_column} IS NULL)"
+            processed_query = processed_query.replace(old_where, new_where)
         
         return processed_query
     
@@ -880,7 +970,7 @@ class CopyAndLoader:
             with engine.begin() as conn:
                 for i in range(0, len(df), chunk_size):
                     chunk_df = df.iloc[i:i + chunk_size]
-                    self._insert_dataframe_direct(chunk_df, target_table, schema, conn)  # Reutiliza mesma conexão
+                    self._insert_dataframe_direct(chunk_df, target_table, target_schema, conn)  
 
             result.rows_inserted = result.rows_processed
             result.success = True
