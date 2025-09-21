@@ -11,9 +11,11 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from dotenv import load_dotenv
-from utils.logs.logging_functions import get_logger
+from airflow_migration.utils.logs.logging_functions import get_logger
 import urllib
 import socket
+from dotenv import load_dotenv, find_dotenv
+
 
 
 @dataclass
@@ -65,22 +67,17 @@ class DatabaseConnectionManager:
         self._setup_database_configs()
 
     def _load_environment(self):
-        """
-        Loads environment variables from a .env file if present, otherwise uses system environment variables.
-        """
-        env_path = Path(__file__).parent / ".env"
+        root_path = Path(__file__).parents[2]  
+        env_path = root_path / ".env"
+        
         if env_path.exists():
             load_dotenv(env_path)
-            self.logger.info("Environment variables loaded from .env file")
+            self.logger.info(f"Environment variables loaded from {env_path}")
         else:
-            root_env = Path.cwd() / ".env"
-            if root_env.exists():
-                load_dotenv(root_env)
-                self.logger.info("Environment variables loaded from root .env file")
-            else:
-                self.logger.warning(
-                    "No .env file found, using system environment variables"
-                )
+            self.logger.warning("No .env file found, using system environment variables")
+
+
+
 
     def _get_current_branch(self) -> str:
         """
