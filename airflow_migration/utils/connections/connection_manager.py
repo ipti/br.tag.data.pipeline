@@ -17,7 +17,6 @@ import socket
 from dotenv import load_dotenv, find_dotenv
 
 
-
 @dataclass
 class DatabaseConfig:
     """
@@ -67,17 +66,16 @@ class DatabaseConnectionManager:
         self._setup_database_configs()
 
     def _load_environment(self):
-        root_path = Path(__file__).parents[2]  
+        root_path = Path(__file__).parents[2]
         env_path = root_path / ".env"
-        
+
         if env_path.exists():
             load_dotenv(env_path)
             self.logger.info(f"Environment variables loaded from {env_path}")
         else:
-            self.logger.warning("No .env file found, using system environment variables")
-
-
-
+            self.logger.warning(
+                "No .env file found, using system environment variables"
+            )
 
     def _get_current_branch(self) -> str:
         """
@@ -612,7 +610,7 @@ class DatabaseConnectionManager:
             "mysql_sources": list(self.mysql_configs.keys()),
             "mysql_sources_count": len(self.mysql_configs),
         }
-    
+
     def fetch_data(
         self,
         source_type: str,
@@ -672,7 +670,6 @@ class DatabaseConnectionManager:
                 yield conn
         else:
             raise ValueError(f"Unsupported source_type: {source_type}")
-
 
 
 def get_db_manager(

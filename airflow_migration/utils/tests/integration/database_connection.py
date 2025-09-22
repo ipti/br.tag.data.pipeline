@@ -7,7 +7,7 @@ from sqlalchemy.exc import OperationalError, DatabaseError
 import tempfile
 import socket
 
-PROJECT_ROOT = Path(__file__).parents[2]
+PROJECT_ROOT = Path(__file__).parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 """

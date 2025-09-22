@@ -3,12 +3,12 @@ import pandas as pd
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from utils.connections.writer import (
+from airflow_migration.utils.connections.writer import (
     CopyAndLoader,
     LoadResult,
     IncrementalConfig,
     TableMapping,
-    UpsertConfig
+    UpsertConfig,
 )
 
 
@@ -44,7 +44,7 @@ def test_batch_loader_success(loader, mock_db_manager):
         source_table="users",
         target_schema="dbo",
         target_table="users",
-        source_name="mock_mysql"
+        source_name="mock_mysql",
     )
 
     assert isinstance(result, LoadResult)
@@ -64,7 +64,7 @@ def test_batch_loader_no_data(loader, mock_db_manager):
         source_table="users",
         target_schema="dbo",
         target_table="users",
-        source_name="mock_mysql"
+        source_name="mock_mysql",
     )
 
     assert result.success is True
@@ -77,7 +77,7 @@ def test_incremental_load_full_refresh(loader, mock_db_manager):
     inc_config = IncrementalConfig(
         source_timestamp_column="updated_at",
         target_timestamp_column="updated_at",
-        full_refresh=True
+        full_refresh=True,
     )
 
     mock_db_manager.execute_mysql_query.return_value = [
@@ -90,7 +90,7 @@ def test_incremental_load_full_refresh(loader, mock_db_manager):
         source_name="mock_mysql",
         source_table="users",
         target_table="users",
-        incremental_config=inc_config
+        incremental_config=inc_config,
     )
 
     assert result.success is True
@@ -101,8 +101,7 @@ def test_incremental_load_full_refresh(loader, mock_db_manager):
 
 def test_incremental_load_no_data(loader, mock_db_manager):
     inc_config = IncrementalConfig(
-        source_timestamp_column="updated_at",
-        target_timestamp_column="updated_at"
+        source_timestamp_column="updated_at", target_timestamp_column="updated_at"
     )
     mock_db_manager.execute_mysql_query.return_value = []
 
@@ -110,7 +109,7 @@ def test_incremental_load_no_data(loader, mock_db_manager):
         source_name="mock_mysql",
         source_table="users",
         target_table="users",
-        incremental_config=inc_config
+        incremental_config=inc_config,
     )
 
     assert result.success is True
@@ -120,8 +119,7 @@ def test_incremental_load_no_data(loader, mock_db_manager):
 
 def test_incremental_load_with_error(loader, mock_db_manager):
     inc_config = IncrementalConfig(
-        source_timestamp_column="updated_at",
-        target_timestamp_column="updated_at"
+        source_timestamp_column="updated_at", target_timestamp_column="updated_at"
     )
 
     mock_db_manager.execute_mysql_query.side_effect = Exception("MySQL error")
@@ -130,7 +128,7 @@ def test_incremental_load_with_error(loader, mock_db_manager):
         source_name="mock_mysql",
         source_table="users",
         target_table="users",
-        incremental_config=inc_config
+        incremental_config=inc_config,
     )
 
     assert result.success is False
