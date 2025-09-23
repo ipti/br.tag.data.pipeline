@@ -9,10 +9,11 @@ from sqlalchemy import text, MetaData, Table, inspect
 from sqlalchemy.engine import Connection
 from contextlib import contextmanager
 import hashlib
+import numpy as np
 
 from .connection_manager import DatabaseConnectionManager, get_db_manager
+from airflow_migration.utils.parser_and_caster.parser import clean_dataframe_for_sql
 from airflow_migration.utils.logs.logging_functions import get_logger
-
 
 @dataclass
 class TableMapping:
@@ -31,12 +32,12 @@ class IncrementalConfig:
     """
     Configuration for incremental loading.
     """
-
-    source_timestamp_column: str
+    source_timestamp_columns: List[str]
     target_timestamp_column: str
     lookback_hours: int = 24
     batch_size: int = 10000
     full_refresh: bool = False
+
 
 
 @dataclass
@@ -430,6 +431,7 @@ class CopyAndLoader:
             )
             return None
 
+
     def _insert_dataframe_direct(
         self, df: pd.DataFrame, target_table: str, schema: str, connection=None
     ) -> int:
@@ -463,7 +465,7 @@ class CopyAndLoader:
                 {"target_table": target_table, "schema": schema},
             )
             return 0
-
+        df = clean_dataframe_for_sql(df)
         columns = list(df.columns)
         columns_str = ", ".join(f"[{col}]" for col in columns)
         placeholders = ", ".join([":" + col for col in columns])
@@ -765,7 +767,7 @@ class CopyAndLoader:
                     "source_name": source_name,
                     "source_table": source_table,
                     "target_table": f"{schema}.{target_table}",
-                    "source_timestamp_column": incremental_config.source_timestamp_column,
+                    "source_timestamp_columns": ", ".join(incremental_config.source_timestamp_columns),
                     "target_timestamp_column": incremental_config.target_timestamp_column,
                     "full_refresh": incremental_config.full_refresh,
                     "batch_size": incremental_config.batch_size,
@@ -807,7 +809,7 @@ class CopyAndLoader:
                     last_timestamp,
                     safe_timestamp,
                     incremental_config.full_refresh,
-                    incremental_config.source_timestamp_column,
+                    incremental_config.source_timestamp_columns,
                 )
             else:
                 if not source_table:
@@ -910,7 +912,7 @@ class CopyAndLoader:
         last_timestamp: Optional[datetime],
         safe_timestamp: Optional[datetime],
         full_refresh: bool,
-        source_timestamp_column: str,
+        source_timestamp_columns: List[str],
     ) -> str:
         """
         Replaces timestamp placeholders in a custom SQL query for incremental loads.
@@ -942,17 +944,16 @@ class CopyAndLoader:
 
         if full_refresh or is_first_execution:
             safe_ts_str = "1900-01-01 00:00:00"
-            execution_mode = "full_refresh" if full_refresh else "first_execution"
         else:
             safe_ts_str = safe_timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            execution_mode = "incremental"
 
         processed_query = source_query.replace("{safe_timestamp}", f"'{safe_ts_str}'")
 
         if is_first_execution and not full_refresh:
-            old_where = f"WHERE ({source_timestamp_column} > '{safe_ts_str}')"
-            new_where = f"WHERE ({source_timestamp_column} > '{safe_ts_str}' OR {source_timestamp_column} IS NULL)"
-            processed_query = processed_query.replace(old_where, new_where)
+            null_checks = " ".join([f"OR {col} IS NULL" for col in source_timestamp_columns])
+            processed_query = processed_query.replace("{first_run_null_check}", null_checks)
+        else:
+            processed_query = processed_query.replace("{first_run_null_check}", "")
 
         return processed_query
 
@@ -965,7 +966,7 @@ class CopyAndLoader:
         target_table: str,
         source_name: Optional[str] = None,
         table_mapping: Optional[TableMapping] = None,
-        chunk_size: int = 10000,
+        chunk_size: int = 100000,
         if_exists: str = "append",
     ) -> LoadResult:
         """

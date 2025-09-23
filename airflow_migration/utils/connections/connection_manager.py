@@ -325,6 +325,7 @@ class DatabaseConnectionManager:
             max_overflow=10,
             pool_pre_ping=True,
             pool_recycle=3600,
+            fast_executemany=True,
         )
         self.logger.info(
             f"SQL Server engine created",
