@@ -1,0 +1,35 @@
+workflow_name: "Workflow-Warehouse"
+max_parallel_tasks: 5
+
+triggers:
+  hourly_incremental:
+    schedule_interval: "0 8-18 * * 1-5"
+    description: "Hourly incremental updates during business hours"
+  
+  daily_full:
+    schedule_interval: "0 2 * * *"
+    description: "Daily full processing at 2AM"
+
+  incremental_upsert:
+    schedule_interval: "0 2 * * *"
+    description: "Daily incremental_upsert at 2AM"
+
+stages:
+  - stage: 1
+    loads:
+      - table_name: "d_student"
+        model: "tables/d_student.yml"
+        depends_on: []
+        trigger: "incremental_upsert"
+        
+      - table_name: "d_student_discipline" 
+        model: "tables/d_student_discipline.yml"
+        depends_on: []
+        trigger: "incremental_upsert"
+
+  - stage: 2
+    loads:
+      - table_name: "f_avaliation"
+        model: "tables/f_avaliation.yml"
+        depends_on: ["d_student", "d_student_discipline"]
+        trigger: "incremental_upsert"

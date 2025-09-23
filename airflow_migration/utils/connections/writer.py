@@ -15,6 +15,7 @@ from .connection_manager import DatabaseConnectionManager, get_db_manager
 from airflow_migration.utils.parser_and_caster.parser import clean_dataframe_for_sql
 from airflow_migration.utils.logs.logging_functions import get_logger
 
+
 @dataclass
 class TableMapping:
     """
@@ -32,12 +33,12 @@ class IncrementalConfig:
     """
     Configuration for incremental loading.
     """
+
     source_timestamp_columns: List[str]
     target_timestamp_column: str
     lookback_hours: int = 24
     batch_size: int = 10000
     full_refresh: bool = False
-
 
 
 @dataclass
@@ -431,7 +432,6 @@ class CopyAndLoader:
             )
             return None
 
-
     def _insert_dataframe_direct(
         self, df: pd.DataFrame, target_table: str, schema: str, connection=None
     ) -> int:
@@ -727,9 +727,9 @@ class CopyAndLoader:
     def incremental_load(
         self,
         source_name: str,
-        source_table: Optional[str],
         target_table: str,
         incremental_config: IncrementalConfig,
+        source_table: Optional[str] = None,        
         table_mapping: Optional[TableMapping] = None,
         target_schema: Optional[str] = None,
         upsert_config: Optional[UpsertConfig] = None,
@@ -767,7 +767,9 @@ class CopyAndLoader:
                     "source_name": source_name,
                     "source_table": source_table,
                     "target_table": f"{schema}.{target_table}",
-                    "source_timestamp_columns": ", ".join(incremental_config.source_timestamp_columns),
+                    "source_timestamp_columns": ", ".join(
+                        incremental_config.source_timestamp_columns
+                    ),
                     "target_timestamp_column": incremental_config.target_timestamp_column,
                     "full_refresh": incremental_config.full_refresh,
                     "batch_size": incremental_config.batch_size,
@@ -950,8 +952,12 @@ class CopyAndLoader:
         processed_query = source_query.replace("{safe_timestamp}", f"'{safe_ts_str}'")
 
         if is_first_execution and not full_refresh:
-            null_checks = " ".join([f"OR {col} IS NULL" for col in source_timestamp_columns])
-            processed_query = processed_query.replace("{first_run_null_check}", null_checks)
+            null_checks = " ".join(
+                [f"OR {col} IS NULL" for col in source_timestamp_columns]
+            )
+            processed_query = processed_query.replace(
+                "{first_run_null_check}", null_checks
+            )
         else:
             processed_query = processed_query.replace("{first_run_null_check}", "")
 

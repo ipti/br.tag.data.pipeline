@@ -218,19 +218,27 @@ class DatabaseConnectionManager:
             "database": os.getenv("SQLSERVER_DATABASE"),
             "driver": os.getenv("SQLSERVER_DRIVER", "ODBC Driver 18 for SQL Server"),
         }
-        
+
         if self.is_production or self.hotfix_mode:
-            base_config["username"] = os.getenv("SQLSERVER_USER_PRD") or os.getenv("SQLSERVER_USER")
-            base_config["password"] = os.getenv("SQLSERVER_PASSWORD_PRD") or os.getenv("SQLSERVER_PASSWORD")
-            
+            base_config["username"] = os.getenv("SQLSERVER_USER_PRD") or os.getenv(
+                "SQLSERVER_USER"
+            )
+            base_config["password"] = os.getenv("SQLSERVER_PASSWORD_PRD") or os.getenv(
+                "SQLSERVER_PASSWORD"
+            )
+
             schema = os.getenv("SQLSERVER_PROD_SCHEMA") or os.getenv(
                 "AIRFLOW_SCHEMA", "dbo"
             )
             env_type = "PRODUCTION"
         else:
-            base_config["username"] = os.getenv("SQLSERVER_USER_DEV") or os.getenv("SQLSERVER_USER")
-            base_config["password"] = os.getenv("SQLSERVER_PASSWORD_DEV") or os.getenv("SQLSERVER_PASSWORD")
-            
+            base_config["username"] = os.getenv("SQLSERVER_USER_DEV") or os.getenv(
+                "SQLSERVER_USER"
+            )
+            base_config["password"] = os.getenv("SQLSERVER_PASSWORD_DEV") or os.getenv(
+                "SQLSERVER_PASSWORD"
+            )
+
             dev_schema = os.getenv("SQLSERVER_DEV_SCHEMA")
             airflow_schema = os.getenv("AIRFLOW_SCHEMA")
             if dev_schema:
@@ -240,18 +248,28 @@ class DatabaseConnectionManager:
             else:
                 schema = "dev_schema"
             env_type = "DEVELOPMENT"
-        
+
         if not base_config["username"] or not base_config["password"]:
             missing_vars = []
             if not base_config["username"]:
-                expected_user_var = "SQLSERVER_USER_PRD" if (self.is_production or self.hotfix_mode) else "SQLSERVER_USER_DEV"
+                expected_user_var = (
+                    "SQLSERVER_USER_PRD"
+                    if (self.is_production or self.hotfix_mode)
+                    else "SQLSERVER_USER_DEV"
+                )
                 missing_vars.append(expected_user_var)
             if not base_config["password"]:
-                expected_pass_var = "SQLSERVER_PASSWORD_PRD" if (self.is_production or self.hotfix_mode) else "SQLSERVER_PASSWORD_DEV"
+                expected_pass_var = (
+                    "SQLSERVER_PASSWORD_PRD"
+                    if (self.is_production or self.hotfix_mode)
+                    else "SQLSERVER_PASSWORD_DEV"
+                )
                 missing_vars.append(expected_pass_var)
-            
-            raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
-        
+
+            raise ValueError(
+                f"Missing required environment variables: {', '.join(missing_vars)}"
+            )
+
         self.sqlserver_config = DatabaseConfig(schema=schema, **base_config)
         self.logger.info(
             f"Using {env_type} SQL Server warehouse",
