@@ -18,7 +18,7 @@ class TriggerConfig:
     
     def __post_init__(self):
         """Validates if the schedule_interval is valid"""
-        logger = get_logger("config_manager")
+        logger = get_logger("warehouse_basic_config")
         
         if not isinstance(self.schedule_interval, str) or not self.schedule_interval.strip():
             error_msg = f"schedule_interval must be a valid string for trigger '{self.name}'"
@@ -46,7 +46,7 @@ class TableLoad:
     
     def __post_init__(self):
         """Basic validations for required fields"""
-        logger = get_logger("config_manager")
+        logger = get_logger("warehouse_basic_config")
         
         if not self.table_name or not isinstance(self.table_name, str):
             error_msg = "table_name must be a non-empty string"
@@ -100,7 +100,7 @@ class Stage:
     
     def __post_init__(self):
         """Stage validations"""
-        logger = get_logger("config_manager")
+        logger = get_logger("warehouse_basic_config")
         
         if not isinstance(self.stage, int) or self.stage < 1:
             error_msg = "stage must be a positive integer"
@@ -149,7 +149,7 @@ class WorkflowConfig:
     
     def __post_init__(self):
         """Workflow configuration validations"""
-        logger = get_logger("config_manager")
+        logger = get_logger("warehouse_basic_config")
         
         if not self.workflow_name or not isinstance(self.workflow_name, str):
             error_msg = "workflow_name must be a non-empty string"
@@ -242,7 +242,7 @@ class TableConfig:
     
     def __post_init__(self):
         """Table configuration validations"""
-        logger = get_logger("config_manager")
+        logger = get_logger("warehouse_basic_config")
         
         if not self.table_name:
             error_msg = "table_name cannot be empty"
