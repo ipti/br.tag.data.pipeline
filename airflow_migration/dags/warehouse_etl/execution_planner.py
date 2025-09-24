@@ -18,7 +18,24 @@ class InvalidWorkflowError(Exception):
 
 @dataclass
 class TableExecution:
-    """Represents a single table execution with all necessary context"""
+    """
+        Table configuration integrated with the existing architecture.
+
+    Attributes:
+        table_name (str): Name of the table.
+        description (str): Description of the table.
+        source_name (str): Source name, can be a placeholder or a fixed value.
+        target_schema (str): Target schema, can be a placeholder or a fixed value like 'raw'.
+        yml_config (Dict[str, Any]): Raw YAML configuration.
+        sql_path (str): Path to the SQL file.
+        incremental_config (IncrementalConfig): Incremental loading configuration.
+        upsert_config (UpsertConfig): Upsert configuration.
+        optional_filters (List[str]): List of optional filters.
+        filter_sources (Dict[str, str]): Mapping of filter sources.
+
+    Raises:
+        ValueError: If required fields are missing or files do not exist.
+    """
 
     table_name: str
     stage: int
@@ -65,93 +82,103 @@ class ExecutionPlanner:
         self.validator = DependencyValidator()
 
     def generate_execution_plan(
-            self,
-            workflow_config: WorkflowConfig,
-            table_configs: Dict[str, TableConfig],
-            databases_list: List[str],
-            environment: str = None,
-        ) -> List[List[TableExecution]]:
-            """
-            Gera um plano de execução completo, fatiando os lotes para respeitar
-            o limite de paralelismo definido em max_parallel_tasks.
-            """
-            # --- Bloco de Validação (continua o mesmo) ---
-            is_valid, errors = self.validator.validate_dependencies(workflow_config)
-            if not is_valid:
-                # ... (código de erro continua o mesmo)
-                raise InvalidWorkflowError(
-                    f"Workflow configuration is invalid with {len(errors)} errors.",
-                    errors=errors,
-                )
-            self.logger.info(
-                "Workflow dependency validation passed. Proceeding with plan generation."
+        self,
+        workflow_config: WorkflowConfig,
+        table_configs: Dict[str, TableConfig],
+        databases_list: List[str],
+        environment: str = None,
+    ) -> List[List[TableExecution]]:
+        """
+        Generates a complete execution plan, splitting batches to respect the parallelism limit defined in max_parallel_tasks.
+
+        Args:
+            workflow_config (WorkflowConfig): The workflow configuration object.
+            table_configs (Dict[str, TableConfig]): Dictionary mapping table names to their TableConfig objects.
+            databases_list (List[str]): List of database names to be included in the plan.
+            environment (str, optional): Environment name ('dev' or 'prod'). If None, it will be inferred from db_manager if available.
+
+        Returns:
+            List[List[TableExecution]]: A list of batches, where each batch is a list of TableExecution objects that can run in parallel.
+
+        Raises:
+            InvalidWorkflowError: If the workflow configuration has dependency errors.
+
+        Example:
+            plan = planner.generate_execution_plan(workflow_config, table_configs, ["db1", "db2"], "dev")
+
+        Output Example:
+            [
+                [TableExecution(table_name='table1', database='db1', ...), TableExecution(table_name='table2', database='db1', ...)],
+                [TableExecution(table_name='table1', database='db2', ...)],
+                ...
+            ]
+        """
+        is_valid, errors = self.validator.validate_dependencies(workflow_config)
+        if not is_valid:
+            raise InvalidWorkflowError(
+                f"Workflow configuration is invalid with {len(errors)} errors.",
+                errors=errors,
             )
-            
-            # --- Bloco de setup do ambiente (continua o mesmo) ---
-            if environment is None and self.db_manager:
-                environment = (
-                    "prod"
-                    if (self.db_manager.is_production or self.db_manager.hotfix_mode)
-                    else "dev"
-                )
-            elif environment is None:
-                environment = "dev"
+        self.logger.info(
+            "Workflow dependency validation passed. Proceeding with plan generation."
+        )
 
-            self.logger.info(
-                "Generating execution plan",
-                {
-                    "workflow_name": workflow_config.workflow_name,
-                    "environment": environment,
-                    # A linha abaixo agora é usada como um limite
-                    "max_parallel_tasks_limit": workflow_config.max_parallel_tasks,
-                },
+        if environment is None and self.db_manager:
+            environment = (
+                "prod"
+                if (self.db_manager.is_production or self.db_manager.hotfix_mode)
+                else "dev"
             )
-            
-            # =================================================================
-            # LÓGICA DE GERAÇÃO DE LOTES ATUALIZADA
-            # =================================================================
-            execution_batches = []
-            limit = workflow_config.max_parallel_tasks # Pega o limite do YAML
+        elif environment is None:
+            environment = "dev"
 
-            for stage in sorted(workflow_config.stages, key=lambda s: s.stage):
-                # 1. Gera o lote completo para o stage, como antes
-                full_stage_batch = self._generate_stage_batch(
-                    stage, table_configs, databases_list, environment
-                )
+        self.logger.info(
+            "Generating execution plan",
+            {
+                "workflow_name": workflow_config.workflow_name,
+                "environment": environment,
+                "max_parallel_tasks_limit": workflow_config.max_parallel_tasks,
+            },
+        )
 
-                if full_stage_batch:
-                    # 2. Se o lote gerado for maior que o limite, fatia ele
-                    if len(full_stage_batch) > limit:
-                        self.logger.info(f"Stage {stage.stage} batch exceeds limit ({len(full_stage_batch)} > {limit}). Chunking batch...")
-                        # Usa uma técnica de fatiamento para criar sub-lotes
-                        chunked_batches = [
-                            full_stage_batch[i:i + limit] 
-                            for i in range(0, len(full_stage_batch), limit)
-                        ]
-                        # Adiciona todos os sub-lotes ao plano de execução
-                        execution_batches.extend(chunked_batches)
-                    else:
-                        # Se for menor ou igual ao limite, adiciona o lote inteiro
-                        execution_batches.append(full_stage_batch)
-            # =================================================================
+        execution_batches = []
+        limit = workflow_config.max_parallel_tasks
 
-            total_executions = sum(len(batch) for batch in execution_batches)
-            self.logger.info(
-                "Execution plan generated successfully",
-                {
-                    "workflow_name": workflow_config.workflow_name,
-                    "batches_count": len(execution_batches), # Será maior agora
-                    "total_executions": total_executions,
-                    "environment": environment,
-                    "max_parallel_per_batch": ( # Agora refletirá o limite
-                        max(len(batch) for batch in execution_batches)
-                        if execution_batches
-                        else 0
-                    ),
-                },
+        for stage in sorted(workflow_config.stages, key=lambda s: s.stage):
+            full_stage_batch = self._generate_stage_batch(
+                stage, table_configs, databases_list, environment
             )
 
-            return execution_batches
+            if full_stage_batch:
+                if len(full_stage_batch) > limit:
+                    self.logger.info(
+                        f"Stage {stage.stage} batch exceeds limit ({len(full_stage_batch)} > {limit}). Chunking batch..."
+                    )
+                    chunked_batches = [
+                        full_stage_batch[i : i + limit]
+                        for i in range(0, len(full_stage_batch), limit)
+                    ]
+                    execution_batches.extend(chunked_batches)
+                else:
+                    execution_batches.append(full_stage_batch)
+
+        total_executions = sum(len(batch) for batch in execution_batches)
+        self.logger.info(
+            "Execution plan generated successfully",
+            {
+                "workflow_name": workflow_config.workflow_name,
+                "batches_count": len(execution_batches),
+                "total_executions": total_executions,
+                "environment": environment,
+                "max_parallel_per_batch": (
+                    max(len(batch) for batch in execution_batches)
+                    if execution_batches
+                    else 0
+                ),
+            },
+        )
+
+        return execution_batches
 
     def _generate_stage_batch(
         self,

@@ -5,60 +5,14 @@ import yaml
 import os
 
 from airflow_migration.utils.logs.logging_functions import get_logger
-from .warehouse_basic_config import WorkflowConfig, TriggerConfig, Stage, TableLoad
+from .warehouse_basic_config import (
+    WorkflowConfig,
+    TriggerConfig,
+    Stage,
+    TableLoad,
+    TableConfig,
+)
 from airflow_migration.utils.connections.writer import IncrementalConfig, UpsertConfig
-
-
-@dataclass
-class TableConfig:
-    """Updated table configuration integrated with existing architecture"""
-
-    table_name: str
-    description: str
-    source_name: str  # Can be placeholder {SOURCE_NAME} or fixed value
-    target_schema: str  # Can be placeholder {TARGET_SCHEMA} or fixed value like 'raw'
-    yml_config: Dict[str, Any]
-    sql_path: str
-    incremental_config: IncrementalConfig
-    upsert_config: UpsertConfig
-    optional_filters: List[str]
-    filter_sources: Dict[str, str]
-
-    def __post_init__(self):
-        """Table configuration validations"""
-        logger = get_logger("config_manager")
-
-        if not self.table_name:
-            error_msg = "table_name cannot be empty"
-            logger.error(
-                "Invalid TableConfig",
-                extra_data={"table_name": self.table_name, "error": error_msg},
-            )
-            raise ValueError(error_msg)
-
-        if not Path(self.sql_path).exists():
-            error_msg = f"SQL file not found: {self.sql_path}"
-            logger.error(
-                "Invalid TableConfig",
-                extra_data={
-                    "table_name": self.table_name,
-                    "sql_path": self.sql_path,
-                    "error": error_msg,
-                },
-            )
-            raise ValueError(error_msg)
-
-    def needs_source_name_resolution(self) -> bool:
-        """Check if source_name needs to be resolved from placeholder"""
-        return self.source_name == "{SOURCE_NAME}"
-
-    def needs_target_schema_resolution(self) -> bool:
-        """Check if target_schema needs to be resolved from placeholder"""
-        return self.target_schema == "{TARGET_SCHEMA}"
-
-    def is_fixed_schema(self) -> bool:
-        """Check if target_schema is a fixed value (like 'raw')"""
-        return not self.needs_target_schema_resolution()
 
 
 class YAMLLoader:
@@ -87,18 +41,30 @@ class YAMLLoader:
         self, workflow_file: str = "workflow.yml"
     ) -> WorkflowConfig:
         """
-        Load main workflow configuration from YAML file
+        Loads the main workflow configuration from a YAML file.
 
         Args:
-            workflow_file: Name of the workflow YAML file
+            workflow_file (str): Name of the workflow YAML file.
 
         Returns:
-            WorkflowConfig object with validated configuration
+            WorkflowConfig: Validated workflow configuration.
 
         Raises:
-            FileNotFoundError: If workflow file is not found
-            ValueError: If configuration is invalid
-            yaml.YAMLError: If YAML parsing fails
+            FileNotFoundError: If the workflow file is not found.
+            ValueError: If the configuration is invalid.
+            yaml.YAMLError: If YAML parsing fails.
+
+        Example:
+            loader = YAMLLoader("/path/to/configs")
+            workflow_config = loader.load_workflow_config("workflow.yml")
+
+        Output Example:
+            WorkflowConfig(
+                workflow_name='example_workflow',
+                max_parallel_tasks=4,
+                triggers={'daily': TriggerConfig(...), ...},
+                stages=[Stage(stage=1, loads=[TableLoad(...), ...]), ...]
+            )
         """
         workflow_path = self.config_root / workflow_file
 

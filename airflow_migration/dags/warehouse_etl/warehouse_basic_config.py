@@ -7,6 +7,7 @@ from pathlib import Path
 
 
 from airflow_migration.utils.logs.logging_functions import get_logger
+from airflow_migration.utils.connections.writer import UpsertConfig, IncrementalConfig
 
 
 @dataclass
@@ -54,7 +55,7 @@ class TableLoad:
     table_name: str
     model: str  # path to the yml file
     depends_on: List[str]
-    stage: int  
+    stage: int
     trigger: str
     max_parallel_override: Optional[int] = None
 
@@ -300,45 +301,28 @@ class WorkflowConfig:
 
 @dataclass
 class TableConfig:
-    """Specific configuration for a table loaded from YML file"""
+    """Updated table configuration integrated with existing architecture"""
 
     table_name: str
+    description: str
+    source_name: str  # Can be placeholder {SOURCE_NAME} or fixed value
+    target_schema: str  # Can be placeholder {TARGET_SCHEMA} or fixed value like 'raw'
     yml_config: Dict[str, Any]
     sql_path: str
+    incremental_config: IncrementalConfig
+    upsert_config: UpsertConfig
+    optional_filters: List[str]
+    filter_sources: Dict[str, str]
 
     def __post_init__(self):
         """Table configuration validations"""
-        logger = get_logger("warehouse_basic_config")
+        logger = get_logger("config_manager")
 
         if not self.table_name:
             error_msg = "table_name cannot be empty"
             logger.error(
                 "Invalid TableConfig",
                 extra_data={"table_name": self.table_name, "error": error_msg},
-            )
-            raise ValueError(error_msg)
-
-        if not isinstance(self.yml_config, dict):
-            error_msg = "yml_config must be a dictionary"
-            logger.error(
-                "Invalid TableConfig",
-                extra_data={
-                    "table_name": self.table_name,
-                    "yml_config_type": type(self.yml_config),
-                    "error": error_msg,
-                },
-            )
-            raise ValueError(error_msg)
-
-        if not self.sql_path or not isinstance(self.sql_path, str):
-            error_msg = "sql_path must be a non-empty string"
-            logger.error(
-                "Invalid TableConfig",
-                extra_data={
-                    "table_name": self.table_name,
-                    "sql_path": self.sql_path,
-                    "error": error_msg,
-                },
             )
             raise ValueError(error_msg)
 
@@ -354,14 +338,17 @@ class TableConfig:
             )
             raise ValueError(error_msg)
 
-        logger.debug(
-            "TableConfig validated successfully",
-            extra_data={
-                "table_name": self.table_name,
-                "sql_path": self.sql_path,
-                "yml_keys": list(self.yml_config.keys()),
-            },
-        )
+    def needs_source_name_resolution(self) -> bool:
+        """Check if source_name needs to be resolved from placeholder"""
+        return self.source_name == "{SOURCE_NAME}"
+
+    def needs_target_schema_resolution(self) -> bool:
+        """Check if target_schema needs to be resolved from placeholder"""
+        return self.target_schema == "{TARGET_SCHEMA}"
+
+    def is_fixed_schema(self) -> bool:
+        """Check if target_schema is a fixed value (like 'raw')"""
+        return not self.needs_target_schema_resolution()
 
 
 @dataclass

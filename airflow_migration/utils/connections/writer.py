@@ -729,7 +729,7 @@ class CopyAndLoader:
         source_name: str,
         target_table: str,
         incremental_config: IncrementalConfig,
-        source_table: Optional[str] = None,        
+        source_table: Optional[str] = None,
         table_mapping: Optional[TableMapping] = None,
         target_schema: Optional[str] = None,
         upsert_config: Optional[UpsertConfig] = None,

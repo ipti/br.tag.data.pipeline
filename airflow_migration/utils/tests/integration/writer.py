@@ -29,10 +29,20 @@ def loader(mock_db_manager):
 
 
 def test_batch_loader_success(loader, mock_db_manager):
-    mock_db_manager.fetch_data.return_value = [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
+    mock_db_manager.fetch_data.return_value = [
+        {"id": 1, "name": "Alice"},
+        {"id": 2, "name": "Bob"},
+    ]
     mock_engine = MagicMock()
     loader.db_manager.get_sqlserver_engine.return_value = mock_engine
-    result = loader.batch_loader(source_type="mysql", source_schema="", source_table="users", target_schema="dbo", target_table="users", source_name="mock_mysql")
+    result = loader.batch_loader(
+        source_type="mysql",
+        source_schema="",
+        source_table="users",
+        target_schema="dbo",
+        target_table="users",
+        source_name="mock_mysql",
+    )
     assert isinstance(result, LoadResult)
     assert result.success is True
     assert result.rows_processed == 2
@@ -43,13 +53,21 @@ def test_batch_loader_success(loader, mock_db_manager):
 
 def test_batch_loader_no_data(loader, mock_db_manager):
     mock_db_manager.fetch_data.return_value = []
-    result = loader.batch_loader(source_type="mysql", source_schema="", source_table="users", target_schema="dbo", target_table="users", source_name="mock_mysql")
+    result = loader.batch_loader(
+        source_type="mysql",
+        source_schema="",
+        source_table="users",
+        target_schema="dbo",
+        target_table="users",
+        source_name="mock_mysql",
+    )
     assert result.success is True
     assert result.rows_processed == 0
     assert result.rows_inserted == 0
 
 
 # --- TESTES INCREMENTAIS ATUALIZADOS PARA USAR SOURCE_QUERY ---
+
 
 def test_incremental_load_full_refresh(loader, mock_db_manager):
     inc_config = IncrementalConfig(
@@ -68,8 +86,8 @@ def test_incremental_load_full_refresh(loader, mock_db_manager):
         source_name="mock_mysql",
         target_table="users",
         incremental_config=inc_config,
-        source_table=None, # Indicando que não usamos a tabela diretamente
-        source_query="SELECT * FROM users WHERE updated_at >= {safe_timestamp} {first_run_null_check};"
+        source_table=None,  # Indicando que não usamos a tabela diretamente
+        source_query="SELECT * FROM users WHERE updated_at >= {safe_timestamp} {first_run_null_check};",
     )
 
     assert result.success is True
@@ -80,8 +98,7 @@ def test_incremental_load_full_refresh(loader, mock_db_manager):
 
 def test_incremental_load_no_data(loader, mock_db_manager):
     inc_config = IncrementalConfig(
-        source_timestamp_columns=["updated_at"],
-        target_timestamp_column="updated_at"
+        source_timestamp_columns=["updated_at"], target_timestamp_column="updated_at"
     )
     mock_db_manager.execute_mysql_query.return_value = []
 
@@ -91,7 +108,7 @@ def test_incremental_load_no_data(loader, mock_db_manager):
         target_table="users",
         incremental_config=inc_config,
         source_table=None,
-        source_query="SELECT * FROM users WHERE updated_at >= {safe_timestamp} {first_run_null_check};"
+        source_query="SELECT * FROM users WHERE updated_at >= {safe_timestamp} {first_run_null_check};",
     )
 
     assert result.success is True
@@ -101,8 +118,7 @@ def test_incremental_load_no_data(loader, mock_db_manager):
 
 def test_incremental_load_with_error(loader, mock_db_manager):
     inc_config = IncrementalConfig(
-        source_timestamp_columns=["updated_at"],
-        target_timestamp_column="updated_at"
+        source_timestamp_columns=["updated_at"], target_timestamp_column="updated_at"
     )
     mock_db_manager.execute_mysql_query.side_effect = Exception("MySQL error")
 
@@ -112,7 +128,7 @@ def test_incremental_load_with_error(loader, mock_db_manager):
         target_table="users",
         incremental_config=inc_config,
         source_table=None,
-        source_query="SELECT * FROM users WHERE updated_at >= {safe_timestamp} {first_run_null_check};"
+        source_query="SELECT * FROM users WHERE updated_at >= {safe_timestamp} {first_run_null_check};",
     )
 
     assert result.success is False
@@ -121,18 +137,19 @@ def test_incremental_load_with_error(loader, mock_db_manager):
 
 # --- Testes de múltiplas colunas (já corretos) ---
 
+
 def test_incremental_load_first_run_multiple_timestamps(loader, mock_db_manager):
     inc_config = IncrementalConfig(
         source_timestamp_columns=["t1.updated_at", "t2.modified_at"],
-        target_timestamp_column="dw_updated_at"
+        target_timestamp_column="dw_updated_at",
     )
-    with patch.object(CopyAndLoader, '_get_last_timestamp', return_value=None):
+    with patch.object(CopyAndLoader, "_get_last_timestamp", return_value=None):
         loader.incremental_load(
             source_name="mock_mysql",
             target_table="target_table",
             incremental_config=inc_config,
             source_table=None,
-            source_query="SELECT * FROM t1 JOIN t2 ON t1.id = t2.id WHERE (t1.updated_at >= {safe_timestamp} OR t2.modified_at >= {safe_timestamp} {first_run_null_check});"
+            source_query="SELECT * FROM t1 JOIN t2 ON t1.id = t2.id WHERE (t1.updated_at >= {safe_timestamp} OR t2.modified_at >= {safe_timestamp} {first_run_null_check});",
         )
     executed_query = mock_db_manager.execute_mysql_query.call_args[0][1]
     assert "'1900-01-01 00:00:00'" in executed_query
@@ -143,17 +160,17 @@ def test_incremental_load_subsequent_run_multiple_timestamps(loader, mock_db_man
     inc_config = IncrementalConfig(
         source_timestamp_columns=["t1.updated_at", "t2.modified_at"],
         target_timestamp_column="dw_updated_at",
-        lookback_hours=2
+        lookback_hours=2,
     )
     last_ts = datetime(2025, 9, 23, 14, 0, 0)
     safe_ts_expected = "2025-09-23 12:00:00"
-    with patch.object(CopyAndLoader, '_get_last_timestamp', return_value=last_ts):
+    with patch.object(CopyAndLoader, "_get_last_timestamp", return_value=last_ts):
         loader.incremental_load(
             source_name="mock_mysql",
             target_table="target_table",
             incremental_config=inc_config,
             source_table=None,
-            source_query="SELECT * FROM t1 JOIN t2 ON t1.id = t2.id WHERE (t1.updated_at >= {safe_timestamp} OR t2.modified_at >= {safe_timestamp} {first_run_null_check});"
+            source_query="SELECT * FROM t1 JOIN t2 ON t1.id = t2.id WHERE (t1.updated_at >= {safe_timestamp} OR t2.modified_at >= {safe_timestamp} {first_run_null_check});",
         )
     executed_query = mock_db_manager.execute_mysql_query.call_args[0][1]
     assert f"'{safe_ts_expected}'" in executed_query

@@ -4,7 +4,7 @@ source_name: "{SOURCE_NAME}"
 target_schema: "{TARGET_SCHEMA}"
 
 incremental_config:
-  source_timestamp_column: "updated_at"
+  source_timestamp_columns: ["updated_at"]
   target_timestamp_column: "inserted_at"
   lookback_hours: 24
   batch_size: 15000
