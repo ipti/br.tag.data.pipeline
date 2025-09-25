@@ -413,6 +413,8 @@ class YAMLLoader:
                     depends_on=load_data.get("depends_on", []),
                     trigger=trigger,
                     max_parallel_override=load_data.get("max_parallel_override"),
+                    pool=load_data.get("pool"),
+ 
                 )
             )
 

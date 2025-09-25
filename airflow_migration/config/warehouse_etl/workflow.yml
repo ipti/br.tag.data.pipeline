@@ -1,5 +1,6 @@
 workflow_name: "Workflow-Warehouse"
 max_parallel_tasks: 3
+pool: "mysql_prod_pool"
 
 triggers:
   hourly_incremental:

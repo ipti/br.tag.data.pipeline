@@ -61,6 +61,7 @@ class TableLoad:
     stage: int
     trigger: str
     max_parallel_override: Optional[int] = None
+    pool: Optional[str] = None 
 
     def __post_init__(self):
         """Basic validations for required fields"""
