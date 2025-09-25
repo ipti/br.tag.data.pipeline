@@ -108,7 +108,7 @@ class CopyAndLoader:
 
     def _load_dbt_sources_config(self) -> Dict[str, Any]:
         try:
-            project_root = Path(__file__).resolve().parent.parent.parent
+            project_root = Path(__file__).resolve().parent.parent.parent.parent
             dbt_sources_path = (
                 project_root / "dbt/models/sources" / self.dbt_config_file
             )
