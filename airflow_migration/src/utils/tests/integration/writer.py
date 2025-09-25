@@ -1,14 +1,10 @@
 import pytest
-import pandas as pd
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 from airflow_migration.src.utils.connections.writer import (
     CopyAndLoader,
-    LoadResult,
     IncrementalConfig,
-    TableMapping,
-    UpsertConfig,
 )
 
 

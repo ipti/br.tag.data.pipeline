@@ -1,7 +1,6 @@
 import logging
 import inspect
 import functools
-from datetime import datetime
 from typing import Optional, Dict, Any
 from pathlib import Path
 
@@ -196,7 +195,7 @@ class AirflowLogger:
             task_id: Airflow task ID
             dag_id: Airflow DAG ID
         """
-        self.info(f"Task started", {"task_id": task_id, "dag_id": dag_id})
+        self.info("Task started", {"task_id": task_id, "dag_id": dag_id})
 
     def log_task_success(
         self, task_id: str, dag_id: str, execution_time: Optional[float] = None
@@ -213,7 +212,7 @@ class AirflowLogger:
         if execution_time:
             extra_data["execution_time_seconds"] = execution_time
 
-        self.info(f"Task completed successfully", extra_data)
+        self.info("Task completed successfully", extra_data)
 
     def log_task_failure(
         self, task_id: str, dag_id: str, exception: Optional[Exception] = None
@@ -227,7 +226,7 @@ class AirflowLogger:
             exception: Exception that caused the failure
         """
         self.error(
-            f"Task failed",
+            "Task failed",
             exception=exception,
             extra_data={"task_id": task_id, "dag_id": dag_id},
         )
@@ -242,7 +241,7 @@ class AirflowLogger:
             task_id: Task ID pushing the XCom
         """
         self.info(
-            f"XCom pushed",
+            "XCom pushed",
             {"xcom_key": key, "task_id": task_id, "value_type": type(value).__name__},
         )
 
@@ -273,7 +272,7 @@ class AirflowLogger:
         if affected_rows is not None:
             extra_data["affected_rows"] = affected_rows
 
-        self.info(f"Database operation completed", extra_data)
+        self.info("Database operation completed", extra_data)
 
     def log_api_call(
         self, endpoint: str, method: str = "GET", status_code: Optional[int] = None
@@ -290,7 +289,7 @@ class AirflowLogger:
         if status_code:
             extra_data["status_code"] = status_code
 
-        self.info(f"API call made", extra_data)
+        self.info("API call made", extra_data)
 
     def log_file_operation(
         self, operation: str, file_path: str, file_size: Optional[int] = None
@@ -307,7 +306,7 @@ class AirflowLogger:
         if file_size:
             extra_data["file_size_bytes"] = file_size
 
-        self.info(f"File operation completed", extra_data)
+        self.info("File operation completed", extra_data)
 
 
 # Utility function to create a singleton logger instance

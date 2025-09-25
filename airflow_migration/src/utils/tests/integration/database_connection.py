@@ -2,9 +2,7 @@ import sys
 import os
 import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
-from sqlalchemy.exc import OperationalError, DatabaseError
-import tempfile
+from unittest.mock import patch
 import socket
 
 PROJECT_ROOT = Path(__file__).parents[3]
@@ -299,7 +297,7 @@ def manual_test_runner():
         for host in test_hosts:
             resolved = db_manager._resolve_mysql_host(host)
             logger.info(
-                f"Host resolution test",
+                "Host resolution test",
                 extra_data={"original_host": host, "resolved_host": resolved},
             )
 
@@ -317,7 +315,7 @@ def manual_test_runner():
                     )
                 except Exception as e:
                     logger.error(
-                        f"MySQL connection test failed",
+                        "MySQL connection test failed",
                         exception=e,
                         extra_data={"source": source_name},
                     )

@@ -2,7 +2,6 @@ import pytest
 
 from airflow_migration.src.utils.planner.execution_planner import (
     ExecutionPlanner,
-    TableExecution,
     InvalidWorkflowError,
 )
 from airflow_migration.src.utils.planner.warehouse_basic_config import (

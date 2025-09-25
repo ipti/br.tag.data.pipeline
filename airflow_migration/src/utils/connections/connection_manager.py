@@ -1,7 +1,5 @@
 import os
 import subprocess
-import pymysql
-import pyodbc
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.engine import Engine, Connection
@@ -14,7 +12,6 @@ from dotenv import load_dotenv
 from airflow_migration.src.utils.logs.logging_functions import get_logger
 import urllib
 import socket
-from dotenv import load_dotenv, find_dotenv
 
 
 @dataclass
@@ -54,7 +51,7 @@ class DatabaseConnectionManager:
         self.current_branch = self._get_current_branch()
         self.is_production = self._is_production_branch()
         self.logger.info(
-            f"Environment detected",
+            "Environment detected",
             {
                 "branch": self.current_branch,
                 "is_production": self.is_production,
@@ -96,7 +93,7 @@ class DatabaseConnectionManager:
                 self.logger.warning("Failed to get git branch, assuming production")
                 return "main"
         except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
-            self.logger.warning(f"Error detecting git branch", exception=e)
+            self.logger.warning("Error detecting git branch", exception=e)
             return "unknown"
 
     def _is_production_branch(self) -> bool:
@@ -346,7 +343,7 @@ class DatabaseConnectionManager:
             fast_executemany=True,
         )
         self.logger.info(
-            f"SQL Server engine created",
+            "SQL Server engine created",
             {
                 "host": config.host,
                 "database": config.database,
@@ -519,7 +516,7 @@ class DatabaseConnectionManager:
                     rows = result.fetchall()
                     execution_time = time.time() - start_time
                     self.logger.info(
-                        f"MySQL query executed successfully",
+                        "MySQL query executed successfully",
                         {
                             "source": source_name,
                             "database": target_database,
@@ -534,7 +531,7 @@ class DatabaseConnectionManager:
                     execution_time = time.time() - start_time
                     operation = query.strip().split()[0].upper()
                     self.logger.info(
-                        f"MySQL query executed successfully",
+                        "MySQL query executed successfully",
                         {
                             "source": source_name,
                             "database": target_database,
@@ -547,7 +544,7 @@ class DatabaseConnectionManager:
         except Exception as e:
             execution_time = time.time() - start_time
             self.logger.error(
-                f"MySQL query execution failed",
+                "MySQL query execution failed",
                 exception=e,
                 extra_data={
                     "source": source_name,

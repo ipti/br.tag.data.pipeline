@@ -1,8 +1,6 @@
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from pathlib import Path
-from dataclasses import dataclass, field
 import yaml
-import os
 
 from airflow_migration.src.utils.logs.logging_functions import get_logger
 from .warehouse_basic_config import (
@@ -476,7 +474,7 @@ class YAMLLoader:
                     )
 
         if missing_files:
-            error_msg = f"Missing configuration files:\n" + "\n".join(missing_files)
+            error_msg = "Missing configuration files:\n" + "\n".join(missing_files)
             self.logger.error(
                 "Multiple configuration files missing",
                 extra_data={

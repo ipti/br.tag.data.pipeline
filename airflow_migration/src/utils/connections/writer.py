@@ -1,13 +1,11 @@
-import os
 import yaml
 import pandas as pd
-from typing import Optional, Dict, Any, List, Union, Tuple
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timedelta
 from pathlib import Path
 from dataclasses import dataclass, field
-from sqlalchemy import text, MetaData, Table, inspect
+from sqlalchemy import text, inspect
 from sqlalchemy.engine import Connection
-from contextlib import contextmanager
 import hashlib
 from .connection_manager import DatabaseConnectionManager, get_db_manager
 from airflow_migration.src.utils.parser_and_caster.parser import clean_dataframe_for_sql
