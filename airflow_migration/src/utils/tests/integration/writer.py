@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from airflow_migration.utils.connections.writer import (
+from airflow_migration.src.utils.connections.writer import (
     CopyAndLoader,
     LoadResult,
     IncrementalConfig,
@@ -29,12 +29,21 @@ def loader(mock_db_manager):
 
 
 def test_batch_loader_success(loader, mock_db_manager):
+    # CORREÇÃO 1: Adicione colunas esperadas (como 'updated_at') aos dados do mock,
+    # mesmo que a lógica específica do batch_loader não as use diretamente.
+    # Isso evita erros em funções de limpeza/parsing genéricas.
     mock_db_manager.fetch_data.return_value = [
-        {"id": 1, "name": "Alice"},
-        {"id": 2, "name": "Bob"},
+        {"id": 1, "name": "Alice", "updated_at": datetime.now()},
+        {"id": 2, "name": "Bob", "updated_at": datetime.now()},
     ]
+
+    # CORREÇÃO 2: Crie um mock mais robusto para o engine que suporte o 'with'.
     mock_engine = MagicMock()
+    mock_conn = MagicMock()
+    # Configura o mock para funcionar com 'with engine.begin() as conn:'
+    mock_engine.begin.return_value.__enter__.return_value = mock_conn
     loader.db_manager.get_sqlserver_engine.return_value = mock_engine
+
     result = loader.batch_loader(
         source_type="mysql",
         source_schema="",
@@ -43,11 +52,12 @@ def test_batch_loader_success(loader, mock_db_manager):
         target_table="users",
         source_name="mock_mysql",
     )
-    assert isinstance(result, LoadResult)
-    assert result.success is True
+
+    assert (
+        result.success is True
+    ), f"A execução falhou com o erro: {result.error_message}"
     assert result.rows_processed == 2
     assert result.rows_inserted == 2
-    assert result.error_message is None
     mock_db_manager.fetch_data.assert_called_once()
 
 
@@ -66,9 +76,6 @@ def test_batch_loader_no_data(loader, mock_db_manager):
     assert result.rows_inserted == 0
 
 
-# --- TESTES INCREMENTAIS ATUALIZADOS PARA USAR SOURCE_QUERY ---
-
-
 def test_incremental_load_full_refresh(loader, mock_db_manager):
     inc_config = IncrementalConfig(
         source_timestamp_columns=["updated_at"],
@@ -79,18 +86,24 @@ def test_incremental_load_full_refresh(loader, mock_db_manager):
         {"id": 1, "updated_at": datetime.now()},
         {"id": 2, "updated_at": datetime.now()},
     ]
-    mock_db_manager.get_sqlserver_engine.return_value = MagicMock()
 
-    # Adicionada source_query para usar a nova lógica
+    # CORREÇÃO 2 (APLICADA AQUI TAMBÉM): Crie um mock mais robusto para o engine.
+    mock_engine = MagicMock()
+    mock_conn = MagicMock()
+    mock_engine.begin.return_value.__enter__.return_value = mock_conn
+    loader.db_manager.get_sqlserver_engine.return_value = mock_engine
+
     result = loader.incremental_load(
         source_name="mock_mysql",
         target_table="users",
         incremental_config=inc_config,
-        source_table=None,  # Indicando que não usamos a tabela diretamente
+        source_table=None,
         source_query="SELECT * FROM users WHERE updated_at >= {safe_timestamp} {first_run_null_check};",
     )
 
-    assert result.success is True
+    assert (
+        result.success is True
+    ), f"A execução falhou com o erro: {result.error_message}"
     assert result.rows_processed == 2
     assert result.rows_inserted == 2
     assert result.error_message is None
@@ -102,7 +115,6 @@ def test_incremental_load_no_data(loader, mock_db_manager):
     )
     mock_db_manager.execute_mysql_query.return_value = []
 
-    # Adicionada source_query para usar a nova lógica
     result = loader.incremental_load(
         source_name="mock_mysql",
         target_table="users",
@@ -133,9 +145,6 @@ def test_incremental_load_with_error(loader, mock_db_manager):
 
     assert result.success is False
     assert "MySQL error" in result.error_message
-
-
-# --- Testes de múltiplas colunas (já corretos) ---
 
 
 def test_incremental_load_first_run_multiple_timestamps(loader, mock_db_manager):

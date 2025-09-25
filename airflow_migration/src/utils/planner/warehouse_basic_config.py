@@ -6,8 +6,11 @@ import yaml
 from pathlib import Path
 
 
-from airflow_migration.utils.logs.logging_functions import get_logger
-from airflow_migration.utils.connections.writer import UpsertConfig, IncrementalConfig
+from airflow_migration.src.utils.logs.logging_functions import get_logger
+from airflow_migration.src.utils.connections.writer import (
+    UpsertConfig,
+    IncrementalConfig,
+)
 
 
 @dataclass

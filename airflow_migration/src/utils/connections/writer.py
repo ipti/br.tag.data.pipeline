@@ -9,11 +9,9 @@ from sqlalchemy import text, MetaData, Table, inspect
 from sqlalchemy.engine import Connection
 from contextlib import contextmanager
 import hashlib
-import numpy as np
-
 from .connection_manager import DatabaseConnectionManager, get_db_manager
-from airflow_migration.utils.parser_and_caster.parser import clean_dataframe_for_sql
-from airflow_migration.utils.logs.logging_functions import get_logger
+from airflow_migration.src.utils.parser_and_caster.parser import clean_dataframe_for_sql
+from airflow_migration.src.utils.logs.logging_functions import get_logger
 
 
 @dataclass

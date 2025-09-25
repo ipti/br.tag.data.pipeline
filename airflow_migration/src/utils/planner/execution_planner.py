@@ -2,10 +2,14 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from airflow_migration.utils.logs.logging_functions import get_logger
+from airflow_migration.src.utils.logs.logging_functions import get_logger
 from .warehouse_basic_config import WorkflowConfig, Stage, TableLoad
-from .yaml_loader import TableConfig, IncrementalConfig, UpsertConfig
+from .yaml_loader import TableConfig
 from .dependecy_validator import DependencyValidator, DependencyError
+from airflow_migration.src.utils.connections.writer import (
+    IncrementalConfig,
+    UpsertConfig,
+)
 
 
 class InvalidWorkflowError(Exception):

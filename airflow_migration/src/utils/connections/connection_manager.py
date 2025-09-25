@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from dotenv import load_dotenv
-from airflow_migration.utils.logs.logging_functions import get_logger
+from airflow_migration.src.utils.logs.logging_functions import get_logger
 import urllib
 import socket
 from dotenv import load_dotenv, find_dotenv
@@ -66,7 +66,7 @@ class DatabaseConnectionManager:
         self._setup_database_configs()
 
     def _load_environment(self):
-        root_path = Path(__file__).parents[2]
+        root_path = Path(__file__).parents[3]
         env_path = root_path / ".env"
 
         if env_path.exists():
