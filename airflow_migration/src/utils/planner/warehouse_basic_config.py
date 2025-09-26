@@ -58,7 +58,9 @@ class TableLoad:
     stage: int
     trigger: str
     max_parallel_override: Optional[int] = None
-    pool: Optional[str] = None 
+    pool: Optional[str] = None
+    retries: int = 1
+    retry_delay_minutes: int = 5
 
     def __post_init__(self):
         """Basic validations for required fields"""

@@ -412,7 +412,8 @@ class YAMLLoader:
                     trigger=trigger,
                     max_parallel_override=load_data.get("max_parallel_override"),
                     pool=load_data.get("pool"),
- 
+                    retries=load_data.get("retries", 1),
+                    retry_delay_minutes=load_data.get("retry_delay_minutes", 5),
                 )
             )
 
