@@ -7,7 +7,6 @@ from src.utils.connections.connection_manager import DatabaseConnectionManager
 from src.utils.connections.writer import CopyAndLoader
 from src.utils.planner.execution_planner import TableExecution
 from src.utils.runtime.runtime_engine import resolve_placeholders, render_sql_template
-from src.utils.planner.warehouse_basic_config import IncrementalConfig, UpsertConfig
 
 
 class WarehouseEtlOperator(BaseOperator):

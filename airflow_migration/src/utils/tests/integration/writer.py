@@ -46,7 +46,7 @@ def test_process_query_placeholders_first_run():
         last_timestamp=None,
         safe_timestamp=None,
         full_refresh=False,
-        source_timestamp_columns=['ts']
+        source_timestamp_columns=["ts"],
     )
     assert "'1900-01-01 00:00:00'" in processed
     assert "OR ts IS NULL" in processed
@@ -68,7 +68,7 @@ def test_process_query_placeholders_incremental_run():
         last_timestamp=datetime(2025, 9, 26, 12, 0, 0),
         safe_timestamp=safe_ts,
         full_refresh=False,
-        source_timestamp_columns=['ts']
+        source_timestamp_columns=["ts"],
     )
     assert safe_ts.strftime("'%Y-%m-%d %H:%M:%S'") in processed
     assert "IS NULL" not in processed
@@ -108,40 +108,48 @@ def test_batch_loader_success(loader, mock_db_manager):
     mock_db_manager.fetch_data.assert_called_once()
 
 
-def test_incremental_load_no_new_data(loader: CopyAndLoader, mock_db_manager: MagicMock):
+def test_incremental_load_no_new_data(
+    loader: CopyAndLoader, mock_db_manager: MagicMock
+):
     """
     Tests incremental_load when the source query returns no new data.
     Ensures that the result is successful and no rows are processed.
     """
-    inc_config = IncrementalConfig(source_timestamp_columns=["updated_at"], target_timestamp_column="updated_at")
+    inc_config = IncrementalConfig(
+        source_timestamp_columns=["updated_at"], target_timestamp_column="updated_at"
+    )
     mock_db_manager.execute_mysql_query.return_value = []
 
     result = loader.incremental_load(
         source_name="mock_mysql",
         target_table="users",
         incremental_config=inc_config,
-        source_query="SELECT 1"
+        source_query="SELECT 1",
     )
 
     assert result.success is True
     assert result.rows_processed == 0
 
 
-def test_incremental_load_passes_source_database(loader: CopyAndLoader, mock_db_manager: MagicMock):
+def test_incremental_load_passes_source_database(
+    loader: CopyAndLoader, mock_db_manager: MagicMock
+):
     """
     Tests that the source_database parameter is passed to db_manager in incremental_load.
     Ensures that database_override is set correctly in the call.
     """
-    inc_config = IncrementalConfig(source_timestamp_columns=["updated_at"], target_timestamp_column="updated_at")
+    inc_config = IncrementalConfig(
+        source_timestamp_columns=["updated_at"], target_timestamp_column="updated_at"
+    )
     loader.incremental_load(
         source_name="mock_mysql",
         target_table="users",
         incremental_config=inc_config,
         source_database="specific_db_name",
-        source_query="SELECT 1"
+        source_query="SELECT 1",
     )
     call_kwargs = mock_db_manager.execute_mysql_query.call_args.kwargs
-    assert call_kwargs['database_override'] == "specific_db_name"
+    assert call_kwargs["database_override"] == "specific_db_name"
 
 
 def test_batch_loader_no_data(loader, mock_db_manager):
@@ -274,12 +282,18 @@ def test_incremental_load_subsequent_run_success(loader: CopyAndLoader):
     Example output:
         WHERE updated_at >= '2025-09-26 11:00:00'
     """
-    inc_config = IncrementalConfig(source_timestamp_columns=["updated_at"], target_timestamp_column="updated_at", lookback_hours=1)
+    inc_config = IncrementalConfig(
+        source_timestamp_columns=["updated_at"],
+        target_timestamp_column="updated_at",
+        lookback_hours=1,
+    )
     last_ts = datetime(2025, 9, 26, 12, 0, 0)
-    with patch.object(loader, '_get_last_timestamp', return_value=last_ts):
+    with patch.object(loader, "_get_last_timestamp", return_value=last_ts):
         result = loader.incremental_load(
-            source_name="mock_mysql", target_table="users", incremental_config=inc_config,
-            source_query="SELECT * FROM users WHERE updated_at >= {safe_timestamp};"
+            source_name="mock_mysql",
+            target_table="users",
+            incremental_config=inc_config,
+            source_query="SELECT * FROM users WHERE updated_at >= {safe_timestamp};",
         )
     assert result.success is True
     executed_query = loader.db_manager.execute_mysql_query.call_args[0][1]

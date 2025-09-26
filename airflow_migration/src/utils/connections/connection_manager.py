@@ -564,7 +564,7 @@ class DatabaseConnectionManager:
                         },
                     )
                     return affected_rows
-        except Exception as e:
+        except Exception:
             execution_time = time.time() - start_time
             self.logger.error(
                 "MySQL query execution failed",

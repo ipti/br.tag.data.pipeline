@@ -6,6 +6,7 @@ from utils.runtime.runtime_engine import resolve_placeholders, render_sql_templa
 from utils.planner.execution_planner import TableExecution
 from utils.planner.warehouse_basic_config import IncrementalConfig, UpsertConfig
 
+
 @pytest.fixture
 def mock_db_manager_dev() -> MagicMock:
     """
@@ -17,6 +18,7 @@ def mock_db_manager_dev() -> MagicMock:
     mock.sqlserver_config.schema = "dbo_tia_dev"
     return mock
 
+
 @pytest.fixture
 def mock_db_manager_prod() -> MagicMock:
     """
@@ -27,7 +29,8 @@ def mock_db_manager_prod() -> MagicMock:
     mock.hotfix_mode = False
     mock.sqlserver_config.schema = "dbo_tia"
     return mock
-    
+
+
 @pytest.fixture
 def mock_db_manager_hotfix() -> MagicMock:
     """
@@ -39,15 +42,21 @@ def mock_db_manager_hotfix() -> MagicMock:
     mock.sqlserver_config.schema = "dbo_tia"
     return mock
 
+
 @pytest.fixture
 def base_table_execution(tmp_path: Path) -> TableExecution:
     """
     Creates a TableExecution object with a temporary SQL file for rendering tests.
     """
-    inc_config = IncrementalConfig(source_timestamp_columns=["updated_at"], target_timestamp_column="dw_inserted_at")
+    inc_config = IncrementalConfig(
+        source_timestamp_columns=["updated_at"],
+        target_timestamp_column="dw_inserted_at",
+    )
     ups_config = UpsertConfig(source_key_columns=["id"])
     sql_file = tmp_path / "test_query.sql"
-    sql_file.write_text("SELECT * FROM {{ database }}.source_table WHERE id = {{ context_id }};")
+    sql_file.write_text(
+        "SELECT * FROM {{ database }}.source_table WHERE id = {{ context_id }};"
+    )
     return TableExecution(
         table_name="d_student",
         stage=1,
@@ -61,9 +70,10 @@ def base_table_execution(tmp_path: Path) -> TableExecution:
         upsert_config=ups_config,
         execution_context={
             "database": "nossasenhoradagloria.tag.ong.br",
-            "context_id": 123
-        }
+            "context_id": 123,
+        },
     )
+
 
 def test_resolve_placeholders_in_dev_env(base_table_execution, mock_db_manager_dev):
     """
@@ -78,6 +88,7 @@ def test_resolve_placeholders_in_dev_env(base_table_execution, mock_db_manager_d
     assert resolved_exec.target_schema == "dbo_tia_dev"
     assert base_table_execution.source_name == "{SOURCE_NAME}"
 
+
 def test_resolve_placeholders_in_prod_env(base_table_execution, mock_db_manager_prod):
     """
     Tests that resolve_placeholders correctly resolves PROD environment values.
@@ -90,7 +101,10 @@ def test_resolve_placeholders_in_prod_env(base_table_execution, mock_db_manager_
     assert resolved_exec.source_name == "mysql_source_1"
     assert resolved_exec.target_schema == "dbo_tia"
 
-def test_resolve_placeholders_in_hotfix_mode(base_table_execution, mock_db_manager_hotfix):
+
+def test_resolve_placeholders_in_hotfix_mode(
+    base_table_execution, mock_db_manager_hotfix
+):
     """
     Tests that hotfix mode forces resolution to PROD values.
 
@@ -102,7 +116,10 @@ def test_resolve_placeholders_in_hotfix_mode(base_table_execution, mock_db_manag
     assert resolved_exec.source_name == "mysql_source_1"
     assert resolved_exec.target_schema == "dbo_tia"
 
-def test_resolve_placeholders_no_placeholders_present(base_table_execution, mock_db_manager_dev):
+
+def test_resolve_placeholders_no_placeholders_present(
+    base_table_execution, mock_db_manager_dev
+):
     """
     Tests that resolve_placeholders does not alter values when no placeholders are present.
 
@@ -116,6 +133,7 @@ def test_resolve_placeholders_no_placeholders_present(base_table_execution, mock
     assert resolved_exec.source_name == "fixed_source_name"
     assert resolved_exec.target_schema == "fixed_target_schema"
 
+
 def test_render_sql_template_success_and_quoting(base_table_execution):
     """
     Tests that render_sql_template correctly renders the SQL template and quotes the database name.
@@ -124,8 +142,11 @@ def test_render_sql_template_success_and_quoting(base_table_execution):
         final_sql == "SELECT * FROM `nossasenhoradagloria.tag.ong.br`.source_table WHERE id = 123;"
     """
     final_sql = render_sql_template(base_table_execution)
-    expected_sql = "SELECT * FROM `nossasenhoradagloria.tag.ong.br`.source_table WHERE id = 123;"
+    expected_sql = (
+        "SELECT * FROM `nossasenhoradagloria.tag.ong.br`.source_table WHERE id = 123;"
+    )
     assert final_sql == expected_sql
+
 
 def test_render_sql_template_no_database_in_context(base_table_execution):
     """
@@ -134,10 +155,11 @@ def test_render_sql_template_no_database_in_context(base_table_execution):
     Example:
         final_sql == "SELECT 1;"
     """
-    del base_table_execution.execution_context['database']
+    del base_table_execution.execution_context["database"]
     Path(base_table_execution.sql_path).write_text("SELECT 1;")
     final_sql = render_sql_template(base_table_execution)
     assert final_sql == "SELECT 1;"
+
 
 def test_render_sql_template_file_not_found(base_table_execution):
     """
