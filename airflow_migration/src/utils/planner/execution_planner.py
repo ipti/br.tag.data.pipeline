@@ -1,4 +1,5 @@
 from typing import Dict, List, Any
+import dataclasses
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -69,6 +70,37 @@ class TableExecution:
         """Generate unique identifier for this execution"""
         return f"{self.table_name}_{self.database}_{self.stage}"
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Converts the TableExecution instance into a serializable dictionary.
+
+        Returns:
+            Dict[str, Any]: Dictionary representation of the TableExecution object,
+            including all attributes and nested configs.
+        """
+        return dataclasses.asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "TableExecution":
+        """
+        Creates a TableExecution instance from a dictionary, reconstructing nested configs.
+
+        Args:
+            data (Dict[str, Any]): Dictionary containing all TableExecution fields.
+
+        Returns:
+            TableExecution: A new TableExecution object populated from the dictionary.
+
+        Example:
+            >>> exec_dict = {...}
+            >>> exec = TableExecution.from_dict(exec_dict)
+            >>> print(exec.table_name)
+            'my_table'
+        """
+        data["incremental_config"] = IncrementalConfig(**data["incremental_config"])
+        data["upsert_config"] = UpsertConfig(**data["upsert_config"])
+        return cls(**data)
+
 
 class ExecutionPlanner:
     """Generates execution plan respecting stages, dependencies, and databases"""
@@ -82,7 +114,6 @@ class ExecutionPlanner:
         """
         self.logger = get_logger("execution_planner")
         self.db_manager = db_manager
-        # Instancia o validador para uso interno
         self.validator = DependencyValidator()
 
     def generate_execution_plan(

@@ -725,6 +725,7 @@ class CopyAndLoader:
         source_name: str,
         target_table: str,
         incremental_config: IncrementalConfig,
+        source_database: Optional[str] = None,
         source_table: Optional[str] = None,
         table_mapping: Optional[TableMapping] = None,
         target_schema: Optional[str] = None,
@@ -732,21 +733,20 @@ class CopyAndLoader:
         source_query: Optional[str] = None,
     ) -> LoadResult:
         """
-        Performs incremental data loading from a MySQL source table to a SQL Server target table.
-
-        Now supports automatic timestamp injection in custom queries using placeholders:
-        - {last_timestamp} - Gets replaced with the actual last timestamp from target
-        - {safe_timestamp} - Gets replaced with last_timestamp minus lookback_hours
+        Performs incremental data loading from a MySQL source to a SQL Server target.
 
         Args:
             source_name (str): Name of the MySQL source connection.
-            source_table (Optional[str]): Name of the source table in MySQL. Required unless using source_query.
             target_table (str): Name of the target table in SQL Server.
             incremental_config (IncrementalConfig): Configuration for incremental loading.
-            table_mapping (Optional[TableMapping]): Optional mapping between source and target columns.
-            target_schema (Optional[str]): Optional schema name for the target table in SQL Server.
-            upsert_config (Optional[UpsertConfig]): Optional configuration for upsert operations.
-            source_query (Optional[str]): Optional custom SQL query. Can use {last_timestamp} and {safe_timestamp} placeholders.
+            source_database (Optional[str]): The specific source database/schema
+                to connect to for this execution.
+            source_table (Optional[str]): Name of the source table in MySQL.
+                Required unless using source_query.
+            table_mapping (Optional[TableMapping]): Mapping between source/target columns.
+            target_schema (Optional[str]): Schema for the target table in SQL Server.
+            upsert_config (Optional[UpsertConfig]): Configuration for upsert operations.
+            source_query (Optional[str]): Custom SQL query for the source.
 
         Returns:
             LoadResult: Object containing details about the load operation.
@@ -762,6 +762,7 @@ class CopyAndLoader:
                 {
                     "source_name": source_name,
                     "source_table": source_table,
+                    "source_database": source_database,
                     "target_table": f"{schema}.{target_table}",
                     "source_timestamp_columns": ", ".join(
                         incremental_config.source_timestamp_columns
@@ -823,7 +824,9 @@ class CopyAndLoader:
                 {"query_preview": query[:200] + "..." if len(query) > 200 else query},
             )
 
-            source_data = self.db_manager.execute_mysql_query(source_name, query)
+            source_data = self.db_manager.execute_mysql_query(
+                source_name, query, database_override=source_database
+            )
 
             if not source_data:
                 self.logger.info("No new data found for incremental load")
@@ -892,8 +895,7 @@ class CopyAndLoader:
             result.error_message = str(e)
 
             self.logger.error(
-                "Incremental load failed",
-                exception=e,
+                f"Incremental load failed. Original error: {str(e)}",
                 extra_data={
                     "source_name": source_name,
                     "source_table": source_table,

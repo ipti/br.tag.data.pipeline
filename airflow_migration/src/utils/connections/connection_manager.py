@@ -278,7 +278,9 @@ class DatabaseConnectionManager:
             },
         )
 
-    def _create_mysql_engine(self, source_name: str) -> Engine:
+    def _create_mysql_engine(
+        self, source_name: str, database_override: str = None
+    ) -> Engine:
         """
         Creates a SQLAlchemy engine for a MySQL source with connection pooling.
 
@@ -291,9 +293,16 @@ class DatabaseConnectionManager:
         config = self.mysql_configs.get(source_name)
         if not config:
             raise ValueError(f"MySQL source '{source_name}' not configured")
+
+        database_to_connect = (
+            database_override if database_override else config.database
+        )
+
+        db_path = f"/{database_to_connect}" if database_to_connect else ""
+
         connection_string = (
             f"mysql+pymysql://{config.username}:{config.password}@"
-            f"{config.host}:{config.port}/{config.database}"
+            f"{config.host}:{config.port}{db_path}"
         )
         engine = create_engine(
             connection_string,
@@ -485,33 +494,47 @@ class DatabaseConnectionManager:
         source_name: str,
         query: str,
         params: Optional[Dict[str, Any]] = None,
-        database: Optional[str] = None,
+        database_override: Optional[str] = None,
     ) -> Any:
         """
-        Executes a SQL query on a MySQL source, optionally specifying a database.
+        Executes a SQL query on a MySQL source, optionally targeting a specific database.
+
+        This method obtains a connection engine configured for the specified
+        'database_override'. If no override is provided, it uses the default
+        database from the source configuration. This approach is safe for use with
+        connection pooling as it does not change a connection's state with 'USE'
+        commands, preventing state leakage between tasks.
 
         Args:
-            source_name: Name of the MySQL source.
-            query: SQL query to execute.
-            params: Optional query parameters.
-            database: Optional database name to override the default.
+            source_name (str): The logical name of the MySQL source configuration.
+            query (str): The SQL query string to execute.
+            params (Optional[Dict[str, Any]]): Parameters for the query, if any.
+            database_override (Optional[str]): The specific database/schema to
+                connect to, overriding the default in the source's configuration.
 
         Returns:
-            Query result (rows for SELECT, affected row count for DML).
+            Any: For SELECT queries, returns a list of rows. For DML statements
+                (INSERT, UPDATE, DELETE), returns the number of affected rows.
+
+        Raises:
+            ValueError: If the specified source_name is not configured.
+            Exception: Propagates underlying exceptions from the database driver.
         """
         start_time = time.time()
         source_config = self.mysql_configs.get(source_name)
         if not source_config:
             raise ValueError(f"MySQL source '{source_name}' not found")
-        target_database = database or source_config.database
+
+        target_database = database_override or source_config.database
+
         try:
-            with self.mysql_connection(source_name) as conn:
-                if database and database != source_config.database:
-                    conn.execute(text(f"USE `{database}`"))
-                if params:
-                    result = conn.execute(text(query), params)
-                else:
-                    result = conn.execute(text(query))
+            with self.mysql_connection(
+                source_name, database_override=database_override
+            ) as conn:
+
+                execution_params = params or {}
+                result = conn.execute(text(query), execution_params)
+
                 if query.strip().upper().startswith("SELECT"):
                     rows = result.fetchall()
                     execution_time = time.time() - start_time
@@ -545,12 +568,12 @@ class DatabaseConnectionManager:
             execution_time = time.time() - start_time
             self.logger.error(
                 "MySQL query execution failed",
-                exception=e,
+                exc_info=True,  # Usando exc_info=True para logar o traceback completo
                 extra_data={
                     "source": source_name,
                     "database": target_database,
                     "execution_time_seconds": round(execution_time, 2),
-                    "query_preview": query[:100] + "..." if len(query) > 100 else query,
+                    "query_preview": query[:200] + "..." if len(query) > 200 else query,
                 },
             )
             raise
