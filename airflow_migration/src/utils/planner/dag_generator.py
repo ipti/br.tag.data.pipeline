@@ -41,7 +41,6 @@ class DagGenerator:
         workflow_config: WorkflowConfig,
         environment: str,
         is_paused: bool = False,
-
     ):
         """
         Main method to generate all DAG files for a specific environment.
@@ -82,9 +81,8 @@ class DagGenerator:
                     trigger_config,
                     batches,
                     workflow_config.workflow_name,
-                    environment, 
-                    is_paused
-
+                    environment,
+                    is_paused,
                 )
 
                 file_name = f"dag__{workflow_config.workflow_name.lower()}__{trigger_name}__{environment}.py"

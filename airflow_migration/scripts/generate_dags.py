@@ -12,7 +12,7 @@ For each environment, it:
 This script should be executed manually or in a CI/CD pipeline whenever there
 is a change in the YAML configuration files to regenerate all DAGs.
 """
-import os
+
 from pathlib import Path
 
 # Assuming 'src' is installed via `pip install -e .`
@@ -20,7 +20,6 @@ from utils.logs.logging_functions import get_logger
 from utils.planner.dag_generator import DagGenerator
 from utils.planner.execution_planner import ExecutionPlanner, InvalidWorkflowError
 from utils.planner.yaml_loader import YAMLLoader
-from utils.connections.connection_manager import DatabaseConnectionManager
 
 # --- Configuration Constants ---
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -87,7 +86,7 @@ def main():
         for error in e.errors:
             logger.error(f" - {error.message}")
         exit(1)
-    except Exception as e:
+    except Exception:
         logger.error(
             "--- BUILD FAILED: An unexpected error occurred. ---", exc_info=True
         )
