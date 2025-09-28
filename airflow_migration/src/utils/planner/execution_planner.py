@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import dataclasses
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -52,6 +52,9 @@ class TableExecution:
     sql_path: str
     incremental_config: IncrementalConfig
     upsert_config: UpsertConfig
+    pool: Optional[str]
+    retries: int
+    retry_delay_minutes: int
     execution_context: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -297,6 +300,9 @@ class ExecutionPlanner:
             incremental_config=table_config.incremental_config,
             upsert_config=table_config.upsert_config,
             execution_context=execution_context,
+            pool=table_load.pool,
+            retries=table_load.retries,
+            retry_delay_minutes=table_load.retry_delay_minutes,
         )
 
         has_filters = bool(table_config.optional_filters)

@@ -139,6 +139,13 @@ class DatabaseConnectionManager:
             self.logger.warning(f"Error detecting Docker environment: {e}")
             return False
 
+    @property
+    def environment(self) -> str:
+        """
+        Returns the current detected environment ('prod' or 'dev').
+        """
+        return "prod" if self.is_production or self.hotfix_mode else "dev"
+
     def _resolve_mysql_host(self, configured_host: str) -> str:
         """
         Resolves the MySQL host based on the current environment.

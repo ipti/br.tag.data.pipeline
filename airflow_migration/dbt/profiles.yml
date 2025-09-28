@@ -6,8 +6,8 @@ dbt_tia:
       driver: "ODBC Driver 18 for SQL Server"
       server: "{{ env_var('SQLSERVER_HOST') }}"
       port: 1433   
-      user: "{{ env_var('SQLSERVER_USER') }}"
-      password: "{{ env_var('SQLSERVER_PASSWORD') }}"
+      user: "{{ env_var('SQLSERVER_USER_DEV') }}"
+      password: "{{ env_var('SQLSERVER_PASSWORD_DEV') }}"
       database: "{{ env_var('SQLSERVER_DATABASE') }}"
       schema: "{{ env_var('SQLSERVER_DEV_SCHEMA') }}"
       trust_cert: true
@@ -17,8 +17,8 @@ dbt_tia:
       driver: "ODBC Driver 18 for SQL Server"
       server: "{{ env_var('SQLSERVER_HOST') }}"
       port: 1433
-      user: "{{ env_var('SQLSERVER_USER') }}"
-      password: "{{ env_var('SQLSERVER_PASSWORD') }}"
+      user: "{{ env_var('SQLSERVER_USER_PRD') }}"
+      password: "{{ env_var('SQLSERVER_PASSWORD_PRD') }}"
       database: "{{ env_var('SQLSERVER_DATABASE') }}"
       schema: "{{ env_var('SQLSERVER_PROD_SCHEMA') }}"
       trust_cert: true

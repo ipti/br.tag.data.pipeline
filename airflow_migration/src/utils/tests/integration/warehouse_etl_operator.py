@@ -36,6 +36,9 @@ def sample_table_execution_dict(tmp_path: Path) -> dict:
         incremental_config=inc_config,
         upsert_config=ups_config,
         execution_context={"database": db_name},
+        pool="default_pool",
+        retries=2,
+        retry_delay_minutes=5,
     )
     return exec_obj.to_dict()
 
