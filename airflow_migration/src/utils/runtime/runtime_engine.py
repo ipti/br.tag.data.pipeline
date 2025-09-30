@@ -3,6 +3,7 @@
 from jinja2 import Template
 from pathlib import Path
 import copy
+from airflow.models import Variable
 
 from src.utils.connections.connection_manager import DatabaseConnectionManager
 from src.utils.planner.execution_planner import TableExecution
@@ -71,11 +72,15 @@ def render_sql_template(resolved_execution: TableExecution) -> str:
         >>> print(sql)
         "SELECT * FROM db1.users;"
     """
-    sql_path = Path(resolved_execution.sql_path)
-    if not sql_path.exists():
-        raise FileNotFoundError(f"SQL file not found at: {sql_path}")
+    config_root = Variable.get("etl_config_root_path")
 
-    sql_template_content = sql_path.read_text()
+    full_sql_path = Path(config_root) / resolved_execution.sql_path
+
+    if not full_sql_path.exists():
+        raise FileNotFoundError(f"SQL file not found at: {full_sql_path}")
+
+    sql_template_content = full_sql_path.read_text()
+    
     template = Template(sql_template_content)
     render_context = resolved_execution.execution_context.copy()
 
