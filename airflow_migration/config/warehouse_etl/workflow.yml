@@ -1,5 +1,5 @@
 workflow_name: "Workflow-Warehouse"
-max_parallel_tasks: 3
+max_parallel_tasks: 1
 pool: "mysql_prod_pool"
 
 triggers:
@@ -22,11 +22,13 @@ stages:
         model: "tables/d_student.yml"
         depends_on: []
         trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
         
       - table_name: "d_student_discipline" 
         model: "tables/d_student_discipline.yml"
         depends_on: []
         trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
 
   - stage: 2
     loads:
@@ -34,3 +36,4 @@ stages:
         model: "tables/f_avaliation.yml"
         depends_on: ["d_student", "d_student_discipline"]
         trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
