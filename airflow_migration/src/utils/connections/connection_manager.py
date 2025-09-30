@@ -284,6 +284,7 @@ class DatabaseConnectionManager:
             f"mysql+pymysql://{config.username}:{config.password}@"
             f"{config.host}:{config.port}{db_path}"
         )
+        safe_sql_mode = "STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
         engine = create_engine(
             connection_string,
             poolclass=QueuePool,
@@ -295,6 +296,7 @@ class DatabaseConnectionManager:
                 "connect_timeout": 30,
                 "read_timeout": self.connection_timeout,
                 "write_timeout": self.connection_timeout,
+                "init_command": f"SET SESSION sql_mode='{safe_sql_mode}'"
             },
         )
         self.logger.info(
