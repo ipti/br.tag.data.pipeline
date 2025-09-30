@@ -546,9 +546,8 @@ class DatabaseConnectionManager:
                     return affected_rows
         except Exception:
             execution_time = time.time() - start_time
-            self.logger.error(
+            self.logger.exception(
                 "MySQL query execution failed",
-                exc_info=True,  # Usando exc_info=True para logar o traceback completo
                 extra_data={
                     "source": source_name,
                     "database": target_database,
@@ -557,7 +556,7 @@ class DatabaseConnectionManager:
                 },
             )
             raise
-
+    
     def execute_sqlserver_query(
         self,
         query: str,

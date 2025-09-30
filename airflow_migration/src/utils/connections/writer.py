@@ -91,13 +91,12 @@ class CopyAndLoader:
         self.dbt_sources_config = self._load_dbt_sources_config()
 
         self._schema_cache: Dict[str, Dict[str, Any]] = {}
+        connection_info = self.db_manager.get_connection_info()
 
         self.logger.info(
             "CopyAndLoader initialized",
             {
-                "environment": self.db_manager.get_connection_info()[
-                    "environment_type"
-                ],
+                "environment": connection_info.get("environment"),
                 "sqlserver_schema": self.db_manager.sqlserver_config.schema,
                 "dbt_config_file": self.dbt_config_file,
                 "dbt_sources_loaded": len(self.dbt_sources_config) > 0,
@@ -721,190 +720,135 @@ class CopyAndLoader:
                 )
 
     def incremental_load(
-        self,
-        source_name: str,
-        target_table: str,
-        incremental_config: IncrementalConfig,
-        source_database: Optional[str] = None,
-        source_table: Optional[str] = None,
-        table_mapping: Optional[TableMapping] = None,
-        target_schema: Optional[str] = None,
-        upsert_config: Optional[UpsertConfig] = None,
-        source_query: Optional[str] = None,
-    ) -> LoadResult:
-        """
-        Performs incremental data loading from a MySQL source to a SQL Server target.
+            self,
+            source_name: str,
+            target_table: str,
+            incremental_config: IncrementalConfig,
+            source_query: str,
+            source_database: Optional[str] = None,
+            source_table: Optional[str] = None,
+            table_mapping: Optional[TableMapping] = None,
+            target_schema: Optional[str] = None,
+            upsert_config: Optional[UpsertConfig] = None,
+        ) -> LoadResult:
+            """
+            Performs a data loading operation from a source to a target.
 
-        Args:
-            source_name (str): Name of the MySQL source connection.
-            target_table (str): Name of the target table in SQL Server.
-            incremental_config (IncrementalConfig): Configuration for incremental loading.
-            source_database (Optional[str]): The specific source database/schema
-                to connect to for this execution.
-            source_table (Optional[str]): Name of the source table in MySQL.
-                Required unless using source_query.
-            table_mapping (Optional[TableMapping]): Mapping between source/target columns.
-            target_schema (Optional[str]): Schema for the target table in SQL Server.
-            upsert_config (Optional[UpsertConfig]): Configuration for upsert operations.
-            source_query (Optional[str]): Custom SQL query for the source.
+            This method is the core execution function. It receives a fully-rendered
+            SQL query and orchestrates the process of fetching data from the source,
+            loading it into a DataFrame, and writing it to the target table in
+            batches, performing an UPSERT if configured. The responsibility for
+            calculating timestamps and processing query templates is handled by
+            the calling component (e.g., an Airflow Operator).
 
-        Returns:
-            LoadResult: Object containing details about the load operation.
-        """
-        start_time = datetime.now()
-        result = LoadResult(success=False)
+            Args:
+                source_name (str): The logical name of the source connection.
+                target_table (str): The name of the target table.
+                incremental_config (IncrementalConfig): Configuration for loading behavior.
+                source_query (str): The final, executable SQL query for the source database.
+                source_database (Optional[str]): The specific source database/schema to
+                    connect to for this execution.
+                source_table (Optional[str]): The logical name of the source table (for logging).
+                table_mapping (Optional[TableMapping]): Column mapping configuration.
+                target_schema (Optional[str]): Schema for the target table.
+                upsert_config (Optional[UpsertConfig]): Configuration for upsert operations.
 
-        try:
-            schema = target_schema or self.db_manager.sqlserver_config.schema
+            Returns:
+                LoadResult: An object containing details about the load operation.
+            """
+            start_time = datetime.now()
+            result = LoadResult(success=False)
 
-            self.logger.info(
-                "Starting incremental load operation",
-                {
-                    "source_name": source_name,
-                    "source_table": source_table,
-                    "source_database": source_database,
-                    "target_table": f"{schema}.{target_table}",
-                    "source_timestamp_columns": ", ".join(
-                        incremental_config.source_timestamp_columns
-                    ),
-                    "target_timestamp_column": incremental_config.target_timestamp_column,
-                    "full_refresh": incremental_config.full_refresh,
-                    "batch_size": incremental_config.batch_size,
-                    "upsert_enabled": upsert_config is not None,
-                    "custom_query": bool(source_query),
-                },
-            )
+            try:
+                schema = target_schema or self.db_manager.sqlserver_config.schema
 
-            last_timestamp = None
-            safe_timestamp = None
-
-            if not incremental_config.full_refresh:
-                last_timestamp = self._get_last_timestamp(
-                    target_table, incremental_config.target_timestamp_column, schema
+                self.logger.info(
+                    "Starting load operation",
+                    {
+                        "source_name": source_name,
+                        "source_database": source_database,
+                        "target_table": f"{schema}.{target_table}",
+                        "batch_size": incremental_config.batch_size,
+                        "upsert_enabled": upsert_config is not None,
+                    },
                 )
 
-                if last_timestamp:
-                    safe_timestamp = last_timestamp - timedelta(
-                        hours=incremental_config.lookback_hours
-                    )
-
-                    self.logger.info(
-                        "Timestamp information retrieved",
-                        {
-                            "last_timestamp": str(last_timestamp),
-                            "safe_timestamp": str(safe_timestamp),
-                            "lookback_hours": incremental_config.lookback_hours,
-                        },
-                    )
-                else:
-                    safe_timestamp = datetime(1900, 1, 1)
-                    self.logger.info(
-                        "First execution detected - will fetch all records"
-                    )
-
-            if source_query:
-                query = self._process_query_placeholders(
-                    source_query,
-                    last_timestamp,
-                    safe_timestamp,
-                    incremental_config.full_refresh,
-                    incremental_config.source_timestamp_columns,
-                )
-            else:
-                if not source_table:
-                    raise ValueError(
-                        "source_table must be provided if not using source_query"
-                    )
-                query = self._build_select_query(
-                    source_table, table_mapping, incremental_config, last_timestamp
+                self.logger.debug(
+                    "Executing source query",
+                    {"query_preview": source_query[:500] + "..." if len(source_query) > 500 else source_query},
                 )
 
-            self.logger.debug(
-                "Executing query",
-                {"query_preview": query[:200] + "..." if len(query) > 200 else query},
-            )
+                source_data = self.db_manager.execute_mysql_query(
+                    source_name, source_query, database_override=source_database
+                )
 
-            source_data = self.db_manager.execute_mysql_query(
-                source_name, query, database_override=source_database
-            )
+                if not source_data:
+                    self.logger.info("No new data found from source query.")
+                    result.success = True
+                    result.rows_processed = 0
+                    result.execution_time_seconds = (
+                        datetime.now() - start_time
+                    ).total_seconds()
+                    return result
 
-            if not source_data:
-                self.logger.info("No new data found for incremental load")
+                df = pd.DataFrame(source_data)
+                total_rows = len(df)
+                result.rows_processed = total_rows
+                batch_size = incremental_config.batch_size
+                total_inserted = 0
+                total_updated = 0
+
+                for i in range(0, total_rows, batch_size):
+                    batch_df = df.iloc[i : i + batch_size]
+
+                    if upsert_config:
+                        inserted, updated = self._perform_upsert(
+                            batch_df, target_table, upsert_config, schema, table_mapping
+                        )
+                        total_inserted += inserted
+                        total_updated += updated
+                    else:
+                        batch_inserted = self._insert_dataframe_direct(
+                            batch_df, target_table, schema
+                        )
+                        total_inserted += batch_inserted
+                    
+                    self.logger.debug(f"Processed write batch {i // batch_size + 1}, rows: {len(batch_df)}")
+
+                result.rows_inserted = total_inserted
+                result.rows_updated = total_updated
                 result.success = True
-                result.rows_processed = 0
                 result.execution_time_seconds = (
                     datetime.now() - start_time
                 ).total_seconds()
-                return result
 
-            total_rows = len(source_data)
-            result.rows_processed = total_rows
-
-            if table_mapping and table_mapping.target_columns:
-                columns = table_mapping.target_columns
-            else:
-                columns = list(source_data[0].keys())
-
-            df = pd.DataFrame(source_data, columns=columns)
-            batch_size = incremental_config.batch_size
-            total_inserted = 0
-            total_updated = 0
-
-            for i in range(0, len(df), batch_size):
-                batch_df = df.iloc[i : i + batch_size]
-
-                if upsert_config:
-                    inserted, updated = self._perform_upsert(
-                        batch_df, target_table, upsert_config, schema, table_mapping
-                    )
-                    total_inserted += inserted
-                    total_updated += updated
-                else:
-                    batch_inserted = self._insert_dataframe_direct(
-                        batch_df, target_table, schema
-                    )
-                    total_inserted += batch_inserted
-
-                self.logger.debug(
-                    f"Processed batch {i//batch_size + 1}, rows: {len(batch_df)}"
+                self.logger.info(
+                    "Load operation completed successfully",
+                    {
+                        "source_name": source_name,
+                        "target_table": f"{schema}.{target_table}",
+                        "rows_processed": result.rows_processed,
+                        "rows_inserted": result.rows_inserted,
+                        "rows_updated": result.rows_updated,
+                        "execution_time_seconds": round(result.execution_time_seconds, 2),
+                    },
                 )
 
-            result.rows_inserted = total_inserted
-            result.rows_updated = total_updated
-            result.success = True
-            execution_time = (datetime.now() - start_time).total_seconds()
-            result.execution_time_seconds = execution_time
+            except Exception as e:
+                execution_time = (datetime.now() - start_time).total_seconds()
+                result.execution_time_seconds = execution_time
+                result.error_message = str(e)
 
-            self.logger.info(
-                "Incremental load completed successfully",
-                {
-                    "source_name": source_name,
-                    "source_table": source_table,
-                    "target_table": f"{schema}.{target_table}",
-                    "rows_processed": result.rows_processed,
-                    "rows_inserted": result.rows_inserted,
-                    "rows_updated": result.rows_updated,
-                    "execution_time_seconds": round(execution_time, 2),
-                    "batches_processed": (total_rows // batch_size) + 1,
-                },
-            )
+                self.logger.exception(
+                    "Load operation failed",
+                    extra_data={
+                        "source_name": source_name,
+                        "target_table": target_table,
+                        "execution_time_seconds": round(execution_time, 2),
+                    },
+                )
 
-        except Exception as e:
-            execution_time = (datetime.now() - start_time).total_seconds()
-            result.execution_time_seconds = execution_time
-            result.error_message = str(e)
-
-            self.logger.error(
-                f"Incremental load failed. Original error: {str(e)}",
-                extra_data={
-                    "source_name": source_name,
-                    "source_table": source_table,
-                    "target_table": target_table,
-                    "execution_time_seconds": round(execution_time, 2),
-                },
-            )
-
-        return result
+            return result
 
     def _process_query_placeholders(
         self,
