@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Any
 from pathlib import Path
 import yaml
 
-from airflow_migration.src.utils.logs.logging_functions import get_logger
+from utils.logs.logging_functions import get_logger
 from .warehouse_basic_config import (
     WorkflowConfig,
     TriggerConfig,
@@ -10,7 +10,7 @@ from .warehouse_basic_config import (
     TableLoad,
     TableConfig,
 )
-from airflow_migration.src.utils.connections.writer import (
+from utils.connections.writer import (
     IncrementalConfig,
     UpsertConfig,
 )

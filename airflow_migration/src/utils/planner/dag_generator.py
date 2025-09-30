@@ -131,6 +131,7 @@ class DagGenerator:
 """
 from pendulum import datetime
 from datetime import timedelta
+from airflow.models import DagRun as DagRunModel
 from airflow.models.dag import DAG
 from airflow.models.dagrun import DagRun
 from airflow.utils.task_group import TaskGroup
@@ -151,7 +152,8 @@ with DAG(
     doc_md="""{trigger_config.description}"""
 ) as dag:
     # Read the hotfix flag from the DAG run config at runtime
-    dag_run: DagRun = dag.get_last_dagrun(include_externally_triggered=True)
+    dag_runs = DagRunModel.find(dag_id=dag.dag_id)
+    dag_run: DagRun = dag_runs[-1] if dag_runs else None
     hotfix_flag = dag_run.conf.get("hotfix", False) if dag_run and dag_run.conf else False
 
 '''
@@ -177,15 +179,16 @@ with DAG(
                 retries = execution.retries
                 pool = execution.pool or "default_pool"
                 retry_delay_minutes = execution.retry_delay_minutes
+                task_variable_name = task_id.replace('-', '_')
 
                 task_code = f"""
-        {task_id} = WarehouseEtlOperator(
-            task_id="{task_id}",
-            table_execution_dict={repr(execution.to_dict())},
-            hotfix=hotfix_flag,
-            pool="{pool}",
-            retries={retries},
-            retry_delay=timedelta(minutes={retry_delay_minutes})
+                    {task_variable_name} = WarehouseEtlOperator(
+                    task_id="{task_id}",
+                    table_execution_dict={repr(execution.to_dict())},
+                    hotfix=hotfix_flag,
+                    pool="{pool}",
+                    retries={retries},
+                    retry_delay=timedelta(minutes={retry_delay_minutes})
         )"""
                 tasks_code.append(task_code)
 

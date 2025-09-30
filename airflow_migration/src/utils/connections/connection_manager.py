@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from dotenv import load_dotenv
-from airflow_migration.src.utils.logs.logging_functions import get_logger
+from utils.logs.logging_functions import get_logger
 import urllib
 import socket
 

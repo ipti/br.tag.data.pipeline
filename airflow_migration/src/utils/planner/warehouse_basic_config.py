@@ -3,8 +3,8 @@ from typing import Dict, List, Optional, Any
 from pathlib import Path
 
 
-from airflow_migration.src.utils.logs.logging_functions import get_logger
-from airflow_migration.src.utils.connections.writer import (
+from utils.logs.logging_functions import get_logger
+from utils.connections.writer import (
     UpsertConfig,
     IncrementalConfig,
 )

@@ -3,12 +3,12 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 # Importe as classes e funções a serem testadas
-from airflow_migration.src.utils.runtime.runtime_engine import (
+from utils.runtime.runtime_engine import (
     resolve_placeholders,
     render_sql_template,
 )
-from airflow_migration.src.utils.planner.execution_planner import TableExecution
-from airflow_migration.src.utils.planner.warehouse_basic_config import (
+from utils.planner.execution_planner import TableExecution
+from utils.planner.warehouse_basic_config import (
     IncrementalConfig,
     UpsertConfig,
 )

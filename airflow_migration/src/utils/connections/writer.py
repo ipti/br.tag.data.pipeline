@@ -8,8 +8,8 @@ from sqlalchemy import text, inspect
 from sqlalchemy.engine import Connection
 import hashlib
 from .connection_manager import DatabaseConnectionManager, get_db_manager
-from airflow_migration.src.utils.parser_and_caster.parser import clean_dataframe_for_sql
-from airflow_migration.src.utils.logs.logging_functions import get_logger
+from utils.parser_and_caster.parser import clean_dataframe_for_sql
+from utils.logs.logging_functions import get_logger
 
 
 @dataclass

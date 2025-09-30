@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from airflow_migration.src.utils.connections.writer import (
+from utils.connections.writer import (
     CopyAndLoader,
     IncrementalConfig,
 )

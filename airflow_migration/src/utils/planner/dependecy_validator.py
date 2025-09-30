@@ -2,7 +2,7 @@ from typing import Dict, List, Set, Tuple, Optional
 from collections import defaultdict
 from dataclasses import dataclass
 
-from airflow_migration.src.utils.logs.logging_functions import get_logger
+from utils.logs.logging_functions import get_logger
 from .warehouse_basic_config import WorkflowConfig
 
 

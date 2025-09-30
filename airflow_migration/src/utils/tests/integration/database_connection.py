@@ -26,7 +26,7 @@ Usage:
     python utils/tests/integration/database_connection.py
 """
 
-from airflow_migration.src.utils.connections.connection_manager import (
+from utils.connections.connection_manager import (
     DatabaseConnectionManager,
     DatabaseConfig,
     get_db_manager,
