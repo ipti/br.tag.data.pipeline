@@ -1,5 +1,4 @@
 import os
-import subprocess
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.engine import Engine, Connection
@@ -35,7 +34,9 @@ class DatabaseConnectionManager:
     Automatically switches between production and development environments based on the current git branch.
     """
 
-    def __init__(self, hotfix_mode: bool = False, connection_timeout: int = 720):
+    def __init__(
+        self, environment: str, hotfix_mode: bool = False, connection_timeout: int = 720
+    ):
         """
         Initializes the connection manager, loads environment variables, detects the current git branch,
         and sets up database configurations.
@@ -45,19 +46,26 @@ class DatabaseConnectionManager:
             connection_timeout: Connection timeout in seconds (default is 12 minutes).
         """
         self.logger = get_logger("db_connections")
+
+        if environment not in ["dev", "prod"]:
+            raise ValueError("Environment must be either 'dev' or 'prod'.")
+
+        self.environment = environment
         self.hotfix_mode = hotfix_mode
         self.connection_timeout = connection_timeout
-        self._load_environment()
-        self.current_branch = self._get_current_branch()
-        self.is_production = self._is_production_branch()
+
+        self.is_production = self.environment == "prod"
+
         self.logger.info(
-            "Environment detected",
+            "Environment explicitly set",
             {
-                "branch": self.current_branch,
+                "environment": self.environment,
                 "is_production": self.is_production,
                 "hotfix_mode": self.hotfix_mode,
             },
         )
+
+        self._load_environment()
         self._mysql_engines: Dict[str, Engine] = {}
         self._sqlserver_engine: Optional[Engine] = None
         self._setup_database_configs()
@@ -73,34 +81,6 @@ class DatabaseConnectionManager:
             self.logger.warning(
                 "No .env file found, using system environment variables"
             )
-
-    def _get_current_branch(self) -> str:
-        """
-        Returns the current git branch name, or 'main' if not in a git repository.
-        """
-        try:
-            result = subprocess.run(
-                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            if result.returncode == 0:
-                branch = result.stdout.strip()
-                self.logger.debug(f"Current git branch detected: {branch}")
-                return branch
-            else:
-                self.logger.warning("Failed to get git branch, assuming production")
-                return "main"
-        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
-            self.logger.warning("Error detecting git branch", exception=e)
-            return "unknown"
-
-    def _is_production_branch(self) -> bool:
-        """
-        Determines if the current branch is a production branch ('main' or 'master').
-        """
-        return self.current_branch.lower() in ["main", "master"]
 
     def _is_local_environment(self) -> bool:
         """
@@ -138,13 +118,6 @@ class DatabaseConnectionManager:
         except Exception as e:
             self.logger.warning(f"Error detecting Docker environment: {e}")
             return False
-
-    @property
-    def environment(self) -> str:
-        """
-        Returns the current detected environment ('prod' or 'dev').
-        """
-        return "prod" if self.is_production or self.hotfix_mode else "dev"
 
     def _resolve_mysql_host(self, configured_host: str) -> str:
         """
@@ -660,18 +633,14 @@ class DatabaseConnectionManager:
         Returns a dictionary containing the current connection configuration information.
         """
         return {
-            "current_branch": self.current_branch,
+            "environment": self.environment,
             "is_production": self.is_production,
             "hotfix_mode": self.hotfix_mode,
             "connection_timeout": self.connection_timeout,
-            "environment_type": (
-                "PROD" if (self.is_production or self.hotfix_mode) else "DEV"
-            ),
             "sqlserver_host": self.sqlserver_config.host,
             "sqlserver_database": self.sqlserver_config.database,
             "sqlserver_schema": self.sqlserver_config.schema,
             "mysql_sources": list(self.mysql_configs.keys()),
-            "mysql_sources_count": len(self.mysql_configs),
         }
 
     def fetch_data(

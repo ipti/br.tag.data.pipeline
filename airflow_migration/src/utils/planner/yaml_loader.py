@@ -511,44 +511,55 @@ class YAMLLoader:
         self, table_name: str, model_path: str
     ) -> TableConfig:
         """
-        Load configuration for a single table with support for both placeholders and fixed values
+        Loads and parses the configuration for a single table from its YAML file.
+
+        This method performs several key actions:
+        1.  Constructs paths for both the .yml and its corresponding .sql file.
+        2.  Validates that both files exist before proceeding.
+        3.  Loads and parses the YAML content.
+        4.  Constructs the nested IncrementalConfig and UpsertConfig objects.
+        5.  Stores the SQL path as a relative path to ensure portability
+            between different environments (e.g., local vs. Docker).
+        6.  Returns a fully populated and validated TableConfig object.
 
         Args:
-            table_name: Name of the table
-            model_path: Path to the table's YML configuration file
+            table_name (str): The logical name of the table, as defined in the
+                workflow.
+            model_path (str): The relative path to the table's YML configuration
+                file from the configuration root.
 
         Returns:
-            TableConfig object with loaded configuration
+            TableConfig: A dataclass object containing the structured configuration
+            for the table.
 
         Raises:
-            FileNotFoundError: If YML or SQL files are missing
-            ValueError: If configuration is invalid
+            FileNotFoundError: If the specified .yml or its corresponding .sql
+                file cannot be found.
+            ValueError: If the YAML content is not a dictionary or if any
+                nested configuration is invalid.
+            yaml.YAMLError: If the YAML file is malformed.
         """
-        # Resolve YML file path
-        yml_path = self.config_root / model_path
-        if not yml_path.exists():
-            error_msg = (
-                f"YML configuration file not found for table '{table_name}': {yml_path}"
-            )
-            raise FileNotFoundError(error_msg)
-
-        # Check for corresponding SQL file
-        sql_path = yml_path.with_suffix(".sql")
-        if not sql_path.exists():
-            error_msg = f"SQL file not found for table '{table_name}': {sql_path}"
-            raise FileNotFoundError(error_msg)
+        relative_yml_path = Path(model_path)
+        absolute_yml_path = self.config_root / relative_yml_path
 
         try:
-            with open(yml_path, "r", encoding="utf-8") as f:
+            relative_sql_path = relative_yml_path.with_suffix(".sql")
+            absolute_sql_path = self.config_root / relative_sql_path
+
+            if not absolute_yml_path.exists():
+                raise FileNotFoundError(
+                    f"YML config file not found: {absolute_yml_path}"
+                )
+
+            if not absolute_sql_path.exists():
+                raise FileNotFoundError(f"SQL file not found: {absolute_sql_path}")
+
+            with open(absolute_yml_path, "r", encoding="utf-8") as f:
                 yml_config = yaml.safe_load(f)
 
             if not isinstance(yml_config, dict):
-                error_msg = (
-                    f"YML configuration for table '{table_name}' must be a dictionary"
-                )
-                raise ValueError(error_msg)
+                raise ValueError("YML configuration must be a dictionary")
 
-            # Parse incremental config
             incremental_raw = yml_config.get("incremental_config", {})
             incremental_config = IncrementalConfig(
                 source_timestamp_columns=incremental_raw.get(
@@ -562,24 +573,19 @@ class YAMLLoader:
                 full_refresh=incremental_raw.get("full_refresh", False),
             )
 
-            # Parse upsert config
             upsert_raw = yml_config.get("upsert_config", {})
             upsert_config = UpsertConfig(
                 source_key_columns=upsert_raw.get("source_key_columns", []),
-                target_key_columns=upsert_raw.get("target_key_columns", []),
+                target_key_columns=upsert_raw.get("target_key_columns"),
             )
 
-            # Parse optional filters and filter sources
             optional_filters = yml_config.get("optional_filters", [])
             if isinstance(optional_filters, dict):
-                # Handle legacy format - convert to list
                 optional_filters = (
                     list(optional_filters.keys()) if optional_filters else []
                 )
 
             filter_sources = yml_config.get("filter_sources", {})
-
-            # Get source_name and target_schema - can be placeholders or fixed values
             source_name = yml_config.get("source_name", "{SOURCE_NAME}")
             target_schema = yml_config.get("target_schema", "{TARGET_SCHEMA}")
 
@@ -589,7 +595,7 @@ class YAMLLoader:
                 source_name=source_name,
                 target_schema=target_schema,
                 yml_config=yml_config,
-                sql_path=str(sql_path),
+                sql_path=str(relative_sql_path),
                 incremental_config=incremental_config,
                 upsert_config=upsert_config,
                 optional_filters=optional_filters,
@@ -597,32 +603,31 @@ class YAMLLoader:
             )
 
             self.logger.debug(
-                "Table configuration loaded",
-                extra_data={
+                "Table configuration loaded successfully",
+                {
                     "table_name": table_name,
-                    "yml_path": str(yml_path),
-                    "sql_path": str(sql_path),
+                    "relative_yml_path": str(relative_yml_path),
+                    "relative_sql_path": str(relative_sql_path),
                     "source_name": source_name,
                     "target_schema": target_schema,
-                    "is_fixed_schema": table_config.is_fixed_schema(),
-                    "needs_source_resolution": table_config.needs_source_name_resolution(),
-                    "optional_filters": optional_filters,
-                    "filter_sources": list(filter_sources.keys()),
-                    "timestamp_columns": incremental_config.source_timestamp_columns,
                 },
             )
 
             return table_config
 
-        except yaml.YAMLError as e:
-            error_msg = f"YAML parsing error in {yml_path}: {str(e)}"
-            raise yaml.YAMLError(error_msg)
-
-        except Exception as e:
-            error_msg = (
-                f"Failed to load configuration for table '{table_name}': {str(e)}"
+        except (FileNotFoundError, ValueError, yaml.YAMLError) as e:
+            self.logger.error(
+                f"Failed to load configuration for table '{table_name}' from {model_path}",
+                extra_data={"error_type": type(e).__name__, "error_message": str(e)},
             )
-            raise ValueError(error_msg)
+            raise
+        except Exception as e:
+            self.logger.error(
+                f"An unexpected error occurred while loading config for table '{table_name}'",
+                exc_info=True,
+                extra_data={"table_name": table_name, "model_path": model_path},
+            )
+            raise ValueError(f"Unexpected error loading {model_path}: {e}") from e
 
     def get_table_config(self, table_name: str) -> Optional[TableConfig]:
         """Get configuration for a specific table"""

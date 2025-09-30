@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
-from pathlib import Path
 
 
 from utils.logs.logging_functions import get_logger
@@ -329,17 +328,26 @@ class TableConfig:
             )
             raise ValueError(error_msg)
 
-        if not Path(self.sql_path).exists():
-            error_msg = f"SQL file not found: {self.sql_path}"
+        if not isinstance(self.yml_config, dict):
+            error_msg = "yml_config must be a dictionary"
             logger.error(
                 "Invalid TableConfig",
                 extra_data={
                     "table_name": self.table_name,
-                    "sql_path": self.sql_path,
+                    "yml_config_type": type(self.yml_config),
                     "error": error_msg,
                 },
             )
             raise ValueError(error_msg)
+
+        logger.debug(
+            "TableConfig validated successfully",
+            extra_data={
+                "table_name": self.table_name,
+                "sql_path": self.sql_path,
+                "yml_keys": list(self.yml_config.keys()),
+            },
+        )
 
     def needs_source_name_resolution(self) -> bool:
         """Check if source_name needs to be resolved from placeholder"""

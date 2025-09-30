@@ -16,13 +16,13 @@ class WarehouseEtlOperator(BaseOperator):
     This operator is the primary execution engine for the dynamic ETL framework.
     It deserializes a table execution configuration, resolves placeholders,
     renders the final SQL, and uses the CopyAndLoader to perform the
+
     incremental load operation against the source and target databases.
     """
 
     def __init__(
         self,
         table_execution_dict: Dict[str, Any],
-        hotfix: bool = False,
         **kwargs,
     ):
         """
@@ -32,15 +32,11 @@ class WarehouseEtlOperator(BaseOperator):
             table_execution_dict (Dict[str, Any]): A dictionary representation of a
                 TableExecution object, which contains all necessary configuration
                 for a single ETL task.
-            hotfix (bool, optional): If True, forces the DatabaseConnectionManager
-                to use production connections, overriding the default environment
-                detection. Defaults to False.
             **kwargs: Additional arguments inherited from BaseOperator (e.g., task_id,
                 retries, pool).
         """
         super().__init__(**kwargs)
         self.table_execution_dict = table_execution_dict
-        self.hotfix = hotfix
 
     def execute(self, context: Context) -> Dict[str, Any]:
         """
@@ -49,17 +45,6 @@ class WarehouseEtlOperator(BaseOperator):
         This method is called by the Airflow worker at runtime. It orchestrates
         the entire process of deserialization, placeholder resolution, SQL rendering,
         and data loading.
-
-        Args:
-            context (Context): The Airflow task context dictionary.
-
-        Raises:
-            AirflowException: If any step of the process fails, from deserialization
-                to the final data load.
-
-        Returns:
-            Dict[str, Any]: A dictionary containing metadata about the execution,
-            such as the number of rows processed. This can be pushed to XComs.
         """
         try:
             table_execution = TableExecution.from_dict(self.table_execution_dict)
@@ -70,8 +55,20 @@ class WarehouseEtlOperator(BaseOperator):
             self.log.error(f"Failed to deserialize TableExecution object: {e}")
             raise AirflowException(f"Deserialization failed: {e}")
 
-        self.log.info(f"Initializing connection manager. Hotfix mode: {self.hotfix}")
-        db_manager = DatabaseConnectionManager(hotfix_mode=self.hotfix)
+        environment = table_execution.execution_context.get("environment", "dev")
+
+        dag_run = context.get("dag_run")
+        hotfix_mode = (
+            dag_run.conf.get("hotfix", False) if dag_run and dag_run.conf else False
+        )
+
+        self.log.info(
+            f"Initializing connection manager. Environment: {environment}, Hotfix mode: {hotfix_mode}"
+        )
+
+        db_manager = DatabaseConnectionManager(
+            environment=environment, hotfix_mode=hotfix_mode
+        )
         copy_loader = CopyAndLoader(db_manager=db_manager)
 
         try:

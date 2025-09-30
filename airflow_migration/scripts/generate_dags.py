@@ -86,9 +86,9 @@ def main():
         for error in e.errors:
             logger.error(f" - {error.message}")
         exit(1)
-    except Exception:
+    except Exception as e:
         logger.error(
-            "--- BUILD FAILED: An unexpected error occurred. ---", exc_info=True
+            f"--- BUILD FAILED: An unexpected error occurred: {e}",
         )
         exit(1)
 
