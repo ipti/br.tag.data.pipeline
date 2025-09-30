@@ -2,6 +2,7 @@ from typing import Any, Dict
 from airflow.models import BaseOperator
 from airflow.utils.context import Context
 from airflow.exceptions import AirflowException
+from datetime import datetime,timedelta
 
 from src.utils.connections.connection_manager import DatabaseConnectionManager
 from src.utils.connections.writer import CopyAndLoader
@@ -11,13 +12,13 @@ from src.utils.runtime.runtime_engine import resolve_placeholders, render_sql_te
 
 class WarehouseEtlOperator(BaseOperator):
     """
-    Executes a single table load task based on a TableExecution object.
+    Executes a single, configured ETL task for the dynamic warehouse framework.
 
-    This operator is the primary execution engine for the dynamic ETL framework.
-    It deserializes a table execution configuration, resolves placeholders,
-    renders the final SQL, and uses the CopyAndLoader to perform the
-
-    incremental load operation against the source and target databases.
+    This operator acts as the runtime engine for a `TableExecution` object.
+    It is responsible for orchestrating the entire lifecycle of a task, including
+    deserializing its configuration, determining the runtime context (like
+    hotfix mode), fetching the incremental timestamp from XComs, rendering the
+    final SQL query, and invoking the data loader (`CopyAndLoader`).
     """
 
     def __init__(
@@ -31,20 +32,39 @@ class WarehouseEtlOperator(BaseOperator):
         Args:
             table_execution_dict (Dict[str, Any]): A dictionary representation of a
                 TableExecution object, which contains all necessary configuration
-                for a single ETL task.
+                for a single ETL task. This is passed by the DagGenerator.
             **kwargs: Additional arguments inherited from BaseOperator (e.g., task_id,
-                retries, pool).
+                retries, pool, retry_delay).
         """
         super().__init__(**kwargs)
         self.table_execution_dict = table_execution_dict
 
     def execute(self, context: Context) -> Dict[str, Any]:
         """
-        Executes the ETL task.
+        Executes the ETL task by orchestrating the entire process.
 
-        This method is called by the Airflow worker at runtime. It orchestrates
-        the entire process of deserialization, placeholder resolution, SQL rendering,
-        and data loading.
+        This method is called by the Airflow worker at runtime. It performs the
+        following steps:
+        1. Deserializes the task configuration from the input dictionary.
+        2. Determines the runtime environment and hotfix mode.
+        3. Retrieves the initial `last_timestamp` from the upstream XCom push.
+        4. Calculates the `safe_timestamp` based on the lookback period.
+        5. Resolves environment-specific placeholders (source, schema).
+        6. Enriches the rendering context with both timestamps.
+        7. Renders the final SQL query using the Jinja2 template.
+        8. Calls the simplified `CopyAndLoader.incremental_load` with the final query.
+        9. Handles the load result, raising an exception on failure.
+
+        Args:
+            context (Context): The Airflow task context, which includes the
+                task instance (`ti`) for XCom access and the `dag_run` object.
+
+        Raises:
+            AirflowException: If any step of the process fails.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing metadata about the execution,
+            such as the number of rows processed.
         """
         try:
             table_execution = TableExecution.from_dict(self.table_execution_dict)
@@ -55,24 +75,41 @@ class WarehouseEtlOperator(BaseOperator):
             self.log.error(f"Failed to deserialize TableExecution object: {e}")
             raise AirflowException(f"Deserialization failed: {e}")
 
-        environment = table_execution.execution_context.get("environment", "dev")
-
         dag_run = context.get("dag_run")
-        hotfix_mode = (
-            dag_run.conf.get("hotfix", False) if dag_run and dag_run.conf else False
-        )
+        hotfix_mode = dag_run.conf.get("hotfix", False) if dag_run and dag_run.conf else False
+        environment = table_execution.execution_context.get("environment", "dev")
 
         self.log.info(
             f"Initializing connection manager. Environment: {environment}, Hotfix mode: {hotfix_mode}"
         )
-
         db_manager = DatabaseConnectionManager(
             environment=environment, hotfix_mode=hotfix_mode
         )
         copy_loader = CopyAndLoader(db_manager=db_manager)
 
         try:
+            ti = context["ti"]
+            inc_config = table_execution.incremental_config
+
+            last_timestamp = ti.xcom_pull(task_ids='get_initial_timestamp', key='last_timestamp')
+            safe_timestamp = None
+
+            if inc_config.full_refresh or not last_timestamp:
+                safe_timestamp = datetime(1900, 1, 1)
+                last_timestamp = datetime(1900, 1, 1)
+            else:
+                safe_timestamp = last_timestamp - timedelta(hours=inc_config.lookback_hours)
+
+            self.log.info(
+                f"Timestamps for query: "
+                f"last_timestamp='{last_timestamp}', safe_timestamp='{safe_timestamp}'"
+            )
+
             resolved_execution = resolve_placeholders(table_execution, db_manager)
+
+            resolved_execution.execution_context['last_timestamp'] = last_timestamp.strftime('%Y-%m-%d %H:%M:%S') if last_timestamp else None
+            resolved_execution.execution_context['safe_timestamp'] = safe_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+
             final_sql = render_sql_template(resolved_execution)
 
             self.log.info(
@@ -84,11 +121,11 @@ class WarehouseEtlOperator(BaseOperator):
             result = copy_loader.incremental_load(
                 source_name=resolved_execution.source_name,
                 target_table=resolved_execution.table_name,
+                incremental_config=resolved_execution.incremental_config,
+                source_query=final_sql,
                 source_database=resolved_execution.database,
                 target_schema=resolved_execution.target_schema,
-                incremental_config=resolved_execution.incremental_config,
                 upsert_config=resolved_execution.upsert_config,
-                source_query=final_sql,
             )
 
             if not result.success:
@@ -105,7 +142,7 @@ class WarehouseEtlOperator(BaseOperator):
             return {"status": "success", "rows_processed": result.rows_processed}
 
         except Exception as e:
-            self.log.error(
-                f"An unexpected error occurred during execution for table {table_execution.table_name}: {e}"
+            self.log.exception(
+                f"An unexpected error occurred during execution for table {table_execution.table_name}"
             )
             raise AirflowException(f"Task failed unexpectedly: {e}")
