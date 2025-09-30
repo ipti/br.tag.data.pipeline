@@ -32,7 +32,7 @@ class IncrementalConfig:
 
     source_timestamp_columns: List[str]
     target_timestamp_column: str
-    lookback_hours: int = 24
+    lookback_hours: int = 48
     batch_size: int = 10000
     full_refresh: bool = False
 
@@ -321,62 +321,6 @@ class CopyAndLoader:
         except Exception as e:
             self.logger.error("Error retrieving available dbt sources", exception=e)
             return []
-
-    def _build_select_query(
-        self,
-        source_table: str,
-        table_mapping: Optional[TableMapping] = None,
-        incremental_config: Optional[IncrementalConfig] = None,
-        last_timestamp: Optional[datetime] = None,
-    ) -> str:
-        """
-        Build SELECT query for source data extraction.
-
-        Args:
-            source_table: Source table name
-            table_mapping: Optional column mapping configuration
-            incremental_config: Optional incremental loading configuration
-            last_timestamp: Last timestamp for incremental loading
-
-        Returns:
-            SQL SELECT query string
-        """
-        if table_mapping and table_mapping.source_columns:
-            columns = []
-            for source_col, target_col in table_mapping.source_columns.items():
-                if (
-                    table_mapping.column_transformations
-                    and source_col in table_mapping.column_transformations
-                ):
-                    transformation = table_mapping.column_transformations[source_col]
-                    columns.append(f"{transformation} AS {target_col}")
-                else:
-                    columns.append(f"{source_col} AS {target_col}")
-            select_clause = ", ".join(columns)
-        else:
-            select_clause = "*"
-
-        query = f"SELECT {select_clause} FROM {source_table}"
-
-        where_conditions = []
-
-        if table_mapping and table_mapping.where_clause:
-            where_conditions.append(table_mapping.where_clause)
-
-        if incremental_config and last_timestamp:
-            safe_timestamp = last_timestamp - timedelta(
-                hours=incremental_config.lookback_hours
-            )
-            timestamp_condition = f"{incremental_config.source_timestamp_column} > '{safe_timestamp.strftime('%Y-%m-%d %H:%M:%S')}'"
-            where_conditions.append(timestamp_condition)
-
-        if where_conditions:
-            query += " WHERE " + " AND ".join(where_conditions)
-
-        if incremental_config:
-            query += f" ORDER BY {incremental_config.source_timestamp_column}"
-
-        return query
 
     def _get_last_timestamp(
         self, target_table: str, timestamp_column: str, schema: Optional[str] = None
@@ -850,180 +794,115 @@ class CopyAndLoader:
 
             return result
 
-    def _process_query_placeholders(
-        self,
-        source_query: str,
-        last_timestamp: Optional[datetime],
-        safe_timestamp: Optional[datetime],
-        full_refresh: bool,
-        source_timestamp_columns: List[str],
-    ) -> str:
-        """
-        Replaces timestamp placeholders in a custom SQL query for incremental loads.
-
-        This function supports two placeholders:
-        - {safe_timestamp}: Replaced with the safe timestamp string (last_timestamp minus lookback_hours, or '1900-01-01 00:00:00' for full refresh/first execution).
-        - {last_timestamp}: (Not currently used, but can be added for future needs.)
-
-        If this is the first execution (no last_timestamp) and not a full refresh, it also modifies the WHERE clause to include records where the timestamp column is NULL.
-
-        Args:
-            source_query (str): The custom SQL query containing placeholders.
-            last_timestamp (Optional[datetime]): The last timestamp found in the target table.
-            safe_timestamp (Optional[datetime]): The safe timestamp for incremental loading.
-            full_refresh (bool): If True, performs a full refresh (loads all records).
-            source_timestamp_column (str): The name of the timestamp column in the source table.
-
-        Returns:
-            str: The processed query with placeholders replaced.
-
-        Example:
-            If source_query is:
-                "SELECT * FROM users WHERE (updated_at > '{safe_timestamp}')"
-            and this is the first execution (no last_timestamp, not full_refresh),
-            the result will be:
-                "SELECT * FROM users WHERE (updated_at > '1900-01-01 00:00:00' OR updated_at IS NULL)"
-        """
-        is_first_execution = last_timestamp is None
-
-        if full_refresh or is_first_execution:
-            safe_ts_str = "1900-01-01 00:00:00"
-        else:
-            safe_ts_str = safe_timestamp.strftime("%Y-%m-%d %H:%M:%S")
-
-        processed_query = source_query.replace("{safe_timestamp}", f"'{safe_ts_str}'")
-
-        if is_first_execution and not full_refresh:
-            null_checks = " ".join(
-                [f"OR {col} IS NULL" for col in source_timestamp_columns]
-            )
-            processed_query = processed_query.replace(
-                "{first_run_null_check}", null_checks
-            )
-        else:
-            processed_query = processed_query.replace("{first_run_null_check}", "")
-
-        return processed_query
-
     def batch_loader(
-        self,
-        source_type: str,
-        source_schema: str,
-        source_table: str,
-        target_schema: str,
-        target_table: str,
-        source_name: Optional[str] = None,
-        table_mapping: Optional[TableMapping] = None,
-        chunk_size: int = 100000,
-        if_exists: str = "append",
-    ) -> LoadResult:
-        """
-        Generic batch loader to move data from MySQL or SQL Server into SQL Server.
+            self,
+            source_type: str,
+            source_query: str,
+            target_schema: str,
+            target_table: str,
+            source_name: Optional[str] = None,
+            source_database: Optional[str] = None,
+            table_mapping: Optional[TableMapping] = None,
+            chunk_size: int = 100000,
+            if_exists: str = "append",
+        ) -> LoadResult:
+            """
+            Executes a source query and loads the entire result set into a target table.
 
-        This function fetches data from the source (MySQL or SQL Server) and loads it into a
-        SQL Server target table. The target table is created automatically if it does not exist,
-        based on inferred data types. Note that constraints, primary keys, and indexes are not
-        automatically created.
+            This function is designed for full batch loads. It takes a complete SQL
+            query, fetches all data from the source, loads it into a DataFrame,
+            and writes it to the SQL Server target table in chunks.
 
-        Args:
-            source_type: "mysql" or "sqlserver".
-            source_schema: Source schema (used only for SQL Server sources).
-            source_table: Source table name.
-            target_schema: Destination schema in SQL Server.
-            target_table: Destination table in SQL Server.
-            source_name: MySQL source name (required if source_type="mysql").
-            table_mapping: Optional TableMapping object to transform columns or apply where clauses.
-            chunk_size: Number of rows per insert batch.
-            if_exists: Behavior if target table exists: "append", "replace", or "fail".
+            Args:
+                source_type (str): The source system type, e.g., "mysql" or "sqlserver".
+                source_query (str): The final, executable SQL query to run on the source.
+                target_schema (str): The destination schema in SQL Server.
+                target_table (str): The destination table in SQL Server.
+                source_name (Optional[str]): The logical name of the source connection
+                    (required for 'mysql').
+                source_database (Optional[str]): The specific source database/schema to
+                    connect to, overriding the default.
+                table_mapping (Optional[TableMapping]): An object for column transformations.
+                chunk_size (int): The number of rows per insert batch to the target.
+                if_exists (str): Behavior if the target table exists: "append",
+                    "replace", or "fail".
 
-        Returns:
-            LoadResult: Contains success status, rows processed/inserted, execution time, and error message if any.
-        """
-        start_time = datetime.now()
-        result = LoadResult(success=False)
+            Returns:
+                LoadResult: An object containing details about the load operation.
+            """
+            start_time = datetime.now()
+            result = LoadResult(success=False)
 
-        try:
-            # Construir query de origem
-            if source_type.lower() == "sqlserver":
-                query = f"SELECT * FROM {source_schema}.{source_table}"
-            elif source_type.lower() == "mysql":
-                query = f"SELECT * FROM {source_table}"
-            else:
-                raise ValueError(f"Unsupported source_type: {source_type}")
-
-            source_data = self.db_manager.fetch_data(
-                source_type=source_type,
-                query=query,
-                source_name=source_name,
-                schema=source_schema if source_type == "sqlserver" else None,
-            )
-
-            if not source_data:
+            try:
                 self.logger.info(
-                    "Batch load concluído: Nenhum dado encontrado na tabela origem",
+                    "Starting batch load operation",
                     {
-                        "source": f"{source_schema}.{source_table}",
+                        "source_type": source_type,
+                        "source_name": source_name,
+                        "source_database": source_database,
                         "target": f"{target_schema}.{target_table}",
+                        "chunk_size": chunk_size,
                     },
                 )
+
+                self.logger.debug(
+                    "Executing source query",
+                    {"query_preview": source_query[:500] + "..." if len(source_query) > 500 else source_query},
+                )
+
+                source_data = self.db_manager.fetch_data(
+                    source_type=source_type,
+                    query=source_query,
+                    source_name=source_name,
+                    database=source_database,
+                    schema=target_schema if source_type.lower() == "sqlserver" else None,
+                )
+
+                if not source_data:
+                    self.logger.info("Batch load complete: No data found from source query.")
+                    result.success = True
+                    return result
+
+                df = pd.DataFrame(source_data)
+                result.rows_processed = len(df)
+
+                if table_mapping and hasattr(table_mapping, "transform"):
+                    df = table_mapping.transform(df)
+
+                engine = self.db_manager.get_sqlserver_engine()
+                with engine.begin() as conn:
+                    # This assumes a simple insert. For replace/fail logic, more code would be needed here.
+                    for i in range(0, len(df), chunk_size):
+                        chunk_df = df.iloc[i : i + chunk_size]
+                        self._insert_dataframe_direct(
+                            chunk_df, target_table, target_schema, conn
+                        )
+
+                result.rows_inserted = result.rows_processed
                 result.success = True
-                result.rows_processed = 0
-                result.execution_time_seconds = (
-                    datetime.now() - start_time
-                ).total_seconds()
-                return result
+                result.execution_time_seconds = (datetime.now() - start_time).total_seconds()
 
-            columns = list(source_data[0].keys())
-            df = pd.DataFrame(source_data, columns=columns)
-            result.rows_processed = len(df)
+                self.logger.info(
+                    "Batch load completed successfully",
+                    {
+                        "target": f"{target_schema}.{target_table}",
+                        "rows_processed": result.rows_processed,
+                        "execution_time_seconds": round(result.execution_time_seconds, 2),
+                    },
+                )
 
-            if table_mapping and hasattr(table_mapping, "transform"):
-                df = table_mapping.transform(df)
+            except Exception as e:
+                result.error_message = str(e)
+                result.execution_time_seconds = (datetime.now() - start_time).total_seconds()
+                self.logger.exception(
+                    "Batch load failed",
+                    extra_data={
+                        "target": f"{target_schema}.{target_table}",
+                        "execution_time_seconds": round(result.execution_time_seconds, 2),
+                    },
+                )
 
-            engine = self.db_manager.get_sqlserver_engine()
-            with engine.begin() as conn:
-                for i in range(0, len(df), chunk_size):
-                    chunk_df = df.iloc[i : i + chunk_size]
-                    self._insert_dataframe_direct(
-                        chunk_df, target_table, target_schema, conn
-                    )
-
-            result.rows_inserted = result.rows_processed
-            result.success = True
-            execution_time = (datetime.now() - start_time).total_seconds()
-            result.execution_time_seconds = execution_time
-
-            self.logger.info(
-                "Batch load concluído com sucesso",
-                {
-                    "source_type": source_type,
-                    "source": f"{source_schema}.{source_table}",
-                    "target": f"{target_schema}.{target_table}",
-                    "rows_processed": result.rows_processed,
-                    "rows_inserted": result.rows_inserted,
-                    "execution_time_seconds": round(execution_time, 2),
-                    "query_preview": query[:100] + "..." if len(query) > 100 else query,
-                },
-            )
-
-        except Exception as e:
-            execution_time = (datetime.now() - start_time).total_seconds()
-            result.error_message = str(e)
-            result.execution_time_seconds = execution_time
-            self.logger.error(
-                "Batch load falhou",
-                exception=e,
-                extra_data={
-                    "source_type": source_type,
-                    "source": f"{source_schema}.{source_table}",
-                    "target": f"{target_schema}.{target_table}",
-                    "rows_processed": result.rows_processed,
-                    "execution_time_seconds": round(execution_time, 2),
-                    "query_preview": query[:100] + "..." if len(query) > 100 else query,
-                },
-            )
-
-        return result
+            return result
 
     def validate_table_compatibility(
         self,
