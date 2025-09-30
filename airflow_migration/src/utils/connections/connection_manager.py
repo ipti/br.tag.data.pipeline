@@ -344,7 +344,7 @@ class DatabaseConnectionManager:
         )
         return engine
 
-    def get_mysql_engine(self, source_name: str) -> Engine:
+    def get_mysql_engine(self, source_name: str, database_override: Optional[str] = None) -> Engine:
         """
         Retrieves the SQLAlchemy engine for the specified MySQL source.
 
@@ -356,7 +356,7 @@ class DatabaseConnectionManager:
         """
         if source_name not in self._mysql_engines:
             self._mysql_engines[source_name] = self._create_mysql_engine(source_name)
-        return self._mysql_engines[source_name]
+        return self._create_mysql_engine(source_name, database_override=database_override)
 
     def get_sqlserver_engine(self) -> Engine:
         """
@@ -370,7 +370,7 @@ class DatabaseConnectionManager:
         return self._sqlserver_engine
 
     @contextmanager
-    def mysql_connection(self, source_name: str) -> Generator[Connection, None, None]:
+    def mysql_connection(self, source_name: str, database_override: Optional[str] = None) -> Generator[Connection, None, None]:
         """
         Context manager for establishing and closing a MySQL connection.
 
@@ -380,7 +380,7 @@ class DatabaseConnectionManager:
         Yields:
             SQLAlchemy connection object.
         """
-        engine = self.get_mysql_engine(source_name)
+        engine = self.get_mysql_engine(source_name, database_override=database_override)
         connection = None
         try:
             start_time = time.time()

@@ -108,6 +108,7 @@ class YAMLLoader:
                 workflow_name=raw_config.get("workflow_name", ""),
                 max_parallel_tasks=raw_config.get("max_parallel_tasks", 4),
                 triggers=triggers,
+                incremental_reference_table=raw_config.get("incremental_reference_table"),
                 stages=stages,
             )
 

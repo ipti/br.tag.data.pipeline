@@ -189,6 +189,8 @@ class WorkflowConfig:
     max_parallel_tasks: int
     triggers: Dict[str, TriggerConfig]
     stages: List[Stage]
+    incremental_reference_table: Optional[str] = None
+
 
     def __post_init__(self):
         """Workflow configuration validations"""

@@ -4,7 +4,7 @@ SELECT
         COALESCE(si.school_inep_id_fk, 'NO_SCHOOL'), '-', 
         COALESCE(se.classroom_fk, 'NO_CLASSROOM')
     ) AS 'HASH_ID',
-    SUBSTRING({database_name}, 1, LOCATE('.', {database_name}) - 1) AS mapped_city
+    SUBSTRING({database_name}, 1, LOCATE('.', {database_name}) - 1) AS mapped_city,
     si.id AS 'F_HASH_ID',
     '{execution_timestamp}' AS 'inserted_at',
     si.name,
