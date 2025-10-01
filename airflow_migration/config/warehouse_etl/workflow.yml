@@ -1,5 +1,5 @@
 workflow_name: "Workflow-Warehouse"
-max_parallel_tasks: 1
+max_parallel_tasks: 3
 pool: "mysql_prod_pool"
 incremental_reference_table: "d_student"
 
