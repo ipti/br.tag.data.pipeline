@@ -296,7 +296,7 @@ class DatabaseConnectionManager:
                 "connect_timeout": 30,
                 "read_timeout": self.connection_timeout,
                 "write_timeout": self.connection_timeout,
-                "init_command": f"SET SESSION sql_mode='{safe_sql_mode}'"
+                "init_command": f"SET SESSION sql_mode='{safe_sql_mode}'",
             },
         )
         self.logger.info(
@@ -346,7 +346,9 @@ class DatabaseConnectionManager:
         )
         return engine
 
-    def get_mysql_engine(self, source_name: str, database_override: Optional[str] = None) -> Engine:
+    def get_mysql_engine(
+        self, source_name: str, database_override: Optional[str] = None
+    ) -> Engine:
         """
         Retrieves the SQLAlchemy engine for the specified MySQL source.
 
@@ -358,7 +360,9 @@ class DatabaseConnectionManager:
         """
         if source_name not in self._mysql_engines:
             self._mysql_engines[source_name] = self._create_mysql_engine(source_name)
-        return self._create_mysql_engine(source_name, database_override=database_override)
+        return self._create_mysql_engine(
+            source_name, database_override=database_override
+        )
 
     def get_sqlserver_engine(self) -> Engine:
         """
@@ -372,7 +376,9 @@ class DatabaseConnectionManager:
         return self._sqlserver_engine
 
     @contextmanager
-    def mysql_connection(self, source_name: str, database_override: Optional[str] = None) -> Generator[Connection, None, None]:
+    def mysql_connection(
+        self, source_name: str, database_override: Optional[str] = None
+    ) -> Generator[Connection, None, None]:
         """
         Context manager for establishing and closing a MySQL connection.
 
@@ -513,7 +519,6 @@ class DatabaseConnectionManager:
             with self.mysql_connection(
                 source_name, database_override=database_override
             ) as conn:
-
                 execution_params = params or {}
                 result = conn.execute(text(query), execution_params)
 
@@ -558,7 +563,7 @@ class DatabaseConnectionManager:
                 },
             )
             raise
-    
+
     def execute_sqlserver_query(
         self,
         query: str,

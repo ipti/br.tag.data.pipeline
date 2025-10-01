@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from utils.runtime.runtime_engine import resolve_placeholders, render_sql_template
 from utils.planner.execution_planner import TableExecution
@@ -68,6 +68,9 @@ def base_table_execution(tmp_path: Path) -> TableExecution:
         sql_path=str(sql_file),
         incremental_config=inc_config,
         upsert_config=ups_config,
+        pool="default_pool",
+        retries=3,
+        retry_delay_minutes=5,
         execution_context={
             "database": "nossasenhoradagloria.tag.ong.br",
             "context_id": 123,
@@ -134,13 +137,17 @@ def test_resolve_placeholders_no_placeholders_present(
     assert resolved_exec.target_schema == "fixed_target_schema"
 
 
-def test_render_sql_template_success_and_quoting(base_table_execution):
+@patch("airflow.models.Variable.get")
+def test_render_sql_template_success_and_quoting(
+    mock_variable_get, base_table_execution, tmp_path
+):
     """
     Tests that render_sql_template correctly renders the SQL template and quotes the database name.
 
     Example:
         final_sql == "SELECT * FROM `nossasenhoradagloria.tag.ong.br`.source_table WHERE id = 123;"
     """
+    mock_variable_get.return_value = str(tmp_path.parent)
     final_sql = render_sql_template(base_table_execution)
     expected_sql = (
         "SELECT * FROM `nossasenhoradagloria.tag.ong.br`.source_table WHERE id = 123;"
@@ -148,26 +155,112 @@ def test_render_sql_template_success_and_quoting(base_table_execution):
     assert final_sql == expected_sql
 
 
-def test_render_sql_template_no_database_in_context(base_table_execution):
+@patch("airflow.models.Variable.get")
+def test_render_sql_template_no_database_in_context(
+    mock_variable_get, base_table_execution, tmp_path
+):
     """
     Tests rendering when the 'database' key is missing from the execution context.
 
     Example:
         final_sql == "SELECT 1;"
     """
+    mock_variable_get.return_value = str(tmp_path.parent)
     del base_table_execution.execution_context["database"]
     Path(base_table_execution.sql_path).write_text("SELECT 1;")
     final_sql = render_sql_template(base_table_execution)
     assert final_sql == "SELECT 1;"
 
 
-def test_render_sql_template_file_not_found(base_table_execution):
+@patch("airflow.models.Variable.get")
+def test_render_sql_template_file_not_found(
+    mock_variable_get, base_table_execution, tmp_path
+):
     """
     Tests that FileNotFoundError is raised if the SQL file does not exist.
 
     Example:
         FileNotFoundError is raised when sql_path is invalid.
     """
-    base_table_execution.sql_path = "/a/b/c/non_existent_file.sql"
+    mock_variable_get.return_value = str(tmp_path)
+    base_table_execution.sql_path = "non_existent_file.sql"
     with pytest.raises(FileNotFoundError):
         render_sql_template(base_table_execution)
+
+
+@patch("airflow.models.Variable.get")
+def test_render_sql_template_with_special_characters_in_database(
+    mock_variable_get, base_table_execution, tmp_path
+):
+    """
+    Tests that database names with special characters are properly quoted.
+
+    Example:
+        final_sql contains "`database-with-dashes.example.com`"
+    """
+    mock_variable_get.return_value = str(tmp_path.parent)
+    base_table_execution.execution_context["database"] = (
+        "database-with-dashes.example.com"
+    )
+    Path(base_table_execution.sql_path).write_text(
+        "SELECT * FROM {{ database }}.table;"
+    )
+    final_sql = render_sql_template(base_table_execution)
+    assert "`database-with-dashes.example.com`" in final_sql
+
+
+@patch("airflow.models.Variable.get")
+def test_render_sql_template_multiple_context_variables(
+    mock_variable_get, base_table_execution, tmp_path
+):
+    """
+    Tests rendering with multiple context variables.
+
+    Example:
+        final_sql contains "students", "123", and "100"
+    """
+    mock_variable_get.return_value = str(tmp_path.parent)
+    base_table_execution.execution_context["table_name"] = "students"
+    base_table_execution.execution_context["limit"] = 100
+    Path(base_table_execution.sql_path).write_text(
+        "SELECT * FROM {{ database }}.{{ table_name }} WHERE id = {{ context_id }} LIMIT {{ limit }};"
+    )
+    final_sql = render_sql_template(base_table_execution)
+    assert "students" in final_sql
+    assert "123" in final_sql
+    assert "100" in final_sql
+
+
+def test_resolve_placeholders_preserves_other_attributes(
+    base_table_execution, mock_db_manager_dev
+):
+    """
+    Tests that resolve_placeholders preserves all other attributes of TableExecution.
+    """
+    resolved_exec = resolve_placeholders(base_table_execution, mock_db_manager_dev)
+    assert resolved_exec.table_name == base_table_execution.table_name
+    assert resolved_exec.stage == base_table_execution.stage
+    assert resolved_exec.database == base_table_execution.database
+    assert resolved_exec.trigger == base_table_execution.trigger
+    assert resolved_exec.model == base_table_execution.model
+    assert resolved_exec.sql_path == base_table_execution.sql_path
+    assert resolved_exec.pool == base_table_execution.pool
+    assert resolved_exec.retries == base_table_execution.retries
+    assert resolved_exec.retry_delay_minutes == base_table_execution.retry_delay_minutes
+
+
+def test_resolve_placeholders_creates_new_instance(
+    base_table_execution, mock_db_manager_dev
+):
+    """
+    Tests that resolve_placeholders returns a new instance and doesn't modify the original.
+
+    Example:
+        resolved_exec is not base_table_execution
+        resolved_exec.source_name != base_table_execution.source_name
+    """
+    original_source = base_table_execution.source_name
+    resolved_exec = resolve_placeholders(base_table_execution, mock_db_manager_dev)
+    assert base_table_execution.source_name == original_source
+    assert resolved_exec.source_name != original_source
+    assert resolved_exec is not base_table_execution

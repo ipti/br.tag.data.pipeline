@@ -191,7 +191,6 @@ class WorkflowConfig:
     stages: List[Stage]
     incremental_reference_table: Optional[str] = None
 
-
     def __post_init__(self):
         """Workflow configuration validations"""
         logger = get_logger("warehouse_basic_config")

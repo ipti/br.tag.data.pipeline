@@ -80,7 +80,7 @@ def render_sql_template(resolved_execution: TableExecution) -> str:
         raise FileNotFoundError(f"SQL file not found at: {full_sql_path}")
 
     sql_template_content = full_sql_path.read_text()
-    
+
     template = Template(sql_template_content)
     render_context = resolved_execution.execution_context.copy()
 

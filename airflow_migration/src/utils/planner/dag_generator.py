@@ -114,16 +114,18 @@ class DagGenerator:
         return grouped
 
     def _generate_dag_file_content(
-            self,
-            trigger_name: str,
-            trigger_config: TriggerConfig,
-            batches: List[List[TableExecution]],
-            workflow_config: WorkflowConfig,
-            environment: str,
-            is_paused: bool,
-        ) -> str:
+        self,
+        trigger_name: str,
+        trigger_config: TriggerConfig,
+        batches: List[List[TableExecution]],
+        workflow_config: WorkflowConfig,
+        environment: str,
+        is_paused: bool,
+    ) -> str:
         """Generates the full Python source code for a single DAG file."""
-        dag_id = f"{workflow_config.workflow_name.lower()}__{trigger_name}__{environment}"
+        dag_id = (
+            f"{workflow_config.workflow_name.lower()}__{trigger_name}__{environment}"
+        )
 
         reference_table_name = workflow_config.incremental_reference_table
         reference_execution = None
@@ -246,7 +248,7 @@ with DAG(
         {task_variable_name} = WarehouseEtlOperator(
             task_id="{task_id}",
             table_execution_dict={repr(execution.to_dict())},
-            pool="{execution.pool or 'default_pool'}",
+            pool="{execution.pool or "default_pool"}",
             retries={execution.retries},
             retry_delay=timedelta(minutes={execution.retry_delay_minutes})
         )"""

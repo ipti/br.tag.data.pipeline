@@ -2,7 +2,7 @@ from typing import Any, Dict
 from airflow.models import BaseOperator
 from airflow.utils.context import Context
 from airflow.exceptions import AirflowException
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 
 from src.utils.connections.connection_manager import DatabaseConnectionManager
 from src.utils.connections.writer import CopyAndLoader
@@ -76,7 +76,9 @@ class WarehouseEtlOperator(BaseOperator):
             raise AirflowException(f"Deserialization failed: {e}")
 
         dag_run = context.get("dag_run")
-        hotfix_mode = dag_run.conf.get("hotfix", False) if dag_run and dag_run.conf else False
+        hotfix_mode = (
+            dag_run.conf.get("hotfix", False) if dag_run and dag_run.conf else False
+        )
         environment = table_execution.execution_context.get("environment", "dev")
 
         self.log.info(
@@ -91,14 +93,18 @@ class WarehouseEtlOperator(BaseOperator):
             ti = context["ti"]
             inc_config = table_execution.incremental_config
 
-            last_timestamp = ti.xcom_pull(task_ids='get_initial_timestamp', key='last_timestamp')
+            last_timestamp = ti.xcom_pull(
+                task_ids="get_initial_timestamp", key="last_timestamp"
+            )
             safe_timestamp = None
 
             if inc_config.full_refresh or not last_timestamp:
                 safe_timestamp = datetime(1900, 1, 1)
                 last_timestamp = datetime(1900, 1, 1)
             else:
-                safe_timestamp = last_timestamp - timedelta(hours=inc_config.lookback_hours)
+                safe_timestamp = last_timestamp - timedelta(
+                    hours=inc_config.lookback_hours
+                )
 
             self.log.info(
                 f"Timestamps for query: "
@@ -107,8 +113,12 @@ class WarehouseEtlOperator(BaseOperator):
 
             resolved_execution = resolve_placeholders(table_execution, db_manager)
 
-            resolved_execution.execution_context['last_timestamp'] = last_timestamp.strftime('%Y-%m-%d %H:%M:%S') if last_timestamp else None
-            resolved_execution.execution_context['safe_timestamp'] = safe_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            resolved_execution.execution_context["last_timestamp"] = (
+                last_timestamp.strftime("%Y-%m-%d %H:%M:%S") if last_timestamp else None
+            )
+            resolved_execution.execution_context["safe_timestamp"] = (
+                safe_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            )
 
             final_sql = render_sql_template(resolved_execution)
 

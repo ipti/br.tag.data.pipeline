@@ -1,7 +1,7 @@
 import yaml
 import pandas as pd
 from typing import Optional, Dict, Any, List, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass, field
 from sqlalchemy import text, inspect
@@ -664,245 +664,265 @@ class CopyAndLoader:
                 )
 
     def incremental_load(
-            self,
-            source_name: str,
-            target_table: str,
-            incremental_config: IncrementalConfig,
-            source_query: str,
-            source_database: Optional[str] = None,
-            source_table: Optional[str] = None,
-            table_mapping: Optional[TableMapping] = None,
-            target_schema: Optional[str] = None,
-            upsert_config: Optional[UpsertConfig] = None,
-        ) -> LoadResult:
-            """
-            Performs a data loading operation from a source to a target.
+        self,
+        source_name: str,
+        target_table: str,
+        incremental_config: IncrementalConfig,
+        source_query: str,
+        source_database: Optional[str] = None,
+        source_table: Optional[str] = None,
+        table_mapping: Optional[TableMapping] = None,
+        target_schema: Optional[str] = None,
+        upsert_config: Optional[UpsertConfig] = None,
+    ) -> LoadResult:
+        """
+        Performs a data loading operation from a source to a target.
 
-            This method is the core execution function. It receives a fully-rendered
-            SQL query and orchestrates the process of fetching data from the source,
-            loading it into a DataFrame, and writing it to the target table in
-            batches, performing an UPSERT if configured. The responsibility for
-            calculating timestamps and processing query templates is handled by
-            the calling component (e.g., an Airflow Operator).
+        This method is the core execution function. It receives a fully-rendered
+        SQL query and orchestrates the process of fetching data from the source,
+        loading it into a DataFrame, and writing it to the target table in
+        batches, performing an UPSERT if configured. The responsibility for
+        calculating timestamps and processing query templates is handled by
+        the calling component (e.g., an Airflow Operator).
 
-            Args:
-                source_name (str): The logical name of the source connection.
-                target_table (str): The name of the target table.
-                incremental_config (IncrementalConfig): Configuration for loading behavior.
-                source_query (str): The final, executable SQL query for the source database.
-                source_database (Optional[str]): The specific source database/schema to
-                    connect to for this execution.
-                source_table (Optional[str]): The logical name of the source table (for logging).
-                table_mapping (Optional[TableMapping]): Column mapping configuration.
-                target_schema (Optional[str]): Schema for the target table.
-                upsert_config (Optional[UpsertConfig]): Configuration for upsert operations.
+        Args:
+            source_name (str): The logical name of the source connection.
+            target_table (str): The name of the target table.
+            incremental_config (IncrementalConfig): Configuration for loading behavior.
+            source_query (str): The final, executable SQL query for the source database.
+            source_database (Optional[str]): The specific source database/schema to
+                connect to for this execution.
+            source_table (Optional[str]): The logical name of the source table (for logging).
+            table_mapping (Optional[TableMapping]): Column mapping configuration.
+            target_schema (Optional[str]): Schema for the target table.
+            upsert_config (Optional[UpsertConfig]): Configuration for upsert operations.
 
-            Returns:
-                LoadResult: An object containing details about the load operation.
-            """
-            start_time = datetime.now()
-            result = LoadResult(success=False)
+        Returns:
+            LoadResult: An object containing details about the load operation.
+        """
+        start_time = datetime.now()
+        result = LoadResult(success=False)
 
-            try:
-                schema = target_schema or self.db_manager.sqlserver_config.schema
+        try:
+            schema = target_schema or self.db_manager.sqlserver_config.schema
 
-                self.logger.info(
-                    "Starting load operation",
-                    {
-                        "source_name": source_name,
-                        "source_database": source_database,
-                        "target_table": f"{schema}.{target_table}",
-                        "batch_size": incremental_config.batch_size,
-                        "upsert_enabled": upsert_config is not None,
-                    },
-                )
+            self.logger.info(
+                "Starting load operation",
+                {
+                    "source_name": source_name,
+                    "source_database": source_database,
+                    "target_table": f"{schema}.{target_table}",
+                    "batch_size": incremental_config.batch_size,
+                    "upsert_enabled": upsert_config is not None,
+                },
+            )
 
-                self.logger.debug(
-                    "Executing source query",
-                    {"query_preview": source_query[:500] + "..." if len(source_query) > 500 else source_query},
-                )
+            self.logger.debug(
+                "Executing source query",
+                {
+                    "query_preview": (
+                        source_query[:500] + "..."
+                        if len(source_query) > 500
+                        else source_query
+                    )
+                },
+            )
 
-                source_data = self.db_manager.execute_mysql_query(
-                    source_name, source_query, database_override=source_database
-                )
+            source_data = self.db_manager.execute_mysql_query(
+                source_name, source_query, database_override=source_database
+            )
 
-                if not source_data:
-                    self.logger.info("No new data found from source query.")
-                    result.success = True
-                    result.rows_processed = 0
-                    result.execution_time_seconds = (
-                        datetime.now() - start_time
-                    ).total_seconds()
-                    return result
-
-                df = pd.DataFrame(source_data)
-                total_rows = len(df)
-                result.rows_processed = total_rows
-                batch_size = incremental_config.batch_size
-                total_inserted = 0
-                total_updated = 0
-
-                for i in range(0, total_rows, batch_size):
-                    batch_df = df.iloc[i : i + batch_size]
-
-                    if upsert_config:
-                        inserted, updated = self._perform_upsert(
-                            batch_df, target_table, upsert_config, schema, table_mapping
-                        )
-                        total_inserted += inserted
-                        total_updated += updated
-                    else:
-                        batch_inserted = self._insert_dataframe_direct(
-                            batch_df, target_table, schema
-                        )
-                        total_inserted += batch_inserted
-                    
-                    self.logger.debug(f"Processed write batch {i // batch_size + 1}, rows: {len(batch_df)}")
-
-                result.rows_inserted = total_inserted
-                result.rows_updated = total_updated
+            if not source_data:
+                self.logger.info("No new data found from source query.")
                 result.success = True
+                result.rows_processed = 0
                 result.execution_time_seconds = (
                     datetime.now() - start_time
                 ).total_seconds()
+                return result
 
-                self.logger.info(
-                    "Load operation completed successfully",
-                    {
-                        "source_name": source_name,
-                        "target_table": f"{schema}.{target_table}",
-                        "rows_processed": result.rows_processed,
-                        "rows_inserted": result.rows_inserted,
-                        "rows_updated": result.rows_updated,
-                        "execution_time_seconds": round(result.execution_time_seconds, 2),
-                    },
-                )
+            df = pd.DataFrame(source_data)
+            total_rows = len(df)
+            result.rows_processed = total_rows
+            batch_size = incremental_config.batch_size
+            total_inserted = 0
+            total_updated = 0
 
-            except Exception as e:
-                execution_time = (datetime.now() - start_time).total_seconds()
-                result.execution_time_seconds = execution_time
-                result.error_message = str(e)
+            for i in range(0, total_rows, batch_size):
+                batch_df = df.iloc[i : i + batch_size]
 
-                self.logger.exception(
-                    "Load operation failed",
-                    extra_data={
-                        "source_name": source_name,
-                        "target_table": target_table,
-                        "execution_time_seconds": round(execution_time, 2),
-                    },
-                )
-
-            return result
-
-    def batch_loader(
-            self,
-            source_type: str,
-            source_query: str,
-            target_schema: str,
-            target_table: str,
-            source_name: Optional[str] = None,
-            source_database: Optional[str] = None,
-            table_mapping: Optional[TableMapping] = None,
-            chunk_size: int = 100000,
-            if_exists: str = "append",
-        ) -> LoadResult:
-            """
-            Executes a source query and loads the entire result set into a target table.
-
-            This function is designed for full batch loads. It takes a complete SQL
-            query, fetches all data from the source, loads it into a DataFrame,
-            and writes it to the SQL Server target table in chunks.
-
-            Args:
-                source_type (str): The source system type, e.g., "mysql" or "sqlserver".
-                source_query (str): The final, executable SQL query to run on the source.
-                target_schema (str): The destination schema in SQL Server.
-                target_table (str): The destination table in SQL Server.
-                source_name (Optional[str]): The logical name of the source connection
-                    (required for 'mysql').
-                source_database (Optional[str]): The specific source database/schema to
-                    connect to, overriding the default.
-                table_mapping (Optional[TableMapping]): An object for column transformations.
-                chunk_size (int): The number of rows per insert batch to the target.
-                if_exists (str): Behavior if the target table exists: "append",
-                    "replace", or "fail".
-
-            Returns:
-                LoadResult: An object containing details about the load operation.
-            """
-            start_time = datetime.now()
-            result = LoadResult(success=False)
-
-            try:
-                self.logger.info(
-                    "Starting batch load operation",
-                    {
-                        "source_type": source_type,
-                        "source_name": source_name,
-                        "source_database": source_database,
-                        "target": f"{target_schema}.{target_table}",
-                        "chunk_size": chunk_size,
-                    },
-                )
+                if upsert_config:
+                    inserted, updated = self._perform_upsert(
+                        batch_df, target_table, upsert_config, schema, table_mapping
+                    )
+                    total_inserted += inserted
+                    total_updated += updated
+                else:
+                    batch_inserted = self._insert_dataframe_direct(
+                        batch_df, target_table, schema
+                    )
+                    total_inserted += batch_inserted
 
                 self.logger.debug(
-                    "Executing source query",
-                    {"query_preview": source_query[:500] + "..." if len(source_query) > 500 else source_query},
+                    f"Processed write batch {i // batch_size + 1}, rows: {len(batch_df)}"
                 )
 
-                source_data = self.db_manager.fetch_data(
-                    source_type=source_type,
-                    query=source_query,
-                    source_name=source_name,
-                    database=source_database,
-                    schema=target_schema if source_type.lower() == "sqlserver" else None,
-                )
+            result.rows_inserted = total_inserted
+            result.rows_updated = total_updated
+            result.success = True
+            result.execution_time_seconds = (
+                datetime.now() - start_time
+            ).total_seconds()
 
-                if not source_data:
-                    self.logger.info("Batch load complete: No data found from source query.")
-                    result.success = True
-                    return result
+            self.logger.info(
+                "Load operation completed successfully",
+                {
+                    "source_name": source_name,
+                    "target_table": f"{schema}.{target_table}",
+                    "rows_processed": result.rows_processed,
+                    "rows_inserted": result.rows_inserted,
+                    "rows_updated": result.rows_updated,
+                    "execution_time_seconds": round(result.execution_time_seconds, 2),
+                },
+            )
 
-                df = pd.DataFrame(source_data)
-                result.rows_processed = len(df)
+        except Exception as e:
+            execution_time = (datetime.now() - start_time).total_seconds()
+            result.execution_time_seconds = execution_time
+            result.error_message = str(e)
 
-                if table_mapping and hasattr(table_mapping, "transform"):
-                    df = table_mapping.transform(df)
+            self.logger.error(
+                f"Incremental load failed. Original error: {e}",
+                extra_data={
+                    "source_name": source_name,
+                    "target_table": target_table,
+                    "execution_time_seconds": round(execution_time, 2),
+                },
+            )
 
-                engine = self.db_manager.get_sqlserver_engine()
-                with engine.begin() as conn:
-                    # This assumes a simple insert. For replace/fail logic, more code would be needed here.
-                    for i in range(0, len(df), chunk_size):
-                        chunk_df = df.iloc[i : i + chunk_size]
-                        self._insert_dataframe_direct(
-                            chunk_df, target_table, target_schema, conn
-                        )
+        return result
 
-                result.rows_inserted = result.rows_processed
-                result.success = True
-                result.execution_time_seconds = (datetime.now() - start_time).total_seconds()
+    def batch_loader(
+        self,
+        source_type: str,
+        source_query: str,
+        target_schema: str,
+        target_table: str,
+        source_name: Optional[str] = None,
+        source_database: Optional[str] = None,
+        table_mapping: Optional[TableMapping] = None,
+        chunk_size: int = 100000,
+        if_exists: str = "append",
+    ) -> LoadResult:
+        """
+        Executes a source query and loads the entire result set into a target table.
 
+        This function is designed for full batch loads. It takes a complete SQL
+        query, fetches all data from the source, loads it into a DataFrame,
+        and writes it to the SQL Server target table in chunks.
+
+        Args:
+            source_type (str): The source system type, e.g., "mysql" or "sqlserver".
+            source_query (str): The final, executable SQL query to run on the source.
+            target_schema (str): The destination schema in SQL Server.
+            target_table (str): The destination table in SQL Server.
+            source_name (Optional[str]): The logical name of the source connection
+                (required for 'mysql').
+            source_database (Optional[str]): The specific source database/schema to
+                connect to, overriding the default.
+            table_mapping (Optional[TableMapping]): An object for column transformations.
+            chunk_size (int): The number of rows per insert batch to the target.
+            if_exists (str): Behavior if the target table exists: "append",
+                "replace", or "fail".
+
+        Returns:
+            LoadResult: An object containing details about the load operation.
+        """
+        start_time = datetime.now()
+        result = LoadResult(success=False)
+
+        try:
+            self.logger.info(
+                "Starting batch load operation",
+                {
+                    "source_type": source_type,
+                    "source_name": source_name,
+                    "source_database": source_database,
+                    "target": f"{target_schema}.{target_table}",
+                    "chunk_size": chunk_size,
+                },
+            )
+
+            self.logger.debug(
+                "Executing source query",
+                {
+                    "query_preview": (
+                        source_query[:500] + "..."
+                        if len(source_query) > 500
+                        else source_query
+                    )
+                },
+            )
+
+            source_data = self.db_manager.fetch_data(
+                source_type=source_type,
+                query=source_query,
+                source_name=source_name,
+                database=source_database,
+                schema=target_schema if source_type.lower() == "sqlserver" else None,
+            )
+
+            if not source_data:
                 self.logger.info(
-                    "Batch load completed successfully",
-                    {
-                        "target": f"{target_schema}.{target_table}",
-                        "rows_processed": result.rows_processed,
-                        "execution_time_seconds": round(result.execution_time_seconds, 2),
-                    },
+                    "Batch load complete: No data found from source query."
                 )
+                result.success = True
+                return result
 
-            except Exception as e:
-                result.error_message = str(e)
-                result.execution_time_seconds = (datetime.now() - start_time).total_seconds()
-                self.logger.exception(
-                    "Batch load failed",
-                    extra_data={
-                        "target": f"{target_schema}.{target_table}",
-                        "execution_time_seconds": round(result.execution_time_seconds, 2),
-                    },
-                )
+            df = pd.DataFrame(source_data)
+            result.rows_processed = len(df)
 
-            return result
+            if table_mapping and hasattr(table_mapping, "transform"):
+                df = table_mapping.transform(df)
+
+            engine = self.db_manager.get_sqlserver_engine()
+            with engine.begin() as conn:
+                # This assumes a simple insert. For replace/fail logic, more code would be needed here.
+                for i in range(0, len(df), chunk_size):
+                    chunk_df = df.iloc[i : i + chunk_size]
+                    self._insert_dataframe_direct(
+                        chunk_df, target_table, target_schema, conn
+                    )
+
+            result.rows_inserted = result.rows_processed
+            result.success = True
+            result.execution_time_seconds = (
+                datetime.now() - start_time
+            ).total_seconds()
+
+            self.logger.info(
+                "Batch load completed successfully",
+                {
+                    "target": f"{target_schema}.{target_table}",
+                    "rows_processed": result.rows_processed,
+                    "execution_time_seconds": round(result.execution_time_seconds, 2),
+                },
+            )
+
+        except Exception as e:
+            result.error_message = str(e)
+            result.execution_time_seconds = (
+                datetime.now() - start_time
+            ).total_seconds()
+            self.logger.error(
+                "Batch load failed",
+                extra_data={
+                    "target": f"{target_schema}.{target_table}",
+                    "execution_time_seconds": round(result.execution_time_seconds, 2),
+                },
+            )
+
+        return result
 
     def validate_table_compatibility(
         self,
