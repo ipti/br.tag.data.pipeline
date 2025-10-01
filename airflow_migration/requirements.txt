@@ -1,6 +1,7 @@
 # Database providers
 apache-airflow-providers-mysql==6.2.2
 apache-airflow-providers-odbc==4.9.2
+apache-airflow-providers-common-messaging
 
 # Database drivers
 pyodbc==5.1.0

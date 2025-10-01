@@ -14,6 +14,7 @@ x-airflow-common:
     PYTHONPATH: /opt/airflow/src:/opt/airflow/plugins:/opt/airflow
     AIRFLOW__CORE__PLUGINS_FOLDER: /opt/airflow/plugins
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "mysql+mysqldb://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE}"
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
@@ -23,6 +24,9 @@ x-airflow-common:
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+    AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    AIRFLOW__WEBSERVER__SESSION_BACKEND: cache
+    AIRFLOW__WEBSERVER__SESSION_CACHE_PREFIX: airflow_session_
     
     # MySQL connection variables
     MYSQL_HOST: ${MYSQL_HOST:-mysql}
@@ -30,10 +34,6 @@ x-airflow-common:
     MYSQL_USER: ${MYSQL_USER:-airflow}
     MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     MYSQL_DATABASE: ${MYSQL_DATABASE:-airflow}
-    
-    # Webserver default user (não funciona em Airflow 3.x)
-    AIRFLOW__WEBSERVER__DEFAULT_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-admin}
-    AIRFLOW__WEBSERVER__DEFAULT_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-admin123}
   
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
@@ -52,39 +52,48 @@ services:
     command:
       - -c
       - |
-        # Criar diretórios necessários
+        # Função para esperar o MySQL
+        function wait_for_mysql() {
+          echo "Aguardando MySQL estar disponível..."
+          while ! mysql -h"${MYSQL_HOST}" -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" -e "SELECT 1" > /dev/null 2>&1; do
+            echo "MySQL não está pronto - aguardando..."
+            sleep 2
+          done
+          echo "MySQL está pronto!"
+        }
+        
+        # Criar diretórios necessários como root
         mkdir -p /sources/logs /sources/dags /sources/plugins
-        chown -R "${AIRFLOW_UID}:0" /sources/logs /sources/dags /sources/plugins
+        chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins} 2>/dev/null || true
         
-        # Migrar banco de dados
-        echo "Running database migration..."
-        airflow db migrate
+        # Aguardar MySQL
+        wait_for_mysql
         
-        airflow users create \
-          -u ${_AIRFLOW_WWW_USER_USERNAME:-airflow-dev} \
-          -p ${_AIRFLOW_WWW_USER_PASSWORD:-airflow-dev} \
-          -f Admin \
-          -l User \
-          -r Admin \
-          -e admin@example.com 2>&1 || echo "User may already exist"
-        
-        # Sincronizar permissões
-        echo "Syncing permissions..."
-        airflow sync-perm
-        
-        echo "Initialization complete!"
-        echo "====================================="
-        echo "Login credentials:"
-        echo "Username: ${_AIRFLOW_WWW_USER_USERNAME:-airflow-dev}"
-        echo "Password: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow-dev}"
-        echo "====================================="
+        # Trocar para usuário airflow e executar comandos
+        su airflow -c "
+          # Migrar banco de dados (já cria as tabelas necessárias)
+          echo 'Executando migrações do banco de dados...'
+          airflow db migrate
+          
+          # Criar usuário admin se não existir
+          echo 'Criando usuário admin...'
+          airflow users create \
+            --username ${_AIRFLOW_WWW_USER_USERNAME:-airflow} \
+            --password ${_AIRFLOW_WWW_USER_PASSWORD:-airflow} \
+            --firstname Admin \
+            --lastname User \
+            --role Admin \
+            --email admin@example.com 2>/dev/null || echo 'Usuário já existe ou foi criado'
+          
+          echo 'Inicialização concluída com sucesso!'
+        "
     
     environment:
       <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
-      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow-dev}
-      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow-dev}
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
       _PIP_ADDITIONAL_REQUIREMENTS: ''
     user: "0:0"
     volumes:
