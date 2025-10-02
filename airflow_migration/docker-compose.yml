@@ -27,6 +27,8 @@ x-airflow-common:
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     AIRFLOW__WEBSERVER__SESSION_BACKEND: cache
     AIRFLOW__WEBSERVER__SESSION_CACHE_PREFIX: airflow_session_
+    AIRFLOW__CORE__MAX_SERIALIZED_DAG_UPDATES_PER_DAG: 50
+
     
     # MySQL connection variables
     MYSQL_HOST: ${MYSQL_HOST:-mysql}
