@@ -142,46 +142,46 @@ class DatabaseConnectionManager:
             return "localhost"
 
     def _setup_database_configs(self):
-            """
-            Sets up database configurations for the primary dev and prod MySQL sources.
-            """
-            self.mysql_configs = {}
+        """
+        Sets up database configurations for the primary dev and prod MySQL sources.
+        """
+        self.mysql_configs = {}
 
-            if all(
-                [
-                    os.getenv("MYSQL_HOST"),
-                    os.getenv("MYSQL_USER"),
-                    os.getenv("MYSQL_PASSWORD"),
-                ]
-            ):
-                mysql_host = self._resolve_mysql_host(os.getenv("MYSQL_HOST"))
-                self.mysql_configs["airflow_mysql"] = DatabaseConfig(
-                    host=mysql_host,
-                    port=int(os.getenv("MYSQL_PORT", 3306)),
-                    database=os.getenv("MYSQL_DATABASE"),
-                    username=os.getenv("MYSQL_USER"),
-                    password=os.getenv("MYSQL_PASSWORD"),
-                )
-                self.logger.info("Loaded 'airflow_mysql' (DEV) configuration.")
+        if all(
+            [
+                os.getenv("MYSQL_HOST"),
+                os.getenv("MYSQL_USER"),
+                os.getenv("MYSQL_PASSWORD"),
+            ]
+        ):
+            mysql_host = self._resolve_mysql_host(os.getenv("MYSQL_HOST"))
+            self.mysql_configs["airflow_mysql"] = DatabaseConfig(
+                host=mysql_host,
+                port=int(os.getenv("MYSQL_PORT", 3306)),
+                database=os.getenv("MYSQL_DATABASE"),
+                username=os.getenv("MYSQL_USER"),
+                password=os.getenv("MYSQL_PASSWORD"),
+            )
+            self.logger.info("Loaded 'airflow_mysql' (DEV) configuration.")
 
-            if all(
-                [
-                    os.getenv("MYSQL_SOURCE1_HOST"),
-                    os.getenv("MYSQL_SOURCE1_USER"),
-                    os.getenv("MYSQL_SOURCE1_PASSWORD"),
-                ]
-            ):
-                prod_host = self._resolve_mysql_host(os.getenv("MYSQL_SOURCE1_HOST"))
-                self.mysql_configs["mysql_source_1"] = DatabaseConfig(
-                    host=prod_host,
-                    port=int(os.getenv("MYSQL_SOURCE1_PORT", 3306)),
-                    database=os.getenv("MYSQL_SOURCE1_DATABASE"),
-                    username=os.getenv("MYSQL_SOURCE1_USER"),
-                    password=os.getenv("MYSQL_SOURCE1_PASSWORD"),
-                )
-                self.logger.info("Loaded 'mysql_source_1' (PROD) configuration.")
+        if all(
+            [
+                os.getenv("MYSQL_SOURCE1_HOST"),
+                os.getenv("MYSQL_SOURCE1_USER"),
+                os.getenv("MYSQL_SOURCE1_PASSWORD"),
+            ]
+        ):
+            prod_host = self._resolve_mysql_host(os.getenv("MYSQL_SOURCE1_HOST"))
+            self.mysql_configs["mysql_source_1"] = DatabaseConfig(
+                host=prod_host,
+                port=int(os.getenv("MYSQL_SOURCE1_PORT", 3306)),
+                database=os.getenv("MYSQL_SOURCE1_DATABASE"),
+                username=os.getenv("MYSQL_SOURCE1_USER"),
+                password=os.getenv("MYSQL_SOURCE1_PASSWORD"),
+            )
+            self.logger.info("Loaded 'mysql_source_1' (PROD) configuration.")
 
-            self._setup_sqlserver_config()
+        self._setup_sqlserver_config()
 
     def _setup_sqlserver_config(self):
         """

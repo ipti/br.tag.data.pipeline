@@ -1,6 +1,6 @@
 import yaml
 import pandas as pd
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List, Tuple, Callable
 from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -10,6 +10,7 @@ import hashlib
 from .connection_manager import DatabaseConnectionManager, get_db_manager
 from utils.parser_and_caster.parser import clean_dataframe_for_sql
 from utils.logs.logging_functions import get_logger
+import importlib
 
 
 @dataclass
@@ -88,6 +89,7 @@ class CopyAndLoader:
         self.logger = get_logger("writer")
         self.db_manager = db_manager or get_db_manager()
         self.dbt_config_file = dbt_config_file or "dbo_tia.yml"
+        self._qc_function_cache: Dict[str, Callable] = {}
         self.dbt_sources_config = self._load_dbt_sources_config()
 
         self._schema_cache: Dict[str, Dict[str, Any]] = {}
@@ -674,6 +676,8 @@ class CopyAndLoader:
         table_mapping: Optional[TableMapping] = None,
         target_schema: Optional[str] = None,
         upsert_config: Optional[UpsertConfig] = None,
+        quality_check_pipeline: Optional[List[str]] = None,
+        quality_check_params: Optional[Dict[str, Any]] = None,
     ) -> LoadResult:
         """
         Performs a data loading operation from a source to a target.
@@ -742,6 +746,31 @@ class CopyAndLoader:
                 return result
 
             df = pd.DataFrame(source_data)
+            if quality_check_pipeline and not df.empty:
+                self.logger.info(
+                    f"Applying {len(quality_check_pipeline)} custom quality checks..."
+                )
+                for function_path in quality_check_pipeline:
+                    try:
+                        module_path, function_name = function_path.rsplit(".", 1)
+                        module = importlib.import_module(module_path)
+                        qc_function = getattr(module, function_name)
+
+                        params = quality_check_params.get(function_name, {})
+
+                        self.logger.debug(
+                            f"Executing QC function: {function_name} with params: {params}"
+                        )
+                        df = qc_function(df, self.logger, **params)
+
+                    except (ImportError, AttributeError) as e:
+                        self.logger.error(
+                            f"Failed to load or execute quality check function: {e}"
+                        )
+                        raise ValueError(
+                            f"Invalid path in quality_check_pipeline: {function_path}"
+                        ) from e
+                self.logger.info("All quality checks applied successfully.")
             total_rows = len(df)
             result.rows_processed = total_rows
             batch_size = incremental_config.batch_size

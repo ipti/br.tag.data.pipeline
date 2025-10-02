@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+
 def clean_dataframe_for_sql(df: pd.DataFrame) -> pd.DataFrame:
     """
     Cleans a pandas DataFrame for SQL Server insertion using pyodbc with fastexecutemany.
@@ -65,9 +66,18 @@ def clean_dataframe_for_sql(df: pd.DataFrame) -> pd.DataFrame:
     if "bolsa_familia_participator" in df.columns:
         df["bolsa_familia_participator"] = (
             df["bolsa_familia_participator"]
-            .apply(lambda x: 1 if str(x).strip().lower() in {"1", "1.0", "true", "yes"} else 0 if str(x).strip().lower() in {"0", "0.0", "false", "no"} else None)
+            .apply(
+                lambda x: (
+                    1
+                    if str(x).strip().lower() in {"1", "1.0", "true", "yes"}
+                    else (
+                        0
+                        if str(x).strip().lower() in {"0", "0.0", "false", "no"}
+                        else None
+                    )
+                )
+            )
             .astype("Int64")
         )
 
     return df
-

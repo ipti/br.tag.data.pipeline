@@ -53,6 +53,8 @@ class TableExecution:
     incremental_config: IncrementalConfig
     upsert_config: UpsertConfig
     pool: Optional[str]
+    quality_check_pipeline: List[str] = field(default_factory=list)
+    quality_check_params: Dict[str, Any] = field(default_factory=dict)
     retries: int
     retry_delay_minutes: int
     execution_context: Dict[str, Any] = field(default_factory=dict)
@@ -219,77 +221,77 @@ class ExecutionPlanner:
         return execution_batches
 
     def _generate_stage_batch(
-            self,
-            stage: Stage,
-            table_configs: Dict[str, TableConfig],
-            databases_list: List[str],
-            environment: str,
-        ) -> List[TableExecution]:
-            """
-            Generates the list of TableExecution objects for a single stage.
+        self,
+        stage: Stage,
+        table_configs: Dict[str, TableConfig],
+        databases_list: List[str],
+        environment: str,
+    ) -> List[TableExecution]:
+        """
+        Generates the list of TableExecution objects for a single stage.
 
-            This method iterates through all table loads defined for a given stage.
-            It skips any table load if the current 'environment' is listed in its
-            'env_skip' configuration. For all other tables, it creates a
-            TableExecution for each database in the 'databases_list'.
+        This method iterates through all table loads defined for a given stage.
+        It skips any table load if the current 'environment' is listed in its
+        'env_skip' configuration. For all other tables, it creates a
+        TableExecution for each database in the 'databases_list'.
 
-            Args:
-                stage (Stage): The Stage object containing the table loads.
-                table_configs (Dict[str, TableConfig]): A dictionary of all available
-                    table configurations.
-                databases_list (List[str]): The list of database names for the current
-                    environment.
-                environment (str): The current environment (e.g., 'dev', 'prod').
+        Args:
+            stage (Stage): The Stage object containing the table loads.
+            table_configs (Dict[str, TableConfig]): A dictionary of all available
+                table configurations.
+            databases_list (List[str]): The list of database names for the current
+                environment.
+            environment (str): The current environment (e.g., 'dev', 'prod').
 
-            Returns:
-                List[TableExecution]: A list of all concrete execution tasks for the stage.
-            """
-            stage_executions = []
+        Returns:
+            List[TableExecution]: A list of all concrete execution tasks for the stage.
+        """
+        stage_executions = []
 
-            for table_load in stage.loads:
-                if environment in table_load.env_skip:
-                    self.logger.info(
-                        "Skipping table load for this environment due to 'env_skip' config",
-                        {
-                            "table_name": table_load.table_name,
-                            "environment": environment,
-                            "stage": stage.stage,
-                        },
-                    )
-                    continue
+        for table_load in stage.loads:
+            if environment in table_load.env_skip:
+                self.logger.info(
+                    "Skipping table load for this environment due to 'env_skip' config",
+                    {
+                        "table_name": table_load.table_name,
+                        "environment": environment,
+                        "stage": stage.stage,
+                    },
+                )
+                continue
 
-                table_name = table_load.table_name
+            table_name = table_load.table_name
 
-                if table_name not in table_configs:
-                    self.logger.error(
-                        "Table configuration not found",
-                        {
-                            "table_name": table_name,
-                            "stage": stage.stage,
-                            "available_tables": list(table_configs.keys()),
-                        },
-                    )
-                    continue
+            if table_name not in table_configs:
+                self.logger.error(
+                    "Table configuration not found",
+                    {
+                        "table_name": table_name,
+                        "stage": stage.stage,
+                        "available_tables": list(table_configs.keys()),
+                    },
+                )
+                continue
 
-                table_config = table_configs[table_name]
+            table_config = table_configs[table_name]
 
-                for database in databases_list:
-                    table_execution = self._create_table_execution(
-                        table_load, table_config, database, environment
-                    )
-                    stage_executions.append(table_execution)
+            for database in databases_list:
+                table_execution = self._create_table_execution(
+                    table_load, table_config, database, environment
+                )
+                stage_executions.append(table_execution)
 
-            self.logger.debug(
-                "Stage batch generated",
-                {
-                    "stage": stage.stage,
-                    "tables_count": len(stage.loads),
-                    "databases_count": len(databases_list),
-                    "executions_generated": len(stage_executions),
-                },
-            )
+        self.logger.debug(
+            "Stage batch generated",
+            {
+                "stage": stage.stage,
+                "tables_count": len(stage.loads),
+                "databases_count": len(databases_list),
+                "executions_generated": len(stage_executions),
+            },
+        )
 
-            return stage_executions
+        return stage_executions
 
     def _create_table_execution(
         self,
@@ -329,6 +331,8 @@ class ExecutionPlanner:
             pool=table_load.pool,
             retries=table_load.retries,
             retry_delay_minutes=table_load.retry_delay_minutes,
+            quality_check_pipeline=table_config.quality_check_pipeline,
+            quality_check_params=table_config.quality_check_params,
         )
 
         has_filters = bool(table_config.optional_filters)

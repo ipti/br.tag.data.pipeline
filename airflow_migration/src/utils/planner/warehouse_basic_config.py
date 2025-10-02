@@ -62,7 +62,6 @@ class TableLoad:
     retry_delay_minutes: int = 5
     env_skip: List[str] = field(default_factory=list)
 
-
     def __post_init__(self):
         """Basic validations for required fields"""
         logger = get_logger("warehouse_basic_config")
@@ -318,6 +317,8 @@ class TableConfig:
     upsert_config: UpsertConfig
     optional_filters: List[str]
     filter_sources: Dict[str, str]
+    quality_check_pipeline: List[str] = field(default_factory=list)
+    quality_check_params: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Table configuration validations"""
