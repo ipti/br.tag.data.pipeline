@@ -6,7 +6,9 @@ SELECT
         COALESCE(se.classroom_fk, 'NO_CLASSROOM')
     ) AS student_id,
     CONCAT(si.id, '-', se.school_inep_id_fk, '-', se.classroom_fk, '-', gr.id) AS 'HASH_ID',
-    gr.situation,
+   {% if database != 'indaiabira.tag.ong.br' %}
+    gr.situation AS `situation`,
+    {% endif %}  
     '{{execution_timestamp}}' AS 'inserted_at',
     gr.updated_at
 FROM {{ database }}.student_identification si

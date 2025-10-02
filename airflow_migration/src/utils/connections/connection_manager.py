@@ -142,12 +142,11 @@ class DatabaseConnectionManager:
             return "localhost"
 
     def _setup_database_configs(self):
-        """
-        Sets up database configurations for MySQL sources and SQL Server warehouse
-        based on the current environment and available environment variables.
-        """
-        try:
+            """
+            Sets up database configurations for the primary dev and prod MySQL sources.
+            """
             self.mysql_configs = {}
+
             if all(
                 [
                     os.getenv("MYSQL_HOST"),
@@ -155,8 +154,7 @@ class DatabaseConnectionManager:
                     os.getenv("MYSQL_PASSWORD"),
                 ]
             ):
-                raw_host = os.getenv("MYSQL_HOST")
-                mysql_host = self._resolve_mysql_host(raw_host)
+                mysql_host = self._resolve_mysql_host(os.getenv("MYSQL_HOST"))
                 self.mysql_configs["airflow_mysql"] = DatabaseConfig(
                     host=mysql_host,
                     port=int(os.getenv("MYSQL_PORT", 3306)),
@@ -164,25 +162,26 @@ class DatabaseConnectionManager:
                     username=os.getenv("MYSQL_USER"),
                     password=os.getenv("MYSQL_PASSWORD"),
                 )
-            source_counter = 1
-            while True:
-                host_key = f"MYSQL_SOURCE{source_counter}_HOST"
-                raw_source_host = os.getenv(host_key)
-                if not raw_source_host:
-                    break
-                resolved_source_host = self._resolve_mysql_host(raw_source_host)
-                self.mysql_configs[f"mysql_source_{source_counter}"] = DatabaseConfig(
-                    host=resolved_source_host,
-                    port=int(os.getenv(f"MYSQL_SOURCE{source_counter}_PORT", 3306)),
-                    database=os.getenv(f"MYSQL_SOURCE{source_counter}_DATABASE"),
-                    username=os.getenv(f"MYSQL_SOURCE{source_counter}_USER"),
-                    password=os.getenv(f"MYSQL_SOURCE{source_counter}_PASSWORD"),
+                self.logger.info("Loaded 'airflow_mysql' (DEV) configuration.")
+
+            if all(
+                [
+                    os.getenv("MYSQL_SOURCE1_HOST"),
+                    os.getenv("MYSQL_SOURCE1_USER"),
+                    os.getenv("MYSQL_SOURCE1_PASSWORD"),
+                ]
+            ):
+                prod_host = self._resolve_mysql_host(os.getenv("MYSQL_SOURCE1_HOST"))
+                self.mysql_configs["mysql_source_1"] = DatabaseConfig(
+                    host=prod_host,
+                    port=int(os.getenv("MYSQL_SOURCE1_PORT", 3306)),
+                    database=os.getenv("MYSQL_SOURCE1_DATABASE"),
+                    username=os.getenv("MYSQL_SOURCE1_USER"),
+                    password=os.getenv("MYSQL_SOURCE1_PASSWORD"),
                 )
-                source_counter += 1
+                self.logger.info("Loaded 'mysql_source_1' (PROD) configuration.")
+
             self._setup_sqlserver_config()
-        except (ValueError, TypeError) as e:
-            self.logger.error("Error setting up database configurations", exception=e)
-            raise
 
     def _setup_sqlserver_config(self):
         """
