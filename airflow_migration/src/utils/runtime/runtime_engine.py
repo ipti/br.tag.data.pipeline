@@ -85,7 +85,11 @@ def render_sql_template(resolved_execution: TableExecution) -> str:
     render_context = resolved_execution.execution_context.copy()
 
     if "database" in render_context and render_context["database"]:
-        render_context["database"] = f"`{render_context['database']}`"
+        db_name_raw = render_context["database"]
+        
+        render_context["database_raw"] = db_name_raw
+        
+        render_context["database"] = f"`{db_name_raw}`"
 
     final_sql = template.render(render_context)
 

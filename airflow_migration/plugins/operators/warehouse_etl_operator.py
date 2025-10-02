@@ -43,17 +43,17 @@ class WarehouseEtlOperator(BaseOperator):
         """
         Executes the ETL task by orchestrating the entire process.
 
-        This method is called by the Airflow worker at runtime. It performs the
-        following steps:
-        1. Deserializes the task configuration from the input dictionary.
-        2. Determines the runtime environment and hotfix mode.
-        3. Retrieves the initial `last_timestamp` from the upstream XCom push.
-        4. Calculates the `safe_timestamp` based on the lookback period.
-        5. Resolves environment-specific placeholders (source, schema).
-        6. Enriches the rendering context with both timestamps.
-        7. Renders the final SQL query using the Jinja2 template.
-        8. Calls the simplified `CopyAndLoader.incremental_load` with the final query.
-        9. Handles the load result, raising an exception on failure.
+        This method is called by the Airflow worker at runtime. Its main
+        responsibilities are:
+        1. Deserializing the task's configuration.
+        2. Determining the runtime context (environment and hotfix mode).
+        3. Instantiating service classes (DBManager, CopyAndLoader).
+        4. Retrieving the initial `last_timestamp` from XComs.
+        5. Calculating the `safe_timestamp` for the incremental query.
+        6. Adding the timestamp information to the execution context.
+        7. Calling the `render_sql_template` function to generate the final SQL.
+        8. Invoking the `CopyAndLoader` to execute the load operation.
+        9. Handling and logging the final result.
 
         Args:
             context (Context): The Airflow task context, which includes the
@@ -63,8 +63,7 @@ class WarehouseEtlOperator(BaseOperator):
             AirflowException: If any step of the process fails.
 
         Returns:
-            Dict[str, Any]: A dictionary containing metadata about the execution,
-            such as the number of rows processed.
+            Dict[str, Any]: A dictionary containing metadata about the execution.
         """
         try:
             table_execution = TableExecution.from_dict(self.table_execution_dict)
@@ -136,6 +135,8 @@ class WarehouseEtlOperator(BaseOperator):
                 source_database=resolved_execution.database,
                 target_schema=resolved_execution.target_schema,
                 upsert_config=resolved_execution.upsert_config,
+                quality_check_pipeline=resolved_execution.quality_check_pipeline,
+                quality_check_params=resolved_execution.quality_check_params,
             )
 
             if not result.success:
