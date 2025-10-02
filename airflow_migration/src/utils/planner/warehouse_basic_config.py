@@ -60,6 +60,8 @@ class TableLoad:
     pool: Optional[str] = None
     retries: int = 1
     retry_delay_minutes: int = 5
+    env_skip: List[str] = field(default_factory=list)
+
 
     def __post_init__(self):
         """Basic validations for required fields"""

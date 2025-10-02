@@ -414,6 +414,7 @@ class YAMLLoader:
                     depends_on=load_data.get("depends_on", []),
                     trigger=trigger,
                     max_parallel_override=load_data.get("max_parallel_override"),
+                    env_skip=load_data.get("env_skip", []),
                     pool=load_data.get("pool"),
                     retries=load_data.get("retries", 1),
                     retry_delay_minutes=load_data.get("retry_delay_minutes", 5),
