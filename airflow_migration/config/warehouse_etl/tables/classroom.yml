@@ -1,0 +1,20 @@
+table_name: "classroom"
+description: "classroom accumulated table for student_faults calculation"
+source_name: "{SOURCE_NAME}"
+target_schema: "raw"
+
+incremental_config:
+  source_timestamp_columns: ["updated_at"]
+  target_timestamp_column: "updated_at"
+  lookback_hours: 24
+  batch_size: 10000
+  full_refresh: false
+
+upsert_config:
+  source_key_columns: ["id", "database_name"]
+  target_key_columns: ["id", "database_name"]
+
+optional_filters:
+  - database_name
+filter_sources:
+  database_name: databases_mysql.yml

@@ -10,9 +10,9 @@ triggers:
 
 
   incremental_base_tables:
-    schedule_interval: "0 3 * * *"
+    schedule_interval: "0 1 * * *"
     description: "Daily incremental_upsert at 3AM"
-    incremental_reference_table: "d_student" 
+    incremental_reference_table: "classroom" 
 
 stages:
   - stage: 1
@@ -28,6 +28,78 @@ stages:
         depends_on: []
         trigger: "incremental_upsert"
         pool: "mysql_prod_pool"
+
+      - table_name: "class_faults" 
+        model: "tables/class_faults.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "classroom" 
+        model: "tables/classroom.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "edcenso_discipline" 
+        model: "tables/edcenso_discipline.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "edcenso_stage_vs_modality" 
+        model: "tables/edcenso_stage_vs_modality.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+    
+      - table_name: "instructor_teaching_data" 
+        model: "tables/instructor_teaching_data.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "schedule" 
+        model: "tables/schedule.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "school_identification" 
+        model: "tables/school_identification.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "student_enrollment" 
+        model: "tables/student_enrollment.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "student_identification" 
+        model: "tables/student_identification.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
 
   - stage: 2
     loads:
