@@ -108,9 +108,6 @@ class YAMLLoader:
                 workflow_name=raw_config.get("workflow_name", ""),
                 max_parallel_tasks=raw_config.get("max_parallel_tasks", 4),
                 triggers=triggers,
-                incremental_reference_table=raw_config.get(
-                    "incremental_reference_table"
-                ),
                 stages=stages,
             )
 
@@ -295,6 +292,9 @@ class YAMLLoader:
                 name=trigger_name,
                 schedule_interval=trigger_data.get("schedule_interval", ""),
                 description=trigger_data.get("description", ""),
+                incremental_reference_table=trigger_data.get(
+                    "incremental_reference_table"
+                ),
             )
 
         self.logger.debug(

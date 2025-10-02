@@ -1,20 +1,18 @@
 workflow_name: "Workflow-Warehouse"
 max_parallel_tasks: 3
 pool: "mysql_prod_pool"
-incremental_reference_table: "d_student"
 
 triggers:
-  hourly_incremental:
-    schedule_interval: "0 8-18 * * 1-5"
-    description: "Hourly incremental updates during business hours"
-  
-  daily_full:
-    schedule_interval: "0 2 * * *"
-    description: "Daily full processing at 2AM"
-
   incremental_upsert:
     schedule_interval: "0 2 * * *"
     description: "Daily incremental_upsert at 2AM"
+    incremental_reference_table: "d_student" 
+
+
+  incremental_base_tables:
+    schedule_interval: "0 3 * * *"
+    description: "Daily incremental_upsert at 3AM"
+    incremental_reference_table: "d_student" 
 
 stages:
   - stage: 1

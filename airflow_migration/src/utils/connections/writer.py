@@ -406,7 +406,7 @@ class CopyAndLoader:
                 {"target_table": target_table, "schema": schema},
             )
             return 0
-        df = clean_dataframe_for_sql(df)
+
         columns = list(df.columns)
         columns_str = ", ".join(f"[{col}]" for col in columns)
         placeholders = ", ".join([":" + col for col in columns])
@@ -771,6 +771,8 @@ class CopyAndLoader:
                             f"Invalid path in quality_check_pipeline: {function_path}"
                         ) from e
                 self.logger.info("All quality checks applied successfully.")
+
+            df = clean_dataframe_for_sql(df)
             total_rows = len(df)
             result.rows_processed = total_rows
             batch_size = incremental_config.batch_size

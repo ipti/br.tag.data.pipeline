@@ -122,12 +122,21 @@ class DagGenerator:
         environment: str,
         is_paused: bool,
     ) -> str:
-        """Generates the full Python source code for a single DAG file."""
+        """
+        Generates the full Python source code for a single DAG file, including
+        the setup task for fetching the initial timestamp.
+
+        The reference table for the initial timestamp is determined by the
+        'incremental_reference_table' property within the trigger_config. If not
+        specified, it defaults to the last table in the execution plan.
+        """
         dag_id = (
             f"{workflow_config.workflow_name.lower()}__{trigger_name}__{environment}"
         )
 
-        reference_table_name = workflow_config.incremental_reference_table
+        # --- MUDANÇA PRINCIPAL AQUI ---
+        # Acessa a referência a partir do 'trigger_config', não mais do 'workflow_config'
+        reference_table_name = trigger_config.incremental_reference_table
         reference_execution = None
 
         if reference_table_name:
@@ -145,7 +154,7 @@ class DagGenerator:
         if not reference_execution:
             reference_execution = batches[-1][-1]
             self.logger.info(
-                f"No explicit reference table set. "
+                f"No explicit reference table set for trigger '{trigger_name}'. "
                 f"Using last table in plan as default: '{reference_execution.table_name}'"
             )
 
@@ -248,7 +257,7 @@ with DAG(
         {task_variable_name} = WarehouseEtlOperator(
             task_id="{task_id}",
             table_execution_dict={repr(execution.to_dict())},
-            pool="{execution.pool or "default_pool"}",
+            pool="{execution.pool or 'default_pool'}",
             retries={execution.retries},
             retry_delay=timedelta(minutes={execution.retry_delay_minutes})
         )"""

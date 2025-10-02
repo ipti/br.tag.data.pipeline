@@ -16,6 +16,7 @@ class TriggerConfig:
     name: str
     schedule_interval: str
     description: str
+    incremental_reference_table: Optional[str] = None
 
     def __post_init__(self):
         """Validates if the schedule_interval is valid"""
@@ -190,7 +191,6 @@ class WorkflowConfig:
     max_parallel_tasks: int
     triggers: Dict[str, TriggerConfig]
     stages: List[Stage]
-    incremental_reference_table: Optional[str] = None
 
     def __post_init__(self):
         """Workflow configuration validations"""

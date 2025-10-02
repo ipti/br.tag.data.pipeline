@@ -53,11 +53,11 @@ class TableExecution:
     incremental_config: IncrementalConfig
     upsert_config: UpsertConfig
     pool: Optional[str]
-    quality_check_pipeline: List[str] = field(default_factory=list)
-    quality_check_params: Dict[str, Any] = field(default_factory=dict)
     retries: int
     retry_delay_minutes: int
     execution_context: Dict[str, Any] = field(default_factory=dict)
+    quality_check_pipeline: List[str] = field(default_factory=list)
+    quality_check_params: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Add metadata to execution context"""
