@@ -3,7 +3,7 @@
 from jinja2 import Template
 from pathlib import Path
 import copy
-from airflow.models import Variable
+from airflow.sdk import Variable
 
 from src.utils.connections.connection_manager import DatabaseConnectionManager
 from src.utils.planner.execution_planner import TableExecution
@@ -86,9 +86,9 @@ def render_sql_template(resolved_execution: TableExecution) -> str:
 
     if "database" in render_context and render_context["database"]:
         db_name_raw = render_context["database"]
-        
+
         render_context["database_raw"] = db_name_raw
-        
+
         render_context["database"] = f"`{db_name_raw}`"
 
     final_sql = template.render(render_context)

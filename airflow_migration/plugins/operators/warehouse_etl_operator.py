@@ -2,7 +2,9 @@ from typing import Any, Dict
 from airflow.models import BaseOperator
 from airflow.utils.context import Context
 from airflow.exceptions import AirflowException
-from datetime import datetime, timedelta
+from datetime import timedelta
+from pendulum import datetime
+
 
 from src.utils.connections.connection_manager import DatabaseConnectionManager
 from src.utils.connections.writer import CopyAndLoader
@@ -45,12 +47,13 @@ class WarehouseEtlOperator(BaseOperator):
 
         This method is called by the Airflow worker at runtime. Its main
         responsibilities are:
-        1. Deserializing the task's configuration.
-        2. Determining the runtime context (environment and hotfix mode).
+        1. Deserializing the task's configuration from the input dictionary.
+        2. Determining the runtime environment and hotfix mode from the context.
         3. Instantiating service classes (DBManager, CopyAndLoader).
-        4. Retrieving the initial `last_timestamp` from XComs.
+        4. Retrieving the initial `last_timestamp` and `execution_timestamp`
+        from an upstream XCom push.
         5. Calculating the `safe_timestamp` for the incremental query.
-        6. Adding the timestamp information to the execution context.
+        6. Enriching the Jinja2 rendering context with all dynamic timestamps.
         7. Calling the `render_sql_template` function to generate the final SQL.
         8. Invoking the `CopyAndLoader` to execute the load operation.
         9. Handling and logging the final result.
@@ -71,7 +74,6 @@ class WarehouseEtlOperator(BaseOperator):
                 f"Successfully deserialized execution for table: {table_execution.table_name}"
             )
         except Exception as e:
-            self.log.error(f"Failed to deserialize TableExecution object: {e}")
             raise AirflowException(f"Deserialization failed: {e}")
 
         dag_run = context.get("dag_run")
@@ -93,8 +95,19 @@ class WarehouseEtlOperator(BaseOperator):
             inc_config = table_execution.incremental_config
 
             last_timestamp = ti.xcom_pull(
-                task_ids="get_initial_timestamp", key="last_timestamp"
+                task_ids="get_initial_timestamps", key="last_timestamp"
             )
+            execution_timestamp = ti.xcom_pull(
+                task_ids="get_initial_timestamps", key="execution_timestamp"
+            )
+
+            if not execution_timestamp:
+                self.log.warning(
+                    "Could not pull execution_timestamp from XComs, using fallback."
+                )
+
+                execution_timestamp = datetime.now("UTC")
+
             safe_timestamp = None
 
             if inc_config.full_refresh or not last_timestamp:
@@ -107,16 +120,21 @@ class WarehouseEtlOperator(BaseOperator):
 
             self.log.info(
                 f"Timestamps for query: "
-                f"last_timestamp='{last_timestamp}', safe_timestamp='{safe_timestamp}'"
+                f"last_timestamp='{last_timestamp}', safe_timestamp='{safe_timestamp}', "
+                f"execution_timestamp='{execution_timestamp}'"
             )
 
             resolved_execution = resolve_placeholders(table_execution, db_manager)
 
-            resolved_execution.execution_context["last_timestamp"] = (
+            render_context = resolved_execution.execution_context
+            render_context["last_timestamp"] = (
                 last_timestamp.strftime("%Y-%m-%d %H:%M:%S") if last_timestamp else None
             )
-            resolved_execution.execution_context["safe_timestamp"] = (
-                safe_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            render_context["safe_timestamp"] = safe_timestamp.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+            render_context["execution_timestamp"] = execution_timestamp.strftime(
+                "%Y-%m-%d %H:%M:%S"
             )
 
             final_sql = render_sql_template(resolved_execution)
