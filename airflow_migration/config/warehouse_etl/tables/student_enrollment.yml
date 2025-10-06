@@ -11,8 +11,8 @@ incremental_config:
   full_refresh: false
 
 upsert_config:
-  source_key_columns: ["id", "database_name"]
-  target_key_columns: ["id", "database_name"]
+  source_key_columns: ["student_fk", "database_name", "classroom_fk"]
+  target_key_columns: ["student_fk", "database_name", "classroom_fk"]
 
 optional_filters:
   - database_name

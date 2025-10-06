@@ -49,24 +49,38 @@ def clean_dataframe_for_sql(df: pd.DataFrame) -> pd.DataFrame:
     df = df.replace({np.nan: None, pd.NaT: None})
 
     problematic_columns = [
-        'contract_type', 'role', 'aggregated_stage', 'regent',
-        'discipline_1_fk', 'discipline_2_fk', 'discipline_3_fk', 
-        'discipline_4_fk', 'discipline_5_fk', 'discipline_6_fk',
-        'discipline_7_fk', 'discipline_8_fk', 'discipline_9_fk',
-        'discipline_10_fk', 'discipline_11_fk', 'discipline_12_fk',
-        'discipline_13_fk', 'discipline_14_fk', 'discipline_15_fk'
+        "contract_type",
+        "role",
+        "aggregated_stage",
+        "regent",
+        "discipline_1_fk",
+        "discipline_2_fk",
+        "discipline_3_fk",
+        "discipline_4_fk",
+        "discipline_5_fk",
+        "discipline_6_fk",
+        "discipline_7_fk",
+        "discipline_8_fk",
+        "discipline_9_fk",
+        "discipline_10_fk",
+        "discipline_11_fk",
+        "discipline_12_fk",
+        "discipline_13_fk",
+        "discipline_14_fk",
+        "discipline_15_fk",
+        "edcenso_stage_vs_modality_fk",
     ]
-    
+
     for col in problematic_columns:
         if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+            df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
 
     for col in df.select_dtypes(include=[np.floating]).columns:
         if col in problematic_columns:
             continue
-            
+
         non_null_vals = df[col].dropna()
-        
+
         if len(non_null_vals) == 0:
             df[col] = df[col].astype("Int64")
         elif (non_null_vals % 1 == 0).all():
