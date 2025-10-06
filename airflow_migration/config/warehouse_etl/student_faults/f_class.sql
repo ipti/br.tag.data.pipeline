@@ -32,7 +32,7 @@ left join raw.instructor_teaching_data itd on c.id = itd.classroom_id_fk and itd
 join raw.school_identification si on c.school_inep_fk = si.inep_id and c.database_name = si.database_name
 WHERE t.unavailable = 0
 AND t.month IN {{ months }}
-AND c.school_inep_id_fk = {{ school_inep_fk }}
+AND c.school_inep_fk = {{ school_inep_fk }}
 AND c.id = {{ id }}
 GROUP BY
     c.id,

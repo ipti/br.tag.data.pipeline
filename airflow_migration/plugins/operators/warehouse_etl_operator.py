@@ -137,7 +137,9 @@ class WarehouseEtlOperator(BaseOperator):
                 "%Y-%m-%d %H:%M:%S"
             )
 
-            final_sql = render_sql_template(resolved_execution)
+            final_sql = render_sql_template(
+                sql_path=resolved_execution.sql_path, execution_context=render_context
+            )
 
             self.log.info(
                 f"SQL template rendered for {resolved_execution.table_name} "

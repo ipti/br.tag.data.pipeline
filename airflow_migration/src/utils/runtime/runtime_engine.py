@@ -4,6 +4,8 @@ from jinja2 import Template
 from pathlib import Path
 import copy
 from airflow.sdk import Variable
+from typing import Dict, Any
+
 
 from src.utils.connections.connection_manager import DatabaseConnectionManager
 from src.utils.planner.execution_planner import TableExecution
@@ -48,47 +50,43 @@ def resolve_placeholders(
     return resolved_execution
 
 
-def render_sql_template(resolved_execution: TableExecution) -> str:
+def render_sql_template(sql_path: str, execution_context: Dict[str, Any]) -> str:
     """
-    Renders a SQL file using Jinja2 templating, filling placeholders with the execution context.
+    Renders a SQL file using Jinja2 by accepting a direct path and context.
 
-    The SQL file path is read from resolved_execution.sql_path. The file is rendered with the
-    execution_context dictionary from the TableExecution object, which should contain all variables
-    required by the template.
+    This utility function is responsible for all templating logic. It fetches
+    the base configuration path from an Airflow Variable, constructs the full
+    path to the SQL file, and reads its content. It then enriches the provided
+    execution context by preparing different versions of the 'database' variable
+    (raw and quoted) for flexible use within the template, before finally
+    rendering and returning the final SQL string.
 
     Args:
-        resolved_execution (TableExecution): The TableExecution object with execution_context and sql_path.
+        sql_path (str): The relative path to the SQL template file from the
+            configuration root.
+        execution_context (Dict[str, Any]): A dictionary of variables to be made
+            available to the Jinja2 template.
 
     Returns:
         str: The rendered SQL string.
 
     Raises:
-        FileNotFoundError: If the SQL file does not exist.
-
-    Example:
-        >>> resolved_execution.sql_path = "/path/to/query.sql"
-        >>> resolved_execution.execution_context = {"database": "db1", "table": "users"}
-        >>> sql = render_sql_template(resolved_execution)
-        >>> print(sql)
-        "SELECT * FROM db1.users;"
+        FileNotFoundError: If the SQL file does not exist at the resolved path.
     """
     config_root = Variable.get("etl_config_root_path")
-
-    full_sql_path = Path(config_root) / resolved_execution.sql_path
+    full_sql_path = Path(config_root) / sql_path
 
     if not full_sql_path.exists():
         raise FileNotFoundError(f"SQL file not found at: {full_sql_path}")
 
     sql_template_content = full_sql_path.read_text()
-
     template = Template(sql_template_content)
-    render_context = resolved_execution.execution_context.copy()
+
+    render_context = execution_context.copy()
 
     if "database" in render_context and render_context["database"]:
         db_name_raw = render_context["database"]
-
         render_context["database_raw"] = db_name_raw
-
         render_context["database"] = f"`{db_name_raw}`"
 
     final_sql = template.render(render_context)

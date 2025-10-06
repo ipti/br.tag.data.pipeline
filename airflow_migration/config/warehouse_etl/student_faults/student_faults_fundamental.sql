@@ -4,7 +4,11 @@ CONCAT(MIN(t.id), '-', c.id, '-', se.school_inep_id_fk, '-', si.id, '-', t.disci
 MIN(t.id) as 'F_HASH_ID',
 t.discipline_fk as discipline_id,
 ed.name,
-concat(si.id, '-', se.school_inep_id_fk,'-', se.classroom_fk) as student_id,
+CONCAT(
+        COALESCE(si.id, 'NO_ID'), '-', 
+        COALESCE(c.school_inep_fk, 'NO_SCHOOL'), '-', 
+        COALESCE(c.id, 'NO_CLASSROOM')
+    ) AS 'student_id',
 MAX(t.updated_at) as updated_at,
 COUNT(DISTINCT t.day) AS scheduled_student_class_days,
 COUNT(t.id) AS total_scheduled_classes,
@@ -35,7 +39,7 @@ JOIN raw.student_identification si ON se.student_fk = si.id AND si.database_name
 JOIN raw.edcenso_discipline ed ON t.discipline_fk = ed.id AND ed.database_name = t.database_name
 WHERE t.unavailable = 0
 AND t.month IN {{ months }}
-AND c.school_inep_id_fk = {{ school_inep_fk }}
+AND c.school_inep_fk = {{ school_inep_fk }}
 AND c.id = {{ id }}
 GROUP BY
     c.id,
@@ -45,5 +49,6 @@ GROUP BY
     se.classroom_fk,
     t.discipline_fk,
     t.month,
+    c.school_inep_fk,
     ed.name
 ORDER BY si.id, t.discipline_fk, c.school_year;

@@ -1,1 +1,0 @@
-SELECT id, school_inep_fk  FROM raw.classroom;
