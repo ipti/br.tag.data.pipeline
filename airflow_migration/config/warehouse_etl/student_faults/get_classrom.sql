@@ -1,0 +1,1 @@
+SELECT id, school_inep_fk, database_name FROM raw.classroom;
