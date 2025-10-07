@@ -673,6 +673,7 @@ class CopyAndLoader:
         source_query: str,
         source_database: Optional[str] = None,
         source_table: Optional[str] = None,
+        source_type: Optional[str] = None,
         table_mapping: Optional[TableMapping] = None,
         target_schema: Optional[str] = None,
         upsert_config: Optional[UpsertConfig] = None,
@@ -732,8 +733,12 @@ class CopyAndLoader:
                 },
             )
 
-            source_data = self.db_manager.execute_mysql_query(
-                source_name, source_query, database_override=source_database
+            source_data = self.db_manager.fetch_data(
+                source_type=source_type,
+                query=source_query,
+                source_name=source_name,
+                database=source_database,
+                schema=target_schema if source_type.lower() == "sqlserver" else None,
             )
 
             if not source_data:

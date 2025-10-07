@@ -676,12 +676,14 @@ class DatabaseConnectionManager:
         if source_type.lower() == "mysql":
             if not source_name:
                 raise ValueError("For MySQL, 'source_name' must be provided.")
+
             return self.execute_mysql_query(
                 source_name=source_name,
                 query=query,
                 params=params,
-                database=database,
+                database_override=database,
             )
+
         elif source_type.lower() == "sqlserver":
             return self.execute_sqlserver_query(
                 query=query,
