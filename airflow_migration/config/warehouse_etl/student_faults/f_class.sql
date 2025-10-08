@@ -1,8 +1,8 @@
 SELECT
     CASE
         WHEN svm.unified_frequency = 1 OR svm.id IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84)
-        THEN CONCAT(MIN(t.id), '-', c.id, '-', c.school_inep_fk, '-', COALESCE(min(itd.instructor_fk), 'NO_INSTRUCTOR'))
-        ELSE CONCAT(MIN(t.id), '-', c.id, '-', c.school_inep_fk, '-', COALESCE(t.discipline_fk, 'NO_DISCIPLINE'), '-', COALESCE(min(itd.instructor_fk), 'NO_INSTRUCTOR'))
+        THEN CONCAT(MIN(t.id), '-', c.id, '-', c.school_inep_fk, '-',COALESCE(MIN(CAST(itd.instructor_fk AS VARCHAR(50))), 'NO_INSTRUCTOR'))
+        ELSE CONCAT(MIN(t.id), '-', c.id, '-', c.school_inep_fk, '-', COALESCE(t.discipline_fk, 'NO_DISCIPLINE'), '-', COALESCE(MIN(CAST(itd.instructor_fk AS VARCHAR(50))), 'NO_INSTRUCTOR'))
     END AS HASH_ID,
     t.day AS scheduled_day,
     CONCAT(c.school_inep_fk, '-', COALESCE(min(itd.instructor_fk), 'NO_INSTRUCTOR'), '-', c.id) AS teacher_id,

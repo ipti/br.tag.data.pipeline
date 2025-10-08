@@ -1,5 +1,7 @@
 SELECT
-CONCAT(MIN(t.id), '-', c.id, '-', c.school_inep_fk, '-', COALESCE(t.discipline_fk, 'NO_DISCIPLINE'), '-', COALESCE(min(itd.instructor_fk), 'NO_INSTRUCTOR')) as 'class_id',
+CONCAT(MIN(t.id), '-', c.id, '-', c.school_inep_fk, '-', 
+       COALESCE(t.discipline_fk, 'NO_DISCIPLINE'), '-', 
+       COALESCE(MIN(CAST(itd.instructor_fk AS VARCHAR(50))), 'NO_INSTRUCTOR')) as 'class_id',
 CONCAT(MIN(t.id), '-', c.id, '-', se.school_inep_id_fk, '-', si.id, '-', t.discipline_fk, '-', c.school_year) AS 'HASH_ID',
 MIN(t.id) as 'F_HASH_ID',
 concat (si.id, '-', si.school_inep_id_fk,'-' ,t.discipline_fk, '-' , se.classroom_fk) as 'discipline_id',

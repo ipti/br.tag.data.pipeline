@@ -20,7 +20,7 @@ SELECT
     MAX(t.updated_at) AS 'updated_at',
     GETUTCDATE() AS 'inserted_at',
     COUNT(DISTINCT t.day) AS 'scheduled_student_class_days',
-    CONCAT(MIN(t.id), '-', c.id, '-', c.school_inep_fk, '-', COALESCE(MIN(itd.instructor_fk), 'NO_INSTRUCTOR')) AS 'class_id'
+    CONCAT(MIN(t.id), '-', c.id, '-', c.school_inep_fk, '-',COALESCE(MIN(CAST(itd.instructor_fk AS VARCHAR(50))), 'NO_INSTRUCTOR')) AS 'class_id'
 FROM raw.schedule t
 JOIN raw.classroom c ON c.id = t.classroom_fk AND c.database_name = t.database_name
 JOIN raw.edcenso_stage_vs_modality svm ON svm.id = c.edcenso_stage_vs_modality_fk AND svm.database_name = c.database_name
