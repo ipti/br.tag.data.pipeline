@@ -7,7 +7,7 @@ SELECT
     t.day AS scheduled_day,
     CONCAT(c.school_inep_fk, '-', COALESCE(min(itd.instructor_fk), 'NO_INSTRUCTOR'), '-', c.id) AS teacher_id,
     concat (c.id, '-', c.school_inep_fk ) as classroom_id,
-    '{{ execution_timestamp }}' AS inserted_at,
+    GETUTCDATE() AS inserted_at,
     COUNT(DISTINCT(t.[day] )) AS scheduled_class_days,
     t.month as scheduled_month,
     COUNT(distinct (t.id)) AS  scheduled_lessons_per_day,

@@ -667,10 +667,10 @@ class CopyAndLoader:
 
     def incremental_load(
         self,
-        source_name: str,
         target_table: str,
         incremental_config: IncrementalConfig,
         source_query: str,
+        source_name: Optional[str] = None,
         source_database: Optional[str] = None,
         source_table: Optional[str] = None,
         source_type: Optional[str] = None,

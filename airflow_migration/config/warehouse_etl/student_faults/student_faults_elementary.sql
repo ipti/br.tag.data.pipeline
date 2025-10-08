@@ -18,6 +18,7 @@ SELECT
     ) AS 'total_faults_per_day',
     NULL AS 'total_faults_per_discipline',
     MAX(t.updated_at) AS 'updated_at',
+    GETUTCDATE() AS 'inserted_at',
     COUNT(DISTINCT t.day) AS 'scheduled_student_class_days',
     CONCAT(MIN(t.id), '-', c.id, '-', c.school_inep_fk, '-', COALESCE(MIN(itd.instructor_fk), 'NO_INSTRUCTOR')) AS 'class_id'
 FROM raw.schedule t

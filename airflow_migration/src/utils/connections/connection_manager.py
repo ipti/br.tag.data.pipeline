@@ -320,6 +320,7 @@ class DatabaseConnectionManager:
             f"PWD={config.password};"
             f"Encrypt=yes;"
             f"TrustServerCertificate=yes;"
+            f"TCPKeepAlive=30;"
             f"Connection Timeout={self.connection_timeout};"
         )
         odbc_url = urllib.parse.quote_plus(conn_str)
