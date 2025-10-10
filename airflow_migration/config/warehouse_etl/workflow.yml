@@ -12,7 +12,7 @@ triggers:
   incremental_base_tables:
     schedule_interval: "0 1 * * *"
     description: "Daily incremental_upsert at 3AM"
-    incremental_reference_table: "student_enrollment" 
+    incremental_reference_table: "class_faults" 
 
 stages:
   - stage: 1

@@ -1,10 +1,11 @@
 from __future__ import annotations
 from typing import Dict, Any, List
+import numpy as np
 
 import pendulum
-from datetime import timedelta
 import pandas as pd
 from pathlib import Path
+from datetime import timedelta
 from airflow.models.dag import DAG
 from airflow.operators.python import PythonOperator
 from airflow.exceptions import AirflowException
@@ -18,65 +19,99 @@ from utils.runtime.runtime_engine import render_sql_template
 
 TIMEZONE = "America/Sao_Paulo"
 SQL_SUBDIRECTORY = "student_faults"
-WORK_LIST_CSV_NAME = "classroom_ids_and_schools.csv"
 MONTH_GROUPS = [(1, 2, 3), (4, 5, 6), (7, 8, 9), (10, 11, 12)]
 
-default_args = {
+NUM_CHUNKS_ELEMENTARY = 3
+NUM_CHUNKS_FUNDAMENTAL = 3
+NUM_CHUNKS_FCLASS = 5
+
+DEFAULT_ARGS = {
     "owner": "airflow",
-    "retries": 3,
+    "retries": 1,
     "retry_delay": timedelta(minutes=5),
-    "retry_exponential_backoff": True,
 }
 
 
-def export_work_list_to_csv(ti, sql_path: str) -> None:
+def export_work_list_to_csv(ti, controller_sql_path: str, output_csv_name: str) -> None:
     """
-    Fetches the work list from the DWH and saves it as a CSV file in a shared location.
-    The file path is pushed to XComs for downstream tasks.
+    Executes a SQL query to fetch a work list from the data warehouse and saves it as a CSV file.
+    The CSV file path is pushed to XCom for downstream tasks.
 
-    This function:
-        - Renders the SQL query using the provided template path.
-        - Executes the query against SQL Server.
-        - Converts the result to a DataFrame and saves it as CSV.
-        - Pushes the CSV file path to XComs for use by other tasks.
+    Args:
+        ti: Airflow TaskInstance for XCom communication.
+        controller_sql_path (str): Path to the SQL template for fetching the work list.
+        output_csv_name (str): Name of the output CSV file.
+
+    Raises:
+        ValueError: If no results are returned from the query.
+
+    Example:
+        export_work_list_to_csv(ti, "student_faults/get_classrooms_elementary.sql", "work_list_elementary_process_months_1_2_3.csv")
     """
     db_manager = DatabaseConnectionManager(environment="prod")
-    query = render_sql_template(sql_path=sql_path, execution_context={})
+    query = render_sql_template(sql_path=controller_sql_path, execution_context={})
     sqlalchemy_results = db_manager.execute_sqlserver_query(query)
     if not sqlalchemy_results:
-        raise ValueError("No items found from the controller query.")
+        ti.xcom_push(key="work_list_path", value=None)
+        return
+
     work_list = [dict(row._mapping) for row in sqlalchemy_results]
     df = pd.DataFrame(work_list)
     config_root = Variable.get("etl_config_root_path")
     output_dir = Path(config_root) / SQL_SUBDIRECTORY
     output_dir.mkdir(parents=True, exist_ok=True)
-    csv_file_path = output_dir / WORK_LIST_CSV_NAME
+    csv_file_path = output_dir / output_csv_name
     df.to_csv(csv_file_path, index=False)
     ti.xcom_push(key="work_list_path", value=str(csv_file_path))
 
 
-def process_items_upsert_func(
+def process_csv_with_chunks(
     ti,
     upstream_task_id: str,
     sql_template_path: str,
     target_table: str,
     months: tuple,
     upsert_keys: List[str],
+    num_chunks: int,
+    chunk_index: int,
 ) -> None:
     """
-    Reads the work list from CSV, iterates through each item, and performs an UPSERT for each.
+    Processes a chunk of items from a work list CSV file, performing UPSERT operations for each item.
 
     This function:
-        - Pulls the CSV file path from XComs.
-        - Reads the CSV into a DataFrame and iterates over each row.
-        - For each item, renders the SQL template with context and performs an incremental UPSERT.
+        - Reads the CSV file path from XCom.
+        - Loads the CSV and splits the work list into chunks for parallel processing.
+        - For each item in the assigned chunk, renders the SQL template and performs an incremental UPSERT.
         - Raises AirflowException if any load fails.
+
+    Args:
+        ti: Airflow TaskInstance for XCom communication.
+        upstream_task_id (str): Task ID that produced the CSV file.
+        sql_template_path (str): Path to the SQL template for data extraction.
+        target_table (str): Target table for UPSERT.
+        months (tuple): Tuple of months to process.
+        upsert_keys (List[str]): Keys for UPSERT operation.
+        num_chunks (int): Total number of chunks for parallelism.
+        chunk_index (int): Index of the chunk to process.
+
+    Example:
+        process_csv_with_chunks(ti, "group.elementary_stream.export_elementary_list", "student_faults_elementary.sql", "F_STUDENT_CLASS", (1,2,3), ["HASH_ID"], 3, 0)
     """
     csv_file_path = ti.xcom_pull(task_ids=upstream_task_id, key="work_list_path")
-    if not csv_file_path:
+    if not csv_file_path or not Path(csv_file_path).exists():
         return
+
     work_df = pd.read_csv(csv_file_path)
     work_list = work_df.to_dict("records")
+    chunked_list = np.array_split(work_list, num_chunks)
+    if chunk_index >= len(chunked_list):
+        return
+    my_chunk = (
+        chunked_list[chunk_index].tolist() if chunked_list[chunk_index].size > 0 else []
+    )
+    if not my_chunk:
+        return
+
     db_manager = DatabaseConnectionManager(environment="prod")
     copy_loader = CopyAndLoader(db_manager=db_manager)
     inc_config = IncrementalConfig(
@@ -85,7 +120,8 @@ def process_items_upsert_func(
     ups_config = UpsertConfig(
         source_key_columns=upsert_keys, target_key_columns=upsert_keys
     )
-    for item in work_list:
+
+    for item in my_chunk:
         context = {
             "id": item.get("id"),
             "school_inep_fk": item.get("school_inep_fk"),
@@ -108,82 +144,112 @@ def process_items_upsert_func(
             )
 
 
-def create_processing_group(group_id: str, months: tuple) -> TaskGroup:
-    """
-    Creates a TaskGroup for a block of months, containing three PythonOperator tasks:
-        - export_work_list_to_csv: Exports the work list to CSV.
-        - process_elementary_faults: Processes elementary faults with UPSERT.
-        - process_fundamental_faults: Processes fundamental faults with UPSERT.
-        - process_f_class: Processes class faults with UPSERT.
-
-    The dependencies are:
-        export_work_list_to_csv >> [process_elementary_faults, process_fundamental_faults] >> process_f_class
-    """
-    with TaskGroup(group_id=group_id) as tg:
-        export_work_list = PythonOperator(
-            task_id="export_work_list_to_csv",
-            python_callable=export_work_list_to_csv,
-            op_kwargs={"sql_path": f"{SQL_SUBDIRECTORY}/get_classrooms.sql"},
-        )
-        process_elementary_faults = PythonOperator(
-            task_id="process_elementary_faults",
-            python_callable=process_items_upsert_func,
-            op_kwargs={
-                "upstream_task_id": f"{group_id}.export_work_list_to_csv",
-                "sql_template_path": f"{SQL_SUBDIRECTORY}/student_faults_elementary.sql",
-                "target_table": "F_STUDENT_CLASS",
-                "months": months,
-                "upsert_keys": ["HASH_ID"],
-            },
-        )
-        process_fundamental_faults = PythonOperator(
-            task_id="process_fundamental_faults",
-            python_callable=process_items_upsert_func,
-            op_kwargs={
-                "upstream_task_id": f"{group_id}.export_work_list_to_csv",
-                "sql_template_path": f"{SQL_SUBDIRECTORY}/student_faults_fundamental.sql",
-                "target_table": "F_STUDENT_CLASS",
-                "months": months,
-                "upsert_keys": ["HASH_ID"],
-            },
-        )
-        process_f_class = PythonOperator(
-            task_id="process_f_class",
-            python_callable=process_items_upsert_func,
-            op_kwargs={
-                "upstream_task_id": f"{group_id}.export_work_list_to_csv",
-                "sql_template_path": f"{SQL_SUBDIRECTORY}/f_class.sql",
-                "target_table": "F_CLASS",
-                "months": months,
-                "upsert_keys": ["HASH_ID"],
-            },
-        )
-        (
-            export_work_list
-            >> [process_elementary_faults, process_fundamental_faults]
-            >> process_f_class
-        )
-    return tg
-
-
 with DAG(
     dag_id="manual_student_faults_batch",
-    start_date=pendulum.datetime(2025, 10, 6, tz=TIMEZONE),
+    start_date=pendulum.datetime(2025, 10, 8, tz=TIMEZONE),
     schedule=None,
     catchup=False,
     tags=["manual", "batch", "student_faults"],
-    doc_md="Manual DAG for processing student faults in sequential month blocks. Each TaskGroup processes a block of months and loads data into the warehouse using UPSERT logic.",
-    default_args=default_args,
+    default_args=DEFAULT_ARGS,
 ) as dag:
     """
     Defines the main DAG for manual batch processing of student faults.
-    For each block of months, a TaskGroup is created to process the data.
-    All TaskGroups are chained sequentially.
+    For each block of months, a TaskGroup is created for each stream (elementary, fundamental, f_class).
+    Each stream exports a work list and processes it in parallel chunks.
+    After elementary and fundamental streams finish, the f_class stream is triggered.
+    All TaskGroups are chained sequentially for each block of months.
     """
     processing_groups = []
+
     for months in MONTH_GROUPS:
         group_id = f"process_months_{'_'.join(map(str, months))}"
-        group = create_processing_group(group_id=group_id, months=months)
-        processing_groups.append(group)
 
-    chain(*processing_groups)
+        with TaskGroup(group_id=group_id) as tg:
+
+            with TaskGroup(group_id="elementary_stream") as elementary_stream:
+                export_list = PythonOperator(
+                    task_id="export_elementary_list",
+                    python_callable=export_work_list_to_csv,
+                    op_kwargs={
+                        "controller_sql_path": f"{SQL_SUBDIRECTORY}/get_classrooms_elementary.sql",
+                        "output_csv_name": f"work_list_elementary_{group_id}.csv",
+                    },
+                )
+                chunk_tasks = []
+                for chunk_idx in range(NUM_CHUNKS_ELEMENTARY):
+                    chunk_task = PythonOperator(
+                        task_id=f"process_elementary_chunk_{chunk_idx}",
+                        python_callable=process_csv_with_chunks,
+                        op_kwargs={
+                            "upstream_task_id": f"{group_id}.elementary_stream.export_elementary_list",
+                            "sql_template_path": f"{SQL_SUBDIRECTORY}/student_faults_elementary.sql",
+                            "target_table": "F_STUDENT_CLASS",
+                            "months": months,
+                            "upsert_keys": ["HASH_ID"],
+                            "num_chunks": NUM_CHUNKS_ELEMENTARY,
+                            "chunk_index": chunk_idx,
+                        },
+                    )
+                    chunk_tasks.append(chunk_task)
+                export_list >> chunk_tasks
+
+            with TaskGroup(group_id="fundamental_stream") as fundamental_stream:
+                export_list = PythonOperator(
+                    task_id="export_fundamental_list",
+                    python_callable=export_work_list_to_csv,
+                    op_kwargs={
+                        "controller_sql_path": f"{SQL_SUBDIRECTORY}/get_classrooms_fundamental.sql",
+                        "output_csv_name": f"work_list_fundamental_{group_id}.csv",
+                    },
+                )
+                chunk_tasks = []
+                for chunk_idx in range(NUM_CHUNKS_FUNDAMENTAL):
+                    chunk_task = PythonOperator(
+                        task_id=f"process_fundamental_chunk_{chunk_idx}",
+                        python_callable=process_csv_with_chunks,
+                        op_kwargs={
+                            "upstream_task_id": f"{group_id}.fundamental_stream.export_fundamental_list",
+                            "sql_template_path": f"{SQL_SUBDIRECTORY}/student_faults_fundamental.sql",
+                            "target_table": "F_STUDENT_CLASS",
+                            "months": months,
+                            "upsert_keys": ["HASH_ID"],
+                            "num_chunks": NUM_CHUNKS_FUNDAMENTAL,
+                            "chunk_index": chunk_idx,
+                        },
+                    )
+                    chunk_tasks.append(chunk_task)
+                export_list >> chunk_tasks
+
+            with TaskGroup(group_id="f_class_stream") as f_class_stream:
+                export_list = PythonOperator(
+                    task_id="export_fclass_list",
+                    python_callable=export_work_list_to_csv,
+                    op_kwargs={
+                        "controller_sql_path": f"{SQL_SUBDIRECTORY}/get_classrooms_general.sql",
+                        "output_csv_name": f"work_list_fclass_{group_id}.csv",
+                    },
+                )
+                chunk_tasks = []
+                for chunk_idx in range(NUM_CHUNKS_FCLASS):
+                    chunk_task = PythonOperator(
+                        task_id=f"process_fclass_chunk_{chunk_idx}",
+                        python_callable=process_csv_with_chunks,
+                        op_kwargs={
+                            "upstream_task_id": f"{group_id}.f_class_stream.export_fclass_list",
+                            "sql_template_path": f"{SQL_SUBDIRECTORY}/f_class.sql",
+                            "target_table": "F_CLASS",
+                            "months": months,
+                            "upsert_keys": ["HASH_ID"],
+                            "num_chunks": NUM_CHUNKS_FCLASS,
+                            "chunk_index": chunk_idx,
+                        },
+                    )
+                    chunk_tasks.append(chunk_task)
+                export_list >> chunk_tasks
+
+            [elementary_stream, fundamental_stream] >> f_class_stream
+
+        processing_groups.append(tg)
+
+    if processing_groups:
+        chain(*processing_groups)
