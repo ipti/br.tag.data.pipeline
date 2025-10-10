@@ -29,6 +29,30 @@ stages:
         trigger: "incremental_upsert"
         pool: "mysql_prod_pool"
 
+      - table_name: "D_CLASSROOM" 
+        model: "tables/d_classroom.yml"
+        depends_on: []
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+
+      - table_name: "D_HEALTH" 
+        model: "tables/d_health.yml"
+        depends_on: []
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+
+      - table_name: "D_SCHOOL" 
+        model: "tables/d_school.yml"
+        depends_on: []
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+
+      - table_name: "D_SCHOOL_GEOGRAPH" 
+        model: "tables/d_school_geograph.yml"
+        depends_on: []
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+
       - table_name: "class_faults" 
         model: "tables/class_faults.yml"
         depends_on: []
@@ -106,5 +130,11 @@ stages:
       - table_name: "f_avaliation"
         model: "tables/f_avaliation.yml"
         depends_on: ["d_student", "d_student_discipline"]
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+
+      - table_name: "F_ENROLLMENT"
+        model: "tables/f_enrollment.yml"
+        depends_on: ["d_student", "d_classroom", "d_health", "d_school_geograph", "d_school"]
         trigger: "incremental_upsert"
         pool: "mysql_prod_pool"

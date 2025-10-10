@@ -1,22 +1,33 @@
 SELECT
     CASE
         WHEN svm.unified_frequency = 1 OR svm.id IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84)
-        THEN CONCAT(MIN(t.id), '-', c.id, '-', c.school_inep_fk, '-',COALESCE(MIN(CAST(itd.instructor_fk AS VARCHAR(50))), 'NO_INSTRUCTOR'))
-        ELSE CONCAT(MIN(t.id), '-', c.id, '-', c.school_inep_fk, '-', COALESCE(t.discipline_fk, 'NO_DISCIPLINE'), '-', COALESCE(MIN(CAST(itd.instructor_fk AS VARCHAR(50))), 'NO_INSTRUCTOR'))
+        THEN CONCAT(
+            CAST(MIN(t.id) AS VARCHAR(100)), '-',
+            CAST(c.id AS VARCHAR(100)), '-',
+            CAST(c.school_inep_fk AS VARCHAR(100)), '-',
+            COALESCE(CAST(MIN(itd.instructor_fk) AS VARCHAR(100)), 'NO_INSTRUCTOR')
+        )
+        ELSE CONCAT(
+            CAST(MIN(t.id) AS VARCHAR(100)), '-',
+            CAST(c.id AS VARCHAR(100)), '-',
+            CAST(c.school_inep_fk AS VARCHAR(100)), '-',
+            COALESCE(CAST(t.discipline_fk AS VARCHAR(100)), 'NO_DISCIPLINE'), '-',
+            COALESCE(CAST(MIN(itd.instructor_fk) AS VARCHAR(100)), 'NO_INSTRUCTOR')
+        )
     END AS HASH_ID,
     t.day AS scheduled_day,
-    CONCAT(c.school_inep_fk, '-', COALESCE(min(itd.instructor_fk), 'NO_INSTRUCTOR'), '-', c.id) AS teacher_id,
-    concat (c.id, '-', c.school_inep_fk ) as classroom_id,
+    CONCAT(CAST(c.school_inep_fk AS VARCHAR(100)), '-', COALESCE(CAST(MIN(itd.instructor_fk) AS VARCHAR(100)), 'NO_INSTRUCTOR'), '-', CAST(c.id AS VARCHAR(100))) AS teacher_id,
+    CONCAT(CAST(c.id AS VARCHAR(100)), '-', CAST(c.school_inep_fk AS VARCHAR(100))) AS classroom_id,
     GETUTCDATE() AS inserted_at,
-    COUNT(DISTINCT(t.[day] )) AS scheduled_class_days,
-    t.month as scheduled_month,
-    COUNT(distinct (t.id)) AS  scheduled_lessons_per_day,
+    COUNT(DISTINCT(t.[day])) AS scheduled_class_days,
+    t.month AS scheduled_month,
+    COUNT(DISTINCT(t.id)) AS scheduled_lessons_per_day,
     c.school_year AS scheduled_year,
-     concat(c.school_inep_fk,'-',si.cep) AS school_id,
+    CONCAT(CAST(c.school_inep_fk AS VARCHAR(100)), '-', si.cep) AS school_id,
     CASE
         WHEN svm.unified_frequency = 1 OR svm.id IN (1, 2, 3, 4, 5, 6, 7, 8, 14, 15, 16, 17, 18, 12, 13, 22, 23, 24, 41, 56, 83, 84)
         THEN 'elementary_school'
-        ELSE CONCAT(COALESCE(t.discipline_fk, 'unified'), '-', c.school_inep_fk, '-', c.id)
+        ELSE CONCAT(COALESCE(CAST(t.discipline_fk AS VARCHAR(100)), 'unified'), '-', CAST(c.school_inep_fk AS VARCHAR(100)), '-', CAST(c.id AS VARCHAR(100)))
     END AS discipline_id,
     MAX(t.updated_at) AS updated_at,
     CASE
