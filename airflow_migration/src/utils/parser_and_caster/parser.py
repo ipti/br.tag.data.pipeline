@@ -45,7 +45,7 @@ def clean_dataframe_for_sql(df: pd.DataFrame) -> pd.DataFrame:
         1          0         0        NaT                          0
         2       <NA>      <NA> 2021-01-01                       <NA>
     """
-    df = df.copy()
+    df = df.copy(deep=False)
     df = df.replace({np.nan: None, pd.NaT: None})
 
     problematic_columns = [
@@ -69,6 +69,7 @@ def clean_dataframe_for_sql(df: pd.DataFrame) -> pd.DataFrame:
         "discipline_14_fk",
         "discipline_15_fk",
         "edcenso_stage_vs_modality_fk",
+        "Vaccine_id",
     ]
 
     for col in problematic_columns:
@@ -95,21 +96,35 @@ def clean_dataframe_for_sql(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.select_dtypes(include=["datetime"]).columns:
         df[col] = df[col].where(df[col].notnull(), None)
 
-    if "bolsa_familia_participator" in df.columns:
-        df["bolsa_familia_participator"] = (
-            df["bolsa_familia_participator"]
-            .apply(
-                lambda x: (
-                    1
-                    if str(x).strip().lower() in {"1", "1.0", "true", "yes"}
-                    else (
-                        0
-                        if str(x).strip().lower() in {"0", "0.0", "false", "no"}
-                        else None
+    bit_columns = {
+        "bolsa_familia_participator",
+        "celiac_desase",
+        "diabetes_desease",
+        "hypertension_desease",
+        "iron_deficiency_anemia_desease",
+        "lactose_intolerance_desease",
+        "malnutrition_desease",
+        "obesity_desease",
+        "sickle_cell_anemia",
+        "StudentBolsaFamilia",
+    }
+
+    for col in df.columns:
+        if col in bit_columns:
+            df[col] = (
+                df[col]
+                .apply(
+                    lambda x: (
+                        1
+                        if str(x).strip().lower() in {"1", "1.0", "true", "yes"}
+                        else (
+                            0
+                            if str(x).strip().lower() in {"0", "0.0", "false", "no"}
+                            else None
+                        )
                     )
                 )
+                .astype("Int64")
             )
-            .astype("Int64")
-        )
 
     return df

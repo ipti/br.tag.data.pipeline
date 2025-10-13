@@ -787,7 +787,7 @@ class CopyAndLoader:
             for i in range(0, total_rows, batch_size):
                 batch_df = df.iloc[i : i + batch_size]
 
-                if upsert_config:
+                if upsert_config and upsert_config.source_key_columns:
                     inserted, updated = self._perform_upsert(
                         batch_df, target_table, upsert_config, schema, table_mapping
                     )

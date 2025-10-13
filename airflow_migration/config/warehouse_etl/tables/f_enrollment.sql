@@ -17,7 +17,6 @@ CONCAT(
     si.id, '-', 
     COALESCE(se.classroom_fk, 'NO_CLASSROOM') 
 ) as health_id,
-si.updated_at,
 '{{ execution_timestamp }}' AS `inserted_at`,
 '{{ database_raw }}' AS `db_name`, 
 'tagDatabase' as data_origin,

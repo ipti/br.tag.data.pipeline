@@ -4,19 +4,19 @@ SELECT
     si.school_inep_id_fk, '-', 
     si.id, '-', 
     COALESCE(se.classroom_fk, 'NO_CLASSROOM')
-  ) AS HASH_ID,
-  COALESCE(sr.id, 'NO_RESTRICTION') AS F_HASH_ID,
-  sr.celiac, 
-  sr.diabetes, 
-  sr.hypertension, 
-  sr.iron_deficiency_anemia, 
-  sr.lactose_intolerance, 
-  sr.malnutrition, 
-  sr.obesity, 
-  sr.sickle_cell_anemia, 
-  sr.`others`, 
-  sr.updated_at, 
- '{{ execution_timestamp }}' AS `inserted_at`
+  ) AS `HASH_ID`,
+  COALESCE(sr.id, 'NO_RESTRICTION') AS `F_HASH_ID`,
+  sr.celiac AS `celiac_desase`,
+  sr.diabetes AS `diabetes_desease`,
+  sr.hypertension AS `hypertension_desease`,
+  sr.iron_deficiency_anemia AS `iron_deficiency_anemia_desease`,
+  sr.lactose_intolerance AS `lactose_intolerance_desease`,
+  sr.malnutrition AS `malnutrition_desease`,
+  sr.obesity AS `obesity_desease`,
+  sr.sickle_cell_anemia,
+  sr.`others` AS `other_health_problems`,
+  sr.updated_at,
+  '{{ execution_timestamp }}' AS `inserted_at`
 FROM {{ database }}.student_identification si
 LEFT JOIN {{ database }}.student_enrollment se 
   ON si.id = se.student_fk

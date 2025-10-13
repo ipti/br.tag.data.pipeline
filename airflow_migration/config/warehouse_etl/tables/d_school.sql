@@ -1,6 +1,6 @@
 select 
 concat(si.inep_id , '-', si.cep) as 'HASH_ID',
-concat(si.inep_id , '-', si.cep, '-', si.initial_date) as 'F_HASH-ID',
+concat(si.inep_id , '-', si.cep, '-', si.initial_date) as 'F_HASH_ID',
  '{{ execution_timestamp }}' AS `inserted_at`,
 si.latitude ,
 si.longitude ,
