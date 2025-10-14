@@ -17,6 +17,7 @@ class TriggerConfig:
     schedule_interval: str
     description: str
     incremental_reference_table: Optional[str] = None
+    trigger_dag_on_success: Optional[str] = None
 
     def __post_init__(self):
         """Validates if the schedule_interval is valid"""

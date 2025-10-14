@@ -3,9 +3,9 @@ Generates dynamic Airflow DAG Python files from a structured execution plan.
 """
 
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from utils.logs.logging_functions import get_logger
 from utils.planner.execution_planner import TableExecution
@@ -18,9 +18,9 @@ class DagGenerator:
 
     This class reads a structured execution plan and a workflow configuration
     to produce one or more DAG files. Each file corresponds to a unique trigger
-    (e.g., 'daily', 'weekly') and environment (e.g., 'dev', 'prod'). It contains
-    the necessary Airflow code, including TaskGroups for sequential batch
-    execution and instances of the custom WarehouseEtlOperator for each task.
+    and environment. It contains the necessary Airflow code, including TaskGroups,
+    a setup task for incremental loads, instances of the custom
+    WarehouseEtlOperator, and an optional final task to trigger a downstream DAG.
     """
 
     def __init__(self, output_path: str):
@@ -51,8 +51,7 @@ class DagGenerator:
         Args:
             execution_plan (List[List[TableExecution]]): The structured, batched
                 plan from the ExecutionPlanner.
-            workflow_config (WorkflowConfig): The main workflow configuration,
-                containing trigger details like schedule intervals.
+            workflow_config (WorkflowConfig): The main workflow configuration.
             environment (str): The target environment (e.g., 'dev', 'prod').
             is_paused (bool): If True, the generated DAG will be paused upon
                 creation in Airflow.
@@ -124,13 +123,6 @@ class DagGenerator:
     ) -> str:
         """
         Generates the full Python source code for a single, timezone-aware DAG file.
-
-        This method constructs the DAG structure, including a setup task that
-        captures the initial execution timestamp using Airflow's timezone-aware
-        `timezone.now()` function. This timestamp, along with the max timestamp
-        from the target table, is pushed to XComs. All subsequent ETL task
-        groups depend on this setup task to ensure a consistent, timezone-aware
-        time window for the entire DAG run.
         """
         dag_id = (
             f"{workflow_config.workflow_name.lower()}__{trigger_name}__{environment}"
@@ -151,17 +143,23 @@ class DagGenerator:
                 if reference_execution:
                     break
 
-        if not reference_execution:
+        if not reference_execution and batches:
             reference_execution = batches[-1][-1]
             self.logger.info(
                 f"No explicit reference table set for trigger '{trigger_name}'. "
                 f"Using last table in plan as default: '{reference_execution.table_name}'"
             )
 
-        target_table_for_ts = reference_execution.table_name
-        target_schema_placeholder_for_ts = reference_execution.target_schema
+        target_table_for_ts = (
+            reference_execution.table_name if reference_execution else ""
+        )
+        target_schema_placeholder_for_ts = (
+            reference_execution.target_schema if reference_execution else ""
+        )
         timestamp_column_for_ts = (
             reference_execution.incremental_config.target_timestamp_column
+            if reference_execution
+            else ""
         )
 
         header = f'''"""
@@ -175,6 +173,7 @@ from airflow.models.dag import DAG
 from airflow.models.dagrun import DagRun
 from airflow.utils.task_group import TaskGroup
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from utils.connections.connection_manager import DatabaseConnectionManager
 from utils.connections.writer import CopyAndLoader
@@ -188,26 +187,17 @@ def get_and_push_timestamps(ti, dag_run, target_table, target_schema_placeholder
     Captures the current execution time in UTC, queries for the max
     timestamp, and pushes both to XComs for downstream tasks.
     \"\"\"
-    # Usa datetime.now('UTC') do pendulum, que já está importado como 'datetime'
     execution_ts = pendulum.now('UTC')
     hotfix_mode = dag_run.conf.get("hotfix", False) if dag_run and dag_run.conf else False
     
-    print(f"Getting max timestamp for table '{{target_table}}'. Hotfix mode: {{hotfix_mode}}")
     db_manager = DatabaseConnectionManager(environment=env, hotfix_mode=hotfix_mode)
-
     target_schema = (
         db_manager.sqlserver_config.schema
         if target_schema_placeholder == "{TARGET_SCHEMA}"
         else target_schema_placeholder
     )
-
     loader = CopyAndLoader(db_manager=db_manager)
     last_ts = loader._get_last_timestamp(target_table, timestamp_column, target_schema)
-
-    if last_ts:
-        print(f"Found last timestamp: {{last_ts}}")
-    else:
-        print("No last timestamp found. Assuming first execution.")
     
     ti.xcom_push(key='last_timestamp', value=last_ts)
     ti.xcom_push(key='execution_timestamp', value=execution_ts)
@@ -226,7 +216,10 @@ with DAG(
     tags=["warehouse", "autogenerated", "{trigger_name}", "{environment}"],
     doc_md="""{trigger_config.description}"""
 ) as dag:
+'''
 
+        setup_task_code = (
+            f"""
     get_initial_timestamps = PythonOperator(
         task_id="get_initial_timestamps",
         python_callable=get_and_push_timestamps,
@@ -237,7 +230,10 @@ with DAG(
             "env": "{environment}"
         }}
     )
-'''
+"""
+            if batches
+            else ""
+        )
 
         task_groups_code = []
         task_group_vars = []
@@ -269,9 +265,37 @@ with DAG(
 
             task_groups_code.append(tg_header + "".join(tasks_code))
 
+        trigger_task_code = ""
         dependencies_code = ""
-        if task_group_vars:
-            dependency_chain = " >> ".join(task_group_vars)
-            dependencies_code = f"\n    get_initial_timestamps >> {dependency_chain}"
+        last_task_in_chain = "get_initial_timestamps" if batches else ""
 
-        return header + dag_definition + "".join(task_groups_code) + dependencies_code
+        if task_group_vars:
+            dependencies_code = "\n    (\n        get_initial_timestamps"
+            for tg_var in task_group_vars:
+                dependencies_code += f"\n        >> {tg_var}"
+            dependencies_code += "\n    )"
+            last_task_in_chain = task_group_vars[-1]
+
+        if trigger_config.trigger_dag_on_success:
+            triggered_dag_id = trigger_config.trigger_dag_on_success
+            sanitized_task_var = (
+                f"trigger_{triggered_dag_id.replace('-', '_').replace('.', '_')}"
+            )
+            trigger_task_code = f"""
+    {sanitized_task_var} = TriggerDagRunOperator(
+        task_id="trigger_{triggered_dag_id}",
+        trigger_dag_id="{triggered_dag_id}",
+        wait_for_completion=False,
+    )
+"""
+            if last_task_in_chain:
+                dependencies_code += f"\n    (\n        {last_task_in_chain}\n        >> {sanitized_task_var}\n    )"
+
+        return (
+            header
+            + dag_definition
+            + setup_task_code
+            + "".join(task_groups_code)
+            + trigger_task_code
+            + dependencies_code
+        )

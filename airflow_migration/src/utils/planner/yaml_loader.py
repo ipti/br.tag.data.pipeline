@@ -295,6 +295,7 @@ class YAMLLoader:
                 incremental_reference_table=trigger_data.get(
                     "incremental_reference_table"
                 ),
+                trigger_dag_on_success=trigger_data.get("trigger_dag_on_success"),
             )
 
         self.logger.debug(
