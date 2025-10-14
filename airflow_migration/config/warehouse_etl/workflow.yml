@@ -6,13 +6,17 @@ triggers:
   incremental_upsert:
     schedule_interval: "0 2 * * *"
     description: "Daily incremental_upsert at 2AM"
-    incremental_reference_table: "d_student" 
-
+    incremental_reference_table: "f_enrollment" 
 
   incremental_base_tables:
     schedule_interval: "0 1 * * *"
-    description: "Daily incremental_upsert at 3AM"
+    description: "Daily incremental_upsert at 1AM"
     incremental_reference_table: "class_faults" 
+
+  power_bi_tables_load:
+    schedule_interval: "0 3 * * *"
+    description: "Daily incremental at 3AM"
+    incremental_reference_table: "accumulated_data" 
 
 stages:
   - stage: 1
@@ -29,25 +33,25 @@ stages:
         trigger: "incremental_upsert"
         pool: "mysql_prod_pool"
 
-      - table_name: "D_CLASSROOM" 
+      - table_name: "d_classroom" 
         model: "tables/d_classroom.yml"
         depends_on: []
         trigger: "incremental_upsert"
         pool: "mysql_prod_pool"
 
-      - table_name: "D_HEALTH" 
+      - table_name: "d_health" 
         model: "tables/d_health.yml"
         depends_on: []
         trigger: "incremental_upsert"
         pool: "mysql_prod_pool"
 
-      - table_name: "D_SCHOOL" 
+      - table_name: "d_school" 
         model: "tables/d_school.yml"
         depends_on: []
         trigger: "incremental_upsert"
         pool: "mysql_prod_pool"
 
-      - table_name: "D_SCHOOL_GEOGRAPH" 
+      - table_name: "d_school_geograph" 
         model: "tables/d_school_geograph.yml"
         depends_on: []
         trigger: "incremental_upsert"
@@ -133,8 +137,16 @@ stages:
         trigger: "incremental_upsert"
         pool: "mysql_prod_pool"
 
-      - table_name: "F_ENROLLMENT"
+      - table_name: "f_enrollment"
         model: "tables/f_enrollment.yml"
         depends_on: ["d_student", "d_classroom", "d_health", "d_school_geograph", "d_school"]
         trigger: "incremental_upsert"
         pool: "mysql_prod_pool"
+
+      - table_name: "accumulated_data"
+        model: "tables/accumulated_data.yml"
+        depends_on: []
+        trigger: "power_bi_tables_load"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
