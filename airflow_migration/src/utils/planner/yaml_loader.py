@@ -598,6 +598,7 @@ class YAMLLoader:
                 description=yml_config.get("description", ""),
                 source_name=source_name,
                 target_schema=target_schema,
+                source_type=yml_config.get("source_type", "mysql"),
                 yml_config=yml_config,
                 sql_path=str(relative_sql_path),
                 incremental_config=incremental_config,

@@ -317,6 +317,7 @@ class TableConfig:
     upsert_config: UpsertConfig
     optional_filters: List[str]
     filter_sources: Dict[str, str]
+    source_type: str = "mysql"
     quality_check_pipeline: List[str] = field(default_factory=list)
     quality_check_params: Dict[str, Any] = field(default_factory=dict)
 

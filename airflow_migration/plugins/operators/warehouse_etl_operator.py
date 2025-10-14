@@ -148,7 +148,7 @@ class WarehouseEtlOperator(BaseOperator):
             self.log.debug(f"SQL Preview: {final_sql[:500]}...")
 
             result = copy_loader.incremental_load(
-                source_type="mysql",
+                source_type=resolved_execution.source_type,
                 source_name=resolved_execution.source_name,
                 target_table=resolved_execution.table_name,
                 incremental_config=resolved_execution.incremental_config,

@@ -55,6 +55,7 @@ class TableExecution:
     pool: Optional[str]
     retries: int
     retry_delay_minutes: int
+    source_type: str
     execution_context: Dict[str, Any] = field(default_factory=dict)
     quality_check_pipeline: List[str] = field(default_factory=list)
     quality_check_params: Dict[str, Any] = field(default_factory=dict)
@@ -328,6 +329,7 @@ class ExecutionPlanner:
             incremental_config=table_config.incremental_config,
             upsert_config=table_config.upsert_config,
             execution_context=execution_context,
+            source_type=table_config.source_type,
             pool=table_load.pool,
             retries=table_load.retries,
             retry_delay_minutes=table_load.retry_delay_minutes,
