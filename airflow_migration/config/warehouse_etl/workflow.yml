@@ -12,11 +12,18 @@ triggers:
     schedule_interval: "0 1 * * *"
     description: "Daily incremental_upsert at 1AM"
     incremental_reference_table: "class_faults" 
+    trigger_dag_on_success: "students_faults_incremental"
 
   power_bi_tables_load:
     schedule_interval: "0 3 * * *"
     description: "Daily incremental at 3AM"
     incremental_reference_table: "accumulated_data" 
+
+  students_faults_incremental:
+    schedule_interval: None
+    description: "Trigger execute by incremental_base_tables"
+    incremental_reference_table: "f_student_class" 
+
 
 stages:
   - stage: 1
@@ -148,5 +155,26 @@ stages:
         depends_on: []
         trigger: "power_bi_tables_load"
         pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "f_student_class"
+        model: "tables/student_faults_elementary.yml"
+        depends_on: []
+        trigger: "students_faults_incremental"
+        env_skip:
+          - dev
+
+      - table_name: "f_student_class"
+        model: "tables/student_faults_fundamental.yml"
+        depends_on: []
+        trigger: "students_faults_incremental"
+        env_skip:
+          - dev
+
+      - table_name: "f_class"
+        model: "tables/f_class.yml"
+        depends_on: []
+        trigger: "students_faults_incremental"
         env_skip:
           - dev
