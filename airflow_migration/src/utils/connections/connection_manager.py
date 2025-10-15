@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.engine import Engine, Connection
 from contextlib import contextmanager
-from typing import Optional, Dict, Any, Generator
+from typing import Optional, Dict, Any, Generator, List
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -570,9 +570,14 @@ class DatabaseConnectionManager:
         params: Optional[Dict[str, Any]] = None,
         schema: Optional[str] = None,
         top_n: Optional[int] = None,
-    ) -> Any:
+    ) -> List[Dict[str, Any]]:
         """
-        Executes a SQL query on SQL Server, optionally specifying schema and limiting results.
+        Executes a SQL query on SQL Server and fetches all resulting rows.
+
+        This method correctly identifies data-retrieval queries (starting with
+        'SELECT' or 'WITH') and fetches all rows, returning them as a list of
+        dictionaries. For other query types (DML), it returns the count of
+        affected rows.
 
         Args:
             query: SQL query to execute.
@@ -581,18 +586,25 @@ class DatabaseConnectionManager:
             top_n: Optional limit for SELECT queries.
 
         Returns:
-            Query result (rows for SELECT, affected row count for DML).
+            A list of dictionaries for SELECT/WITH queries, or an integer
+            representing affected rows for other DML operations.
         """
         start_time = time.time()
         target_schema = schema or self.sqlserver_config.schema
+
         try:
             with self.sqlserver_connection() as conn:
-                safe_query = query
-                if top_n and query.strip().upper().startswith("SELECT"):
-                    safe_query = query.replace("SELECT", f"SELECT TOP {top_n}", 1)
-                result = conn.execute(text(safe_query), params or {})
-                if query.strip().upper().startswith("SELECT"):
-                    rows = result.fetchall()
+
+                final_query = query
+                query_upper = query.strip().upper()
+
+                if top_n and query_upper.startswith("SELECT"):
+                    final_query = query.replace("SELECT", f"SELECT TOP {top_n}", 1)
+
+                result_proxy = conn.execute(text(final_query), params or {})
+
+                if query_upper.startswith(("SELECT", "WITH")):
+                    rows = result_proxy.mappings().all()
                     execution_time = time.time() - start_time
                     self.logger.info(
                         "SQL Server query executed successfully",
@@ -601,14 +613,13 @@ class DatabaseConnectionManager:
                             "execution_time_seconds": round(execution_time, 2),
                             "database": self.sqlserver_config.database,
                             "schema": target_schema,
-                            "query_type": "SELECT",
+                            "query_type": query_upper.split()[0],
                         },
                     )
                     return rows
                 else:
-                    affected_rows = result.rowcount
+                    affected_rows = result_proxy.rowcount
                     execution_time = time.time() - start_time
-                    operation = query.strip().split()[0].upper()
                     self.logger.info(
                         "SQL Server query executed successfully",
                         {
@@ -616,7 +627,7 @@ class DatabaseConnectionManager:
                             "execution_time_seconds": round(execution_time, 2),
                             "database": self.sqlserver_config.database,
                             "schema": target_schema,
-                            "query_type": operation,
+                            "query_type": query_upper.split()[0],
                         },
                     )
                     return affected_rows
