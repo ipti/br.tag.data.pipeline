@@ -23,7 +23,14 @@ LEFT JOIN {{ database }}.student_enrollment se
 LEFT JOIN {{ database }}.student_restrictions sr 
   ON si.id = sr.student_fk
 LEFT JOIN {{ database }}.school_identification si2 
-  ON si.school_inep_id_fk = si2.inep_id 
+  ON si.school_inep_id_fk = si2.inep_id
+WHERE
+  (
+    sr.updated_at >= '{{ safe_timestamp }}' OR
+    se.updated_at >= '{{ safe_timestamp }}' OR
+    si.updated_at >= '{{ safe_timestamp }}' OR
+    si2.updated_at >= '{{ safe_timestamp }}'
+  )
 GROUP BY
   CONCAT(
     COALESCE(sr.id, 'NO_RESTRICTION'), '-', 
