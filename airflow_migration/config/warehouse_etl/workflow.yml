@@ -1,0 +1,180 @@
+workflow_name: "Workflow-Warehouse"
+max_parallel_tasks: 3
+pool: "mysql_prod_pool"
+
+triggers:
+  incremental_upsert:
+    schedule_interval: "0 2 * * *"
+    description: "Daily incremental_upsert at 2AM"
+    incremental_reference_table: "f_enrollment" 
+
+  incremental_base_tables:
+    schedule_interval: "0 1 * * *"
+    description: "Daily incremental_upsert at 1AM"
+    incremental_reference_table: "class_faults" 
+    trigger_dag_on_success: "students_faults_incremental"
+
+  power_bi_tables_load:
+    schedule_interval: "0 3 * * *"
+    description: "Daily incremental at 3AM"
+    incremental_reference_table: "accumulated_data" 
+
+  students_faults_incremental:
+    schedule_interval: None
+    description: "Trigger execute by incremental_base_tables"
+    incremental_reference_table: "f_student_class" 
+
+
+stages:
+  - stage: 1
+    loads:
+      - table_name: "d_student"
+        model: "tables/d_student.yml"
+        depends_on: []
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+        
+      - table_name: "d_student_discipline" 
+        model: "tables/d_student_discipline.yml"
+        depends_on: []
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+
+      - table_name: "d_classroom" 
+        model: "tables/d_classroom.yml"
+        depends_on: []
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+
+      - table_name: "d_health" 
+        model: "tables/d_health.yml"
+        depends_on: []
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+
+      - table_name: "d_school" 
+        model: "tables/d_school.yml"
+        depends_on: []
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+
+      - table_name: "d_school_geograph" 
+        model: "tables/d_school_geograph.yml"
+        depends_on: []
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+
+      - table_name: "class_faults" 
+        model: "tables/class_faults.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "classroom" 
+        model: "tables/classroom.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "edcenso_discipline" 
+        model: "tables/edcenso_discipline.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "edcenso_stage_vs_modality" 
+        model: "tables/edcenso_stage_vs_modality.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+    
+      - table_name: "instructor_teaching_data" 
+        model: "tables/instructor_teaching_data.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "schedule" 
+        model: "tables/schedule.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "school_identification" 
+        model: "tables/school_identification.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "student_enrollment" 
+        model: "tables/student_enrollment.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "student_identification" 
+        model: "tables/student_identification.yml"
+        depends_on: []
+        trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+  - stage: 2
+    loads:
+      - table_name: "f_avaliation"
+        model: "tables/f_avaliation.yml"
+        depends_on: ["d_student", "d_student_discipline"]
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+
+      - table_name: "f_enrollment"
+        model: "tables/f_enrollment.yml"
+        depends_on: ["d_student", "d_classroom", "d_health", "d_school_geograph", "d_school"]
+        trigger: "incremental_upsert"
+        pool: "mysql_prod_pool"
+
+      - table_name: "accumulated_data"
+        model: "tables/accumulated_data.yml"
+        depends_on: []
+        trigger: "power_bi_tables_load"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "f_student_class"
+        model: "tables/student_faults_elementary.yml"
+        depends_on: []
+        trigger: "students_faults_incremental"
+        env_skip:
+          - dev
+
+      - table_name: "f_student_class"
+        model: "tables/student_faults_fundamental.yml"
+        depends_on: []
+        trigger: "students_faults_incremental"
+        env_skip:
+          - dev
+
+      - table_name: "f_class"
+        model: "tables/f_class.yml"
+        depends_on: []
+        trigger: "students_faults_incremental"
+        env_skip:
+          - dev

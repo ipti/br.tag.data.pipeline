@@ -1,0 +1,983 @@
+version: 2
+
+# CONFIGURAÇÃO DE SOURCES (Tabelas já existentes no banco)
+sources:
+  - name: dbo_tia
+    description: "Schema principal do sistema TIA em produção - Sistema de Gestão Educacional"
+    tags: ["production", "education", "data-warehouse"]
+    tables:
+      - name: D_CLASSROOM
+        description: "Dimensão que armazena informações das salas de aula/turmas do sistema educacional"
+        tags: ["dimension", "classroom", "education"]
+        columns:
+          - name: HASH_ID
+            description: "Chave primária única da sala de aula (hash SHA-256)"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+              - unique
+          - name: F_HASH_ID
+            description: "Chave estrangeira de referência para relacionamentos (hash SHA-256)"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+          - name: inserted_at
+            description: "Timestamp de inserção do registro no data warehouse"
+            data_type: "datetime"
+          - name: name
+            description: "Nome identificador da sala de aula/turma (Ex: '3º Ano A', 'Turma Matemática')"
+            data_type: "varchar(80)"
+          - name: stage
+            description: "Etapa de ensino (Ex: 'Ensino Fundamental I', 'Ensino Médio', 'EJA')"
+            data_type: "varchar(100)"
+          - name: status
+            description: "Status operacional da sala (Ex: 'Ativa', 'Inativa', 'Suspensa')"
+            data_type: "varchar(22)"
+          - name: serie
+            description: "Série/ano escolar específico (Ex: '1º Ano', '5ª Série', '3º Colegial')"
+            data_type: "varchar(150)"
+          - name: class_year
+            description: "Ano letivo da turma (Ex: 2024, 2025)"
+            data_type: "int"
+          - name: updated_at
+            description: "Timestamp da última atualização do registro"
+            data_type: "datetime"
+
+      - name: D_HEALTH
+        description: "Dimensão que armazena condições de saúde dos estudantes para acompanhamento nutricional e médico"
+        tags: ["dimension", "health", "student-care", "sensitive-data"]
+        columns:
+          - name: HASH_ID
+            description: "Chave primária única do registro de saúde (hash SHA-256)"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+              - unique
+          - name: inserted_at
+            description: "Timestamp de inserção do registro no data warehouse"
+            data_type: "datetime"
+          - name: F_HASH_ID
+            description: "Referência ao estudante (relaciona com D_STUDENT)"
+            data_type: "varchar(256)"
+          - name: celiac_desase
+            description: "Indica se o estudante possui doença celíaca (impacta alimentação escolar)"
+            data_type: "bit"
+          - name: diabetes_desease
+            description: "Indica se o estudante possui diabetes (requer cuidados especiais)"
+            data_type: "bit"
+          - name: iron_deficiency_anemia_desease
+            description: "Indica se possui anemia ferropriva (afeta rendimento escolar)"
+            data_type: "bit"
+          - name: lactose_intolerance_desease
+            description: "Indica intolerância à lactose (impacta merenda escolar)"
+            data_type: "bit"
+          - name: malnutrition_desease
+            description: "Indica quadro de desnutrição (prioritário para programas sociais)"
+            data_type: "bit"
+          - name: hypertension_desease
+            description: "Indica se possui hipertensão (limita atividades físicas)"
+            data_type: "bit"
+          - name: obesity_desease
+            description: "Indica quadro de obesidade (requer acompanhamento nutricional)"
+            data_type: "bit"
+          - name: other_health_problems
+            description: "Outras condições de saúde relatadas pela família (texto livre)"
+            data_type: "varchar(256)"
+          - name: updated_at
+            description: "Timestamp da última atualização das informações de saúde"
+            data_type: "datetime"
+          - name: sickle_cell_anemia
+            description: "Indica se possui anemia falciforme (requer cuidados médicos especiais)"
+            data_type: "bit"
+
+      - name: D_SCHOOL
+        description: "Dimensão com dados cadastrais e localização das unidades escolares da rede"
+        tags: ["dimension", "school", "infrastructure", "location"]
+        columns:
+          - name: HASH_ID
+            description: "Chave primária única da escola (hash SHA-256)"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+              - unique
+          - name: F_HASH_ID
+            description: "Chave para relacionamento com geografia (D_SCHOOL_GEOGRAPH)"
+            data_type: "varchar(256)"
+          - name: inserted_at
+            description: "Timestamp de inserção do registro no data warehouse"
+            data_type: "datetime"
+          - name: latitude
+            description: "Coordenada geográfica - latitude (para geolocalização)"
+            data_type: "varchar(20)"
+          - name: longitude
+            description: "Coordenada geográfica - longitude (para geolocalização)"
+            data_type: "varchar(20)"
+          - name: name
+            description: "Nome oficial da unidade escolar"
+            data_type: "varchar(100)"
+          - name: address
+            description: "Logradouro completo da escola (rua, avenida, etc.)"
+            data_type: "varchar(170)"
+          - name: number_address
+            description: "Número do endereço da unidade escolar"
+            data_type: "varchar(30)"
+          - name: address_complement
+            description: "Complemento do endereço (bloco, sala, andar, etc.)"
+            data_type: "varchar(100)"
+          - name: address_neighborhood
+            description: "Bairro onde a escola está localizada"
+            data_type: "varchar(100)"
+          - name: situation
+            description: "Código da situação operacional da escola (1=Ativa, 2=Inativa, etc.)"
+            data_type: "int"
+          - name: exported_educacenso
+            description: "Flag indicando se os dados foram exportados para o Censo Escolar (INEP)"
+            data_type: "int"
+          - name: join_at
+            description: "Data de adesão da escola ao sistema TIA"
+            data_type: "varchar(15)"
+
+      - name: D_SCHOOL_GEOGRAPH
+        description: "Dimensão geográfica complementar das escolas (CEP, cidade, UF) para análises regionais"
+        tags: ["dimension", "geography", "location", "regional-analysis"]
+        columns:
+          - name: HASH_ID
+            description: "Chave primária única da localização geográfica (hash SHA-256)"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+              - unique
+          - name: cep
+            description: "Código de Endereçamento Postal da escola"
+            data_type: "varchar(10)"
+          - name: city
+            description: "Município onde a escola está localizada"
+            data_type: "varchar(120)"
+          - name: uf
+            description: "Unidade Federativa (estado) da escola"
+            data_type: "varchar(4)"
+          - name: F_HASH_ID
+            description: "Chave estrangeira de referência à escola (D_SCHOOL)"
+            data_type: "varchar(256)"
+            data_tests:
+              - relationships:
+                  to: source('dbo_tia', 'D_SCHOOL')
+                  field: HASH_ID
+          - name: inserted_at
+            description: "Timestamp de inserção do registro no data warehouse"
+            data_type: "datetime"
+
+      - name: D_STUDENT
+        description: "Dimensão central com dados pessoais, socioeconômicos e demográficos dos estudantes"
+        tags: ["dimension", "student", "personal-data", "demographics", "sensitive-data"]
+        columns:
+          - name: HASH_ID
+            description: "Chave primária única do estudante (hash SHA-256)"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+              - unique
+          - name: F_HASH_ID
+            description: "Chave para relacionamentos adicionais"
+            data_type: "varchar(256)"
+          - name: inserted_at
+            description: "Timestamp de inserção do registro no data warehouse"
+            data_type: "datetime"
+          - name: name
+            description: "Nome completo do estudante (dado sensível)"
+            data_type: "varchar(100)"
+          - name: street_addrees
+            description: "Endereço residencial completo do estudante"
+            data_type: "varchar(170)"
+          - name: bolsa_familia_participator
+            description: "Indica participação no Programa Bolsa Família (indicador socioeconômico)"
+            data_type: "bit"
+          - name: gender
+            description: "Gênero do estudante para análises de equidade"
+            data_type: "varchar(9)"
+          - name: ethnicity
+            description: "Autodeclaração étnico-racial (IBGE) para políticas de inclusão"
+            data_type: "varchar(13)"
+          - name: birth_city
+            description: "Município de nascimento do estudante"
+            data_type: "varchar(150)"
+          - name: deficiency
+            description: "Tipo de deficiência ou necessidade especial (para inclusão)"
+            data_type: "varchar(150)"
+          - name: birthday
+            description: "Data de nascimento (para cálculo de idade e faixa etária)"
+            data_type: "varchar(12)"
+          - name: neighborhood_address
+            description: "Bairro de residência (para análise de vulnerabilidade social)"
+            data_type: "varchar(100)"
+          - name: cep
+            description: "CEP da residência do estudante"
+            data_type: "varchar(10)"
+          - name: public_transport
+            description: "Utiliza transporte escolar público (impacta logística)"
+            data_type: "varchar(5)"
+          - name: city_address
+            description: "Cidade de residência do estudante"
+            data_type: "varchar(170)"
+          - name: mother_name
+            description: "Nome da mãe (filiação e contato de emergência)"
+            data_type: "varchar(120)"
+          - name: father_name
+            description: "Nome do pai (filiação e contato de emergência)"
+            data_type: "varchar(120)"
+          - name: residence_zone
+            description: "Zona de residência (Urbana/Rural) para análises socioeconômicas"
+            data_type: "varchar(6)"
+          - name: student_cpf
+            description: "CPF do estudante (documento único, dado sensível)"
+            data_type: "varchar(12)"
+          - name: responsable_cpf
+            description: "CPF do responsável legal (para contatos e benefícios)"
+            data_type: "varchar(12)"
+          - name: uf
+            description: "UF da residência do estudante"
+            data_type: "varchar(3)"
+          - name: mapped_city
+            description: "Cidade normalizada/padronizada para análises"
+            data_type: "varchar(150)"
+
+      - name: D_STUDENT_DISCIPLINE
+        description: "Dimensão com histórico acadêmico detalhado - notas por bimestre e recuperações de cada disciplina"
+        tags: ["dimension", "academic-performance", "grades", "evaluation"]
+        columns:
+          - name: HASH_ID
+            description: "Chave primária única do registro estudante-disciplina (hash SHA-256)"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+              - unique
+          - name: inserted_at
+            description: "Timestamp de inserção do registro no data warehouse"
+            data_type: "datetime"
+          - name: F_HASH_ID
+            description: "Referência ao estudante (relaciona com D_STUDENT)"
+            data_type: "varchar(256)"
+            data_tests:
+              - relationships:
+                  to: source('dbo_tia', 'D_STUDENT')
+                  field: HASH_ID
+          - name: discipline_name
+            description: "Nome da disciplina/matéria (Ex: 'Matemática', 'Português', 'História')"
+            data_type: "varchar(120)"
+          - name: grade_1
+            description: "Nota obtida no 1º bimestre (escala 0-10)"
+            data_type: "float"
+          - name: grade_2
+            description: "Nota obtida no 2º bimestre (escala 0-10)"
+            data_type: "float"
+          - name: grade_3
+            description: "Nota obtida no 3º bimestre (escala 0-10)"
+            data_type: "float"
+          - name: grade_4
+            description: "Nota obtida no 4º bimestre (escala 0-10)"
+            data_type: "float"
+          - name: rec_bim_1
+            description: "Nota da recuperação do 1º bimestre (substitui grade_1 se maior)"
+            data_type: "float"
+          - name: rec_bim_2
+            description: "Nota da recuperação do 2º bimestre (substitui grade_2 se maior)"
+            data_type: "float"
+          - name: rec_sem_1
+            description: "Nota da recuperação do 1º semestre (média bim 1+2)"
+            data_type: "float"
+          - name: rec_sem_2
+            description: "Nota da recuperação do 2º semestre (média bim 3+4)"
+            data_type: "float"
+          - name: rec_sem_3
+            description: "Nota da recuperação do 3º semestre (sistema semestral)"
+            data_type: "float"
+          - name: rec_sem_4
+            description: "Nota da recuperação do 4º semestre (sistema semestral)"
+            data_type: "float"
+          - name: rec_final
+            description: "Nota da recuperação final (última chance de aprovação)"
+            data_type: "float"
+          - name: final_mean
+            description: "Média final calculada da disciplina (define aprovação/reprovação)"
+            data_type: "float"
+          - name: updated_at
+            description: "Timestamp da última atualização das notas"
+            data_type: "datetime"
+
+      - name: F_CLASS
+        description: "Fato que registra aulas programadas/ministradas - base para controle de carga horária e planejamento"
+        tags: ["fact", "class-schedule", "teacher", "curriculum"]
+        columns:
+          - name: HASH_ID
+            description: "Chave primária única da aula (hash SHA-256)"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+              - unique
+          - name: inserted_at
+            description: "Timestamp de inserção do registro no data warehouse"
+            data_type: "datetime"
+          - name: teacher_id
+            description: "Identificador do professor responsável pela aula"
+            data_type: "varchar(256)"
+          - name: classroom_id
+            description: "Referência à turma onde a aula ocorre"
+            data_type: "varchar(256)"
+            data_tests:
+              - relationships:
+                  to: source('dbo_tia', 'D_CLASSROOM')
+                  field: HASH_ID
+          - name: scheduled_class_days
+            description: "Número total de dias de aula programados no período"
+            data_type: "int"
+          - name: scheduled_month
+            description: "Mês da programação das aulas (1-12)"
+            data_type: "int"
+          - name: scheduled_lessons_per_day
+            description: "Quantidade de aulas/períodos por dia para esta disciplina"
+            data_type: "int"
+          - name: scheduled_year
+            description: "Ano letivo da programação"
+            data_type: "int"
+          - name: school_id
+            description: "Referência à escola onde a aula acontece"
+            data_type: "varchar(256)"
+            data_tests:
+              - relationships:
+                  to: source('dbo_tia', 'D_SCHOOL')
+                  field: HASH_ID
+          - name: discipline_id
+            description: "Identificador da disciplina sendo ministrada"
+            data_type: "varchar(256)"
+          - name: updated_at
+            description: "Timestamp da última atualização do cronograma"
+            data_type: "datetime"
+          - name: discipline_name
+            description: "Nome da disciplina (desnormalizado para performance)"
+            data_type: "varchar(150)"
+          - name: scheduled_day
+            description: "Dia específico do mês da aula programada"
+            data_type: "int"
+
+      - name: F_STUDENT_CLASS
+        description: "Fato de participação estudantil - registra presença/falta dos alunos por aula e disciplina"
+        tags: ["fact", "attendance", "student-participation", "truancy"]
+        columns:
+          - name: HASH_ID
+            description: "Chave primária única do registro de participação (hash SHA-256)"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+              - unique
+          - name: F_HASH_ID
+            description: "Chave de relacionamento adicional"
+            data_type: "varchar(256)"
+          - name: student_id
+            description: "Referência ao estudante participante"
+            data_type: "varchar(256)"
+            data_tests:
+              - relationships:
+                  to: source('dbo_tia', 'D_STUDENT')
+                  field: HASH_ID
+          - name: discipline_id
+            description: "Referência à disciplina (relaciona com D_STUDENT_DISCIPLINE)"
+            data_type: "varchar(256)"
+          - name: total_faults_per_day
+            description: "Total de faltas do estudante no dia específico"
+            data_type: "int"
+          - name: total_faults_per_discipline
+            description: "Total acumulado de faltas na disciplina (para controle de 75% mínimo)"
+            data_type: "int"
+          - name: inserted_at
+            description: "Timestamp de inserção do registro no data warehouse"
+            data_type: "datetime"
+          - name: updated_at
+            description: "Timestamp da última atualização da frequência"
+            data_type: "datetime"
+          - name: scheduled_student_class_days
+            description: "Total de dias de aula programados para este estudante"
+            data_type: "int"
+          - name: class_id
+            description: "Referência à aula específica (relaciona com F_CLASS)"
+            data_type: "varchar(256)"
+            data_tests:
+              - relationships:
+                  to: source('dbo_tia', 'F_CLASS')
+                  field: HASH_ID
+
+      - name: F_AVALIATION
+        description: "Fato de avaliação final - resultado consolidado por estudante e disciplina (aprovado/reprovado)"
+        tags: ["fact", "evaluation", "final-result", "academic-outcome"]
+        columns:
+          - name: HASH_ID
+            description: "Chave primária única da avaliação final (hash SHA-256)"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+              - unique
+          - name: student_id
+            description: "Referência ao estudante avaliado"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+              - relationships:
+                  to: source('dbo_tia', 'D_STUDENT')
+                  field: HASH_ID
+          - name: discipline_id
+            description: "Referência à disciplina avaliada (relaciona com histórico de notas)"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+              - relationships:
+                  to: source('dbo_tia', 'D_STUDENT_DISCIPLINE')
+                  field: HASH_ID
+          - name: inserted_at
+            description: "Timestamp de inserção do resultado no data warehouse"
+            data_type: "datetime"
+          - name: situation
+            description: "Situação final do estudante (Aprovado, Reprovado, Transferido, Abandono)"
+            data_type: "varchar(20)"
+          - name: updated_at
+            description: "Timestamp da última atualização do resultado"
+            data_type: "datetime"
+
+      - name: F_ENROLLMENT
+        description: "FATO PRINCIPAL - Matrícula dos estudantes, conecta todas as dimensões do sistema educacional"
+        tags: ["fact", "enrollment", "central-fact", "student-registration"]
+        columns:
+          - name: HASH_ID
+            description: "Chave primária única da matrícula (hash SHA-256)"
+            data_type: "varchar(256)"
+            data_tests:
+              - not_null
+              - unique
+          - name: school_id
+            description: "Referência à escola onde o estudante está matriculado"
+            data_type: "varchar(256)"
+            data_tests:
+              - relationships:
+                  to: source('dbo_tia', 'D_SCHOOL')
+                  field: HASH_ID
+          - name: classroom_id
+            description: "Referência à turma/sala de aula do estudante"
+            data_type: "varchar(256)"
+            data_tests:
+              - relationships:
+                  to: source('dbo_tia', 'D_CLASSROOM')
+                  field: HASH_ID
+          - name: student_id
+            description: "Referência ao estudante matriculado"
+            data_type: "varchar(256)"
+            data_tests:
+              - relationships:
+                  to: source('dbo_tia', 'D_STUDENT')
+                  field: HASH_ID
+          - name: db_name
+            description: "Nome do banco de origem (para auditoria de lineage)"
+            data_type: "varchar(100)"
+          - name: data_origin
+            description: "Sistema fonte dos dados (TIA Municipal, TIA Estadual, etc.)"
+            data_type: "varchar(100)"
+          - name: inserted_at
+            description: "Timestamp de inserção da matrícula no data warehouse"
+            data_type: "datetime"
+          - name: log_lineage
+            description: "Log de rastreamento da origem e transformação dos dados"
+            data_type: "datetime"
+          - name: health_id
+            description: "Referência opcional às informações de saúde do estudante"
+            data_type: "varchar(256)"
+            data_tests:
+              - relationships:
+                  to: source('dbo_tia', 'D_HEALTH')
+                  field: HASH_ID
+          - name: status
+            description: "Status geral da matrícula (Ativa, Cancelada, Suspensa)"
+            data_type: "varchar(25)"
+          - name: enrollment_status
+            description: "Status específico detalhado (Matriculado, Transferido, Evadido, Concluído)"
+            data_type: "varchar(25)"
+            data_type: "bit"
+          - name: gender
+            description: "Gênero do estudante"
+            data_type: "varchar(9)"
+          - name: ethnicity
+            description: "Etnia/raça do estudante"
+            data_type: "varchar(13)"
+          - name: birth_city
+            description: "Cidade de nascimento"
+            data_type: "varchar(150)"
+          - name: deficiency
+            description: "Tipo de deficiência (se houver)"
+            data_type: "varchar(150)"
+          - name: birthday
+            description: "Data de nascimento"
+            data_type: "varchar(12)"
+          - name: neighborhood_address
+            description: "Bairro de residência"
+            data_type: "varchar(100)"
+          - name: cep
+            description: "CEP da residência"
+            data_type: "varchar(10)"
+          - name: public_transport
+            description: "Utiliza transporte público escolar (Sim/Não)"
+            data_type: "varchar(5)"
+          - name: city_address
+            description: "Cidade de residência"
+            data_type: "varchar(170)"
+          - name: mother_name
+            description: "Nome da mãe"
+            data_type: "varchar(120)"
+          - name: father_name
+            description: "Nome do pai"
+            data_type: "varchar(120)"
+          - name: residence_zone
+            description: "Zona de residência (Urbana/Rural)"
+            data_type: "varchar(6)"
+          - name: student_cpf
+            description: "CPF do estudante"
+            data_type: "varchar(12)"
+          - name: responsable_cpf
+            description: "CPF do responsável"
+            data_type: "varchar(12)"
+          - name: uf
+            description: "UF da residência"
+            data_type: "varchar(3)"
+          - name: mapped_city
+            description: "Cidade mapeada/normalizada"
+            data_type: "varchar(150)"
+
+
+# CONFIGURAÇÃO DE MODELS (para referência/documentação apenas, não cria tabelas)
+models:
+  - name: D_CLASSROOM
+    description: "Dimensão que armazena informações das salas de aula/turmas"
+    columns:
+      - name: HASH_ID
+        description: "Chave primária única da sala de aula (hash)"
+        data_type: "varchar(256)"
+        data_tests:
+          - not_null
+          - unique
+      - name: F_HASH_ID
+        description: "Chave estrangeira de referência (hash)"
+        data_type: "varchar(256)"
+        tests:
+          - not_null
+      - name: inserted_at
+        description: "Data e hora de inserção do registro"
+        data_type: "datetime"
+      - name: name
+        description: "Nome da sala de aula/turma"
+        data_type: "varchar(80)"
+      - name: stage
+        description: "Etapa de ensino (Ex: Ensino Fundamental, Médio)"
+        data_type: "varchar(100)"
+      - name: status
+        description: "Status da sala de aula (ativa, inativa, etc.)"
+        data_type: "varchar(22)"
+      - name: serie
+        description: "Série/ano da turma"
+        data_type: "varchar(150)"
+      - name: class_year
+        description: "Ano letivo da turma"
+        data_type: "int"
+      - name: updated_at
+        description: "Data e hora da última atualização"
+        data_type: "datetime"
+
+  # DIMENSÃO - HEALTH (Saúde dos Estudantes)
+  - name: D_HEALTH
+    description: "Dimensão que armazena informações de saúde dos estudantes"
+    columns:
+      - name: HASH_ID
+        description: "Chave primária única do registro de saúde (hash)"
+        data_type: "varchar(256)"
+        tests:
+          - not_null
+          - unique
+      - name: inserted_at
+        description: "Data e hora de inserção do registro"
+        data_type: "datetime"
+      - name: F_HASH_ID
+        description: "Chave estrangeira de referência ao estudante"
+        data_type: "varchar(256)"
+      - name: celiac_desase
+        description: "Indica se possui doença celíaca (1=Sim, 0=Não)"
+        data_type: "bit"
+      - name: diabetes_desease
+        description: "Indica se possui diabetes (1=Sim, 0=Não)"
+        data_type: "bit"
+      - name: iron_deficiency_anemia_desease
+        description: "Indica se possui anemia ferropriva (1=Sim, 0=Não)"
+        data_type: "bit"
+      - name: lactose_intolerance_desease
+        description: "Indica se possui intolerância à lactose (1=Sim, 0=Não)"
+        data_type: "bit"
+      - name: malnutrition_desease
+        description: "Indica se possui desnutrição (1=Sim, 0=Não)"
+        data_type: "bit"
+      - name: hypertension_desease
+        description: "Indica se possui hipertensão (1=Sim, 0=Não)"
+        data_type: "bit"
+      - name: obesity_desease
+        description: "Indica se possui obesidade (1=Sim, 0=Não)"
+        data_type: "bit"
+      - name: other_health_problems
+        description: "Outros problemas de saúde (texto livre)"
+        data_type: "varchar(256)"
+      - name: updated_at
+        description: "Data e hora da última atualização"
+        data_type: "datetime"
+      - name: sickle_cell_anemia
+        description: "Indica se possui anemia falciforme (1=Sim, 0=Não)"
+        data_type: "bit"
+
+  # DIMENSÃO - SCHOOL (Escolas)
+  - name: D_SCHOOL
+    description: "Dimensão que armazena informações das escolas"
+    columns:
+      - name: HASH_ID
+        description: "Chave primária única da escola (hash)"
+        data_type: "varchar(256)"
+        tests:
+          - not_null
+          - unique
+      - name: F_HASH_ID
+        description: "Chave estrangeira de referência"
+        data_type: "varchar(256)"
+      - name: inserted_at
+        description: "Data e hora de inserção do registro"
+        data_type: "datetime"
+      - name: latitude
+        description: "Coordenada de latitude da escola"
+        data_type: "varchar(20)"
+      - name: longitude
+        description: "Coordenada de longitude da escola"
+        data_type: "varchar(20)"
+      - name: name
+        description: "Nome da escola"
+        data_type: "varchar(100)"
+      - name: address
+        description: "Endereço da escola (logradouro)"
+        data_type: "varchar(170)"
+      - name: number_address
+        description: "Número do endereço da escola"
+        data_type: "varchar(30)"
+      - name: address_complement
+        description: "Complemento do endereço da escola"
+        data_type: "varchar(100)"
+      - name: address_neighborhood
+        description: "Bairro da escola"
+        data_type: "varchar(100)"
+      - name: situation
+        description: "Situação da escola (código numérico)"
+        data_type: "int"
+      - name: exported_educacenso
+        description: "Indica se foi exportada para o Educacenso"
+        data_type: "int"
+      - name: join_at
+        description: "Data de adesão/cadastro da escola"
+        data_type: "varchar(15)"
+
+  # DIMENSÃO - SCHOOL_GEOGRAPH (Geografia das Escolas)
+  - name: D_SCHOOL_GEOGRAPH
+    description: "Dimensão que armazena informações geográficas das escolas"
+    columns:
+      - name: HASH_ID
+        description: "Chave primária única da localização geográfica (hash)"
+        data_type: "varchar(256)"
+        tests:
+          - not_null
+          - unique
+      - name: cep
+        description: "Código de Endereçamento Postal (CEP)"
+        data_type: "varchar(10)"
+      - name: city
+        description: "Nome da cidade"
+        data_type: "varchar(120)"
+      - name: uf
+        description: "Unidade Federativa (estado)"
+        data_type: "varchar(4)"
+      - name: F_HASH_ID
+        description: "Chave estrangeira de referência à escola"
+        data_type: "varchar(256)"
+      - name: inserted_at
+        description: "Data e hora de inserção do registro"
+        data_type: "datetime"
+
+  # DIMENSÃO - STUDENT (Estudantes)
+  - name: D_STUDENT
+    description: "Dimensão que armazena informações dos estudantes"
+    columns:
+      - name: HASH_ID
+        description: "Chave primária única do estudante (hash)"
+        data_type: "varchar(256)"
+        tests:
+          - not_null
+          - unique
+      - name: F_HASH_ID
+        description: "Chave estrangeira de referência"
+        data_type: "varchar(256)"
+      - name: inserted_at
+        description: "Data e hora de inserção do registro"
+        data_type: "datetime"
+      - name: name
+        description: "Nome completo do estudante"
+        data_type: "varchar(100)"
+      - name: street_addrees
+        description: "Endereço residencial do estudante"
+        data_type: "varchar(170)"
+      - name: bolsa_familia_participator
+        description: "Indica se participa do programa Bolsa Família (1=Sim, 0=Não)"
+        data_type: "bit"
+      - name: gender
+        description: "Gênero do estudante"
+        data_type: "varchar(9)"
+      - name: ethnicity
+        description: "Etnia/raça do estudante"
+        data_type: "varchar(13)"
+      - name: birth_city
+        description: "Cidade de nascimento"
+        data_type: "varchar(150)"
+      - name: deficiency
+        description: "Tipo de deficiência (se houver)"
+        data_type: "varchar(150)"
+      - name: birthday
+        description: "Data de nascimento"
+        data_type: "varchar(12)"
+      - name: neighborhood_address
+        description: "Bairro de residência"
+        data_type: "varchar(100)"
+      - name: cep
+        description: "CEP da residência"
+        data_type: "varchar(10)"
+      - name: public_transport
+        description: "Utiliza transporte público escolar (Sim/Não)"
+        data_type: "varchar(5)"
+      - name: city_address
+        description: "Cidade de residência"
+        data_type: "varchar(170)"
+      - name: mother_name
+        description: "Nome da mãe"
+        data_type: "varchar(120)"
+      - name: father_name
+        description: "Nome do pai"
+        data_type: "varchar(120)"
+      - name: residence_zone
+        description: "Zona de residência (Urbana/Rural)"
+        data_type: "varchar(6)"
+      - name: student_cpf
+        description: "CPF do estudante"
+        data_type: "varchar(12)"
+      - name: responsable_cpf
+        description: "CPF do responsável"
+        data_type: "varchar(12)"
+      - name: uf
+        description: "UF da residência"
+        data_type: "varchar(3)"
+      - name: mapped_city
+        description: "Cidade mapeada/normalizada"
+        data_type: "varchar(150)"
+
+  # FATO - CLASS (Aulas)
+  - name: F_CLASS
+    description: "Tabela fato que armazena informações das aulas programadas"
+    columns:
+      - name: HASH_ID
+        description: "Chave primária única da aula (hash)"
+        data_type: "varchar(256)"
+        tests:
+          - not_null
+          - unique
+      - name: inserted_at
+        description: "Data e hora de inserção do registro"
+        data_type: "datetime"
+      - name: teacher_id
+        description: "ID do professor responsável pela aula"
+        data_type: "varchar(256)"
+      - name: classroom_id
+        description: "ID da sala de aula/turma"
+        data_type: "varchar(256)"
+      - name: scheduled_class_days
+        description: "Número de dias de aula programados"
+        data_type: "int"
+      - name: scheduled_month
+        description: "Mês da programação"
+        data_type: "int"
+      - name: scheduled_lessons_per_day
+        description: "Número de aulas por dia programadas"
+        data_type: "int"
+      - name: scheduled_year
+        description: "Ano da programação"
+        data_type: "int"
+      - name: school_id
+        description: "ID da escola"
+        data_type: "varchar(256)"
+      - name: discipline_id
+        description: "ID da disciplina"
+        data_type: "varchar(256)"
+      - name: updated_at
+        description: "Data e hora da última atualização"
+        data_type: "datetime"
+      - name: discipline_name
+        description: "Nome da disciplina"
+        data_type: "varchar(150)"
+      - name: scheduled_day
+        description: "Dia específico da programação"
+        data_type: "int"
+
+  # FATO - STUDENT_CLASS (Participação dos Estudantes nas Aulas)
+  - name: F_STUDENT_CLASS
+    description: "Tabela fato que armazena a participação dos estudantes nas aulas e faltas"
+    columns:
+      - name: HASH_ID
+        description: "Chave primária única do registro (hash)"
+        data_type: "varchar(256)"
+        tests:
+          - not_null
+          - unique
+      - name: F_HASH_ID
+        description: "Chave estrangeira de referência"
+        data_type: "varchar(256)"
+      - name: student_id
+        description: "ID do estudante"
+        data_type: "varchar(256)"
+      - name: discipline_id
+        description: "ID da disciplina"
+        data_type: "varchar(256)"
+      - name: total_faults_per_day
+        description: "Total de faltas por dia"
+        data_type: "int"
+      - name: total_faults_per_discipline
+        description: "Total de faltas por disciplina"
+        data_type: "int"
+      - name: inserted_at
+        description: "Data e hora de inserção do registro"
+        data_type: "datetime"
+      - name: updated_at
+        description: "Data e hora da última atualização"
+        data_type: "datetime"
+      - name: scheduled_student_class_days
+        description: "Dias de aula programados para o estudante"
+        data_type: "int"
+      - name: class_id
+        description: "ID da aula"
+        data_type: "varchar(256)"
+
+  # FATO - AVALIATION (Avaliações)
+  - name: F_AVALIATION
+    description: "Tabela fato que armazena as avaliações dos estudantes"
+    columns:
+      - name: HASH_ID
+        description: "Chave primária única da avaliação (hash)"
+        data_type: "varchar(256)"
+        tests:
+          - not_null
+          - unique
+      - name: student_id
+        description: "ID do estudante avaliado"
+        data_type: "varchar(256)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('D_STUDENT')
+              field: HASH_ID
+      - name: discipline_id
+        description: "ID da disciplina avaliada"
+        data_type: "varchar(256)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('D_STUDENT_DISCIPLINE')
+              field: HASH_ID
+      - name: inserted_at
+        description: "Data e hora de inserção do registro"
+        data_type: "datetime"
+      - name: situation
+        description: "Situação do estudante na avaliação (Aprovado, Reprovado, etc.)"
+        data_type: "varchar(20)"
+      - name: updated_at
+        description: "Data e hora da última atualização"
+        data_type: "datetime"
+
+  # FATO - ENROLLMENT (Matrículas)
+  - name: F_ENROLLMENT
+    description: "Tabela fato principal que armazena as matrículas dos estudantes"
+    columns:
+      - name: HASH_ID
+        description: "Chave primária única da matrícula (hash)"
+        data_type: "varchar(256)"
+        tests:
+          - not_null
+          - unique
+      - name: school_id
+        description: "ID da escola onde o estudante está matriculado"
+        data_type: "varchar(256)"
+        tests:
+          - relationships:
+              to: ref('D_SCHOOL')
+              field: HASH_ID
+      - name: classroom_id
+        description: "ID da sala de aula/turma"
+        data_type: "varchar(256)"
+        tests:
+          - relationships:
+              to: ref('D_CLASSROOM')
+              field: HASH_ID
+      - name: student_id
+        description: "ID do estudante matriculado"
+        data_type: "varchar(256)"
+        tests:
+          - relationships:
+              to: ref('D_STUDENT')
+              field: HASH_ID
+      - name: db_name
+        description: "Nome do banco de dados de origem"
+        data_type: "varchar(100)"
+      - name: data_origin
+        description: "Sistema/fonte de origem dos dados"
+        data_type: "varchar(100)"
+      - name: inserted_at
+        description: "Data e hora de inserção do registro"
+        data_type: "datetime"
+      - name: log_lineage
+        description: "Log de linhagem dos dados"
+        data_type: "datetime"
+      - name: health_id
+        description: "ID do registro de saúde do estudante"
+        data_type: "varchar(256)"
+        tests:
+          - relationships:
+              to: ref('D_HEALTH')
+              field: HASH_ID
+      - name: status
+        description: "Status geral da matrícula"
+        data_type: "varchar(25)"
+      - name: enrollment_status
+        description: "Status específico da matrícula (Ativo, Inativo, Transferido, etc.)"
+        data_type: "varchar(25)"
+# Configurações globais do projeto
+vars:
+  # Schemas para diferentes ambientes
+  schema_prod: 'dbo_tia'
+  schema_dev: 'dbo_tia_dev'
+  
+  # Database
+  database_name: 'data-warehouse-tag'
+  
+  # Configurações de tabelas por tipo
+  dimension_tables:
+    - 'D_CLASSROOM'
+    - 'D_HEALTH'  
+    - 'D_SCHOOL'
+    - 'D_SCHOOL_GEOGRAPH'
+    - 'D_STUDENT'
+    - 'D_STUDENT_DISCIPLINE'
+  
+  fact_tables:
+    - 'F_CLASS'
+    - 'F_STUDENT_CLASS'
+    - 'F_AVALIATION' 
+    - 'F_ENROLLMENT'
+

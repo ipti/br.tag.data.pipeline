@@ -1,0 +1,20 @@
+table_name: "F_ENROLLMENT"
+description: "FACT F_ENROLLMENT"
+source_name: "{SOURCE_NAME}"
+target_schema: "{TARGET_SCHEMA}"
+
+incremental_config:
+  source_timestamp_columns: ["inserted_at"]
+  target_timestamp_column: "inserted_at"
+  lookback_hours: 50
+  batch_size: 10000
+  full_refresh: false
+
+upsert_config:
+  source_key_columns: ["HASH_ID"]
+  target_key_columns: ["HASH_ID"]
+
+optional_filters:
+  - database_name
+filter_sources:
+  database_name: databases_mysql.yml

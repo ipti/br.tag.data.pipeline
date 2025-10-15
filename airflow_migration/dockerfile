@@ -1,0 +1,28 @@
+FROM apache/airflow:3.0.1
+
+USER root
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       curl \
+       gnupg \
+       unixodbc-dev \
+       build-essential \
+       libpq-dev \
+       default-mysql-client \
+       libmysqlclient-dev \
+       pkg-config \
+       git \
+    && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+    && curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+    && rm -rf /var/lib/apt/lists/*
+
+USER airflow
+
+# Set environment variable to locate the driver
+ENV ODBC_DRIVER_18_FOR_SQL_SERVER=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.1.so.1.1
+
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt

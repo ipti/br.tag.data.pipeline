@@ -1,0 +1,17 @@
+table_name: "accumulated_data"
+description: "accumulated_data OBT used for BI, better perfomance this way"
+source_name: "{SOURCE_NAME}"
+target_schema: "dbo"
+
+incremental_config:
+  source_timestamp_columns: ["DataLineageIngestion"]
+  target_timestamp_column: "DataLineageIngestion"
+  lookback_hours: 0
+  batch_size: 10000
+  full_refresh: false
+
+
+optional_filters:
+  - database_name
+filter_sources:
+  database_name: databases_mysql.yml
