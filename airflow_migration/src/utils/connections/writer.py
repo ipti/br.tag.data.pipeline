@@ -328,27 +328,17 @@ class CopyAndLoader:
         self, target_table: str, timestamp_column: str, schema: Optional[str] = None
     ) -> Optional[datetime]:
         """
-        Get the last timestamp from target table for incremental loading.
-
-        Args:
-            target_table: Target table name
-            timestamp_column: Timestamp column name
-            schema: Optional schema name
-
-        Returns:
-            Last timestamp or None if table is empty
+        Gets the last timestamp from the target table, correctly handling
+        dictionary-based results from the db_manager.
         """
         try:
             target_schema = schema or self.db_manager.sqlserver_config.schema
-            query = f"""
-                SELECT MAX({timestamp_column}) as max_timestamp 
-                FROM {target_schema}.{target_table}
-            """
+            
+            query = f"SELECT MAX([{timestamp_column}]) as max_ts FROM [{target_schema}].[{target_table}]"
 
-            result = self.db_manager.execute_sqlserver_query(query, top_n=1)
+            result = self.db_manager.execute_sqlserver_query(query)
 
-            if result and len(result) > 0 and result[0][0]:
-                last_timestamp = result[0][0]
+            if result and (last_timestamp := result[0].get('max_ts')):
                 self.logger.info(
                     "Retrieved last timestamp from target table",
                     {
@@ -358,17 +348,16 @@ class CopyAndLoader:
                     },
                 )
                 return last_timestamp
-            else:
-                self.logger.info(
-                    "No data found in target table, will perform full load",
-                    {"table": f"{target_schema}.{target_table}"},
-                )
-                return None
+
+            self.logger.info(
+                "No data found in target table, will perform full load",
+                {"table": f"{target_schema}.{target_table}"},
+            )
+            return None
 
         except Exception as e:
             self.logger.warning(
-                "Could not retrieve last timestamp, performing full load",
-                exception=e,
+                f"Could not retrieve last timestamp, performing full load. Original error: {e}",
                 extra_data={"table": target_table, "column": timestamp_column},
             )
             return None
