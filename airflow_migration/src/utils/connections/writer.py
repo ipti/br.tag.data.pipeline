@@ -293,7 +293,7 @@ class CopyAndLoader:
             List of dictionaries containing source information
         """
         try:
-            sources_info = []
+            sources_info: list[str, Any]= []
 
             if not self.dbt_sources_config or "sources" not in self.dbt_sources_config:
                 return sources_info
@@ -429,7 +429,7 @@ class CopyAndLoader:
         else:
             engine = self.db_manager.get_sqlserver_engine()
             with engine.begin() as conn:
-                result = conn.execute(text(sql), records)
+                _ = conn.execute(text(sql), records)
                 self.logger.info(
                     "Insert completed using new connection",
                     {"rows_inserted": len(records)},

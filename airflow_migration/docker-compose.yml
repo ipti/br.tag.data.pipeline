@@ -43,7 +43,6 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
-    - ${AIRFLOW_PROJ_DIR:-.}/dbt:/opt/airflow/dbt
     - ${AIRFLOW_PROJ_DIR:-.}/src:/opt/airflow/src
   user: "${AIRFLOW_UID:-50000}:0"
 
@@ -144,22 +143,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-    restart: always
-    depends_on:
-      airflow-init:
-        condition: service_completed_successfully
-
-  dbt-docs:
-    <<: *airflow-common
-    container_name: dbt-docs
-    command: >
-      bash -c "
-      cd /opt/airflow/dbt &&
-      dbt deps &&
-      dbt docs generate &&
-      dbt docs serve --host 0.0.0.0 --port 8085"
-    ports:
-      - "8085:8085"
     restart: always
     depends_on:
       airflow-init:
