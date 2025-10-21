@@ -23,6 +23,7 @@ class Column:
         is_not_null: True when column has not_null constraint.
         is_unique: True when column has unique constraint.
     """
+
     name: str
     data_type: str
     description: str
@@ -30,6 +31,7 @@ class Column:
     is_fk: bool = False
     is_not_null: bool = False
     is_unique: bool = False
+
 
 @dataclass
 class Relationship:
@@ -42,10 +44,12 @@ class Relationship:
         to_table: Target table name referenced by foreign key.
         to_col: Column name in target table (primary key).
     """
+
     from_table: str
     from_col: str
     to_table: str
     to_col: str
+
 
 @dataclass
 class CustomQuery:
@@ -57,9 +61,11 @@ class CustomQuery:
         description: Optional description for the query.
         sql: The SQL text to include as an example.
     """
+
     title: str
     description: str
     sql: str
+
 
 @dataclass
 class Table:
@@ -78,6 +84,7 @@ class Table:
         database: Optional database identifier.
         custom_queries: Optional list of CustomQuery instances to include.
     """
+
     name: str
     description: str
     type: str
@@ -93,19 +100,21 @@ class Table:
         if self.custom_queries is None:
             self.custom_queries = []
 
+
 class Logger:
     """
     Minimal terminal logger with colored output helpers used by the script.
     Methods print formatted messages for header, success, info, warning and error levels.
     """
+
     COLORS = {
-        'header': '\033[95m',
-        'blue': '\033[94m',
-        'green': '\033[92m',
-        'yellow': '\033[93m',
-        'red': '\033[91m',
-        'end': '\033[0m',
-        'bold': '\033[1m',
+        "header": "\033[95m",
+        "blue": "\033[94m",
+        "green": "\033[92m",
+        "yellow": "\033[93m",
+        "red": "\033[91m",
+        "end": "\033[0m",
+        "bold": "\033[1m",
     }
 
     @classmethod
@@ -128,6 +137,7 @@ class Logger:
     def error(cls, msg: str):
         print(f"{cls.COLORS['red']}✗{cls.COLORS['end']} {msg}")
 
+
 class YAMLParser:
     """
     Parses dbt-style YAML schema files to extract table, column and relationship metadata.
@@ -138,9 +148,10 @@ class YAMLParser:
 
     The parser also loads optional custom queries from a docs_config.yml located next to the sources directory.
     """
+
     def __init__(self, sources_dir: Path, config_file: Optional[Path] = None):
         self.sources_dir = sources_dir
-        self.config_file = config_file or (sources_dir.parent / 'docs_config.yml')
+        self.config_file = config_file or (sources_dir.parent / "docs_config.yml")
         self.tables: Dict[str, Table] = {}
         self.relationships: List[Relationship] = []
         self.custom_queries_config = self._load_custom_queries()
@@ -153,17 +164,19 @@ class YAMLParser:
         if not self.config_file.exists():
             return {}
         try:
-            with open(self.config_file, 'r', encoding='utf-8') as f:
+            with open(self.config_file, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
             queries_by_table = {}
-            for table_name, queries_data in config.get('custom_queries', {}).items():
+            for table_name, queries_data in config.get("custom_queries", {}).items():
                 queries = []
                 for query_data in queries_data:
-                    queries.append(CustomQuery(
-                        title=query_data['title'],
-                        description=query_data.get('description', ''),
-                        sql=query_data['sql']
-                    ))
+                    queries.append(
+                        CustomQuery(
+                            title=query_data["title"],
+                            description=query_data.get("description", ""),
+                            sql=query_data["sql"],
+                        )
+                    )
                 queries_by_table[table_name] = queries
             return queries_by_table
         except Exception as e:
@@ -174,7 +187,9 @@ class YAMLParser:
         """
         Finds all .yml and .yaml files in the sources directory and returns them sorted.
         """
-        yaml_files = list(self.sources_dir.glob("*.yml")) + list(self.sources_dir.glob("*.yaml"))
+        yaml_files = list(self.sources_dir.glob("*.yml")) + list(
+            self.sources_dir.glob("*.yaml")
+        )
         return sorted(yaml_files)
 
     def parse_all(self) -> Tuple[Dict[str, Table], List[Relationship]]:
@@ -220,40 +235,47 @@ class YAMLParser:
                 tables_found += 1
         Logger.info(f"  Found {tables_found} tables in {file_path}")
 
-    def _parse_table(self, table_data: dict, schema: str = "dbo_tia", database: str = "data-warehouse-tag"):
+    def _parse_table(
+        self,
+        table_data: dict,
+        schema: str = "dbo_tia",
+        database: str = "data-warehouse-tag",
+    ):
         """
         Builds a Table object from a YAML table definition and registers it in self.tables.
         Duplicated table names are ignored, first occurrence is kept.
         """
-        if 'name' not in table_data:
+        if "name" not in table_data:
             Logger.warning("Tabela sem nome encontrada, ignorando...")
             return
-        table_name = table_data['name']
+        table_name = table_data["name"]
         if table_name in self.tables:
-            Logger.warning(f"Tabela duplicada encontrada: {table_name} (usando primeira ocorrência)")
+            Logger.warning(
+                f"Tabela duplicada encontrada: {table_name} (usando primeira ocorrência)"
+            )
             return
-        if table_name.startswith('D_'):
-            table_type = 'dimension'
-        elif table_name.startswith('F_'):
-            table_type = 'fact'
+        if table_name.startswith("D_"):
+            table_type = "dimension"
+        elif table_name.startswith("F_"):
+            table_type = "fact"
         else:
-            table_type = 'other'
+            table_type = "other"
         columns = []
-        for col_data in table_data.get('columns', []):
+        for col_data in table_data.get("columns", []):
             column = self._parse_column(col_data, table_name)
             columns.append(column)
             self._extract_relationships(col_data, table_name)
         table = Table(
             name=table_name,
-            description=table_data.get('description', 'Sem descrição'),
+            description=table_data.get("description", "Sem descrição"),
             type=table_type,
-            tags=table_data.get('tags', []),
+            tags=table_data.get("tags", []),
             columns=columns,
             relationships_out=[],
             relationships_in=[],
             schema=schema,
             database=database,
-            custom_queries=self.custom_queries_config.get(table_name, [])
+            custom_queries=self.custom_queries_config.get(table_name, []),
         )
         self.tables[table_name] = table
 
@@ -262,29 +284,27 @@ class YAMLParser:
         Parses a column definition dictionary and returns a Column instance.
         Tests and data_tests are inspected to infer not-null, unique and relationship flags.
         """
-        col_name = col_data.get('name', '')
-        tests = col_data.get('tests', []) or col_data.get('data_tests', [])
+        col_name = col_data.get("name", "")
+        tests = col_data.get("tests", []) or col_data.get("data_tests", [])
         is_not_null = any(
-            t == 'not_null' or (isinstance(t, dict) and 'not_null' in t)
-            for t in tests
+            t == "not_null" or (isinstance(t, dict) and "not_null" in t) for t in tests
         )
         is_unique = any(
-            t == 'unique' or (isinstance(t, dict) and 'unique' in t)
-            for t in tests
+            t == "unique" or (isinstance(t, dict) and "unique" in t) for t in tests
         )
-        is_fk = any(
-            isinstance(t, dict) and 'relationships' in t
-            for t in tests
-        ) or '_id' in col_name.lower()
-        is_pk = col_name == 'HASH_ID'
+        is_fk = (
+            any(isinstance(t, dict) and "relationships" in t for t in tests)
+            or "_id" in col_name.lower()
+        )
+        is_pk = col_name == "HASH_ID"
         return Column(
             name=col_name,
-            data_type=col_data.get('data_type', 'N/A'),
-            description=col_data.get('description', ''),
+            data_type=col_data.get("data_type", "N/A"),
+            description=col_data.get("description", ""),
             is_pk=is_pk,
             is_fk=is_fk,
             is_not_null=is_not_null,
-            is_unique=is_unique
+            is_unique=is_unique,
         )
 
     def _extract_relationships(self, col_data: dict, from_table: str):
@@ -292,20 +312,20 @@ class YAMLParser:
         Extracts relationship metadata from column tests and appends to self.relationships.
         Supports common dbt 'relationships' test structure and basic heuristics.
         """
-        tests = col_data.get('tests', []) or col_data.get('data_tests', [])
+        tests = col_data.get("tests", []) or col_data.get("data_tests", [])
         for test in tests:
-            if isinstance(test, dict) and 'relationships' in test:
-                rel_data = test['relationships']
-                to_table = rel_data.get('to', '')
+            if isinstance(test, dict) and "relationships" in test:
+                rel_data = test["relationships"]
+                to_table = rel_data.get("to", "")
                 to_table = to_table.replace("source('dbo_tia', '", "")
                 to_table = to_table.replace("ref('", "")
                 to_table = to_table.replace("')", "")
                 if to_table:
                     rel = Relationship(
                         from_table=from_table,
-                        from_col=col_data['name'],
+                        from_col=col_data["name"],
                         to_table=to_table,
-                        to_col=rel_data.get('field', 'HASH_ID')
+                        to_col=rel_data.get("field", "HASH_ID"),
                     )
                     self.relationships.append(rel)
 
@@ -319,15 +339,17 @@ class YAMLParser:
             if rel.to_table in self.tables:
                 self.tables[rel.to_table].relationships_in.append(rel)
 
+
 class DocumentationBuilder:
     """
     Responsible for creating the Sphinx documentation folder structure and base config files.
     Use create_structure() to ensure directories exist and create_config_files() to write conf/index/makefile.
     """
-    def __init__(self, docs_dir: Path = Path('docs')):
+
+    def __init__(self, docs_dir: Path = Path("docs")):
         self.docs_dir = docs_dir
-        self.source_dir = docs_dir / 'source'
-        self.build_dir = docs_dir / 'build'
+        self.source_dir = docs_dir / "source"
+        self.build_dir = docs_dir / "build"
 
     def create_structure(self):
         """
@@ -336,13 +358,13 @@ class DocumentationBuilder:
         directories = [
             self.docs_dir,
             self.source_dir,
-            self.source_dir / '_static',
-            self.source_dir / '_templates',
-            self.source_dir / 'tabelas' / 'dimensoes',
-            self.source_dir / 'tabelas' / 'fatos',
-            self.source_dir / 'tabelas' / 'outros',
-            self.source_dir / 'guias',
-            self.source_dir / 'relacionamentos',
+            self.source_dir / "_static",
+            self.source_dir / "_templates",
+            self.source_dir / "tabelas" / "dimensoes",
+            self.source_dir / "tabelas" / "fatos",
+            self.source_dir / "tabelas" / "outros",
+            self.source_dir / "guias",
+            self.source_dir / "relacionamentos",
             self.build_dir,
         ]
         for directory in directories:
@@ -359,7 +381,7 @@ class DocumentationBuilder:
         self._create_requirements()
 
     def _create_conf_py(self):
-        content = '''# Sphinx Configuration - Sistema TIA
+        content = """# Sphinx Configuration - Sistema TIA
 project = 'Sistema TIA - Data Warehouse'
 copyright = '2024, Equipe de Dados'
 author = 'Equipe de Dados'
@@ -388,11 +410,11 @@ html_theme_options = {
 }
 
 myst_enable_extensions = ["colon_fence", "deflist", "tasklist"]
-'''
-        (self.source_dir / 'conf.py').write_text(content, encoding='utf-8')
+"""
+        (self.source_dir / "conf.py").write_text(content, encoding="utf-8")
 
     def _create_index_rst(self):
-        content = '''Sistema TIA - Data Warehouse Educacional
+        content = """Sistema TIA - Data Warehouse Educacional
 =========================================
 
 .. toctree::
@@ -434,22 +456,24 @@ myst_enable_extensions = ["colon_fence", "deflist", "tasklist"]
 :Schema: ``dbo_tia``
 
 Índices: :ref:`genindex` | :ref:`search`
-'''
-        (self.source_dir / 'index.rst').write_text(content, encoding='utf-8')
+"""
+        (self.source_dir / "index.rst").write_text(content, encoding="utf-8")
 
     def _create_custom_css(self):
-        content = '''/* TIA Styles */
+        content = """/* TIA Styles */
 .wy-side-nav-search { 
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
 }
 .rst-content table.docutils { border: 2px solid #667eea; }
 .rst-content table.docutils thead { background-color: #f0f4ff; }
 .rst-content table.docutils tbody tr:hover { background-color: #f8f9fa; }
-'''
-        (self.source_dir / '_static' / 'custom.css').write_text(content, encoding='utf-8')
+"""
+        (self.source_dir / "_static" / "custom.css").write_text(
+            content, encoding="utf-8"
+        )
 
     def _create_makefile(self):
-        content = '''SPHINXBUILD = sphinx-build
+        content = """SPHINXBUILD = sphinx-build
 SOURCEDIR = source
 BUILDDIR = build
 
@@ -464,23 +488,25 @@ clean:
 \t@echo "🧹 Arquivos limpos"
 
 .PHONY: html clean
-'''
-        (self.docs_dir / 'Makefile').write_text(content, encoding='utf-8')
+"""
+        (self.docs_dir / "Makefile").write_text(content, encoding="utf-8")
 
     def _create_requirements(self):
-        content = '''sphinx>=7.0.0
+        content = """sphinx>=7.0.0
 sphinx-rtd-theme>=2.0.0
 sphinx-copybutton>=0.5.0
 myst-parser>=2.0.0
 pyyaml>=6.0.0
-'''
-        (self.docs_dir / 'requirements.txt').write_text(content, encoding='utf-8')
+"""
+        (self.docs_dir / "requirements.txt").write_text(content, encoding="utf-8")
+
 
 class TableDocGenerator:
     """
     Generates a Markdown document for a single Table instance.
     The generated document includes columns, constraints, relationships and example queries.
     """
+
     def __init__(self, output_dir: Path):
         self.output_dir = output_dir
 
@@ -488,9 +514,13 @@ class TableDocGenerator:
         """
         Build and write the Markdown file for the provided Table object.
         """
-        emoji = {'dimension': '📊', 'fact': '📈', 'other': '📋'}.get(table.type, '📋')
-        category = {'dimension': 'dimensoes', 'fact': 'fatos', 'other': 'outros'}.get(table.type, 'outros')
-        tipo = {'dimension': 'Dimensão', 'fact': 'Fato', 'other': 'Tabela'}.get(table.type, 'Tabela')
+        emoji = {"dimension": "📊", "fact": "📈", "other": "📋"}.get(table.type, "📋")
+        category = {"dimension": "dimensoes", "fact": "fatos", "other": "outros"}.get(
+            table.type, "outros"
+        )
+        tipo = {"dimension": "Dimensão", "fact": "Fato", "other": "Tabela"}.get(
+            table.type, "Tabela"
+        )
         content = f"""# {emoji} {table.name}
 
 :Tipo: **{tipo}**  
@@ -509,14 +539,14 @@ class TableDocGenerator:
         for col in table.columns:
             constraints = []
             if col.is_pk:
-                constraints.append('🔑 PK')
+                constraints.append("🔑 PK")
             if col.is_fk:
-                constraints.append('🔗 FK')
+                constraints.append("🔗 FK")
             if col.is_not_null:
-                constraints.append('`NOT NULL`')
+                constraints.append("`NOT NULL`")
             if col.is_unique:
-                constraints.append('`UNIQUE`')
-            constraints_str = ' '.join(constraints) or '-'
+                constraints.append("`UNIQUE`")
+            constraints_str = " ".join(constraints) or "-"
             content += f"| `{col.name}` | `{col.data_type}` | {constraints_str} | {col.description} |\n"
         if table.relationships_out or table.relationships_in:
             content += "\n---\n\n## Relacionamentos\n\n"
@@ -561,13 +591,15 @@ SELECT COUNT(*) FROM {table.schema}.{table.name};
 :Database: ``data-warehouse-tag``  
 :Responsável: Equipe de Dados
 """
-        output_file = self.output_dir / 'tabelas' / category / f'{table.name}.md'
-        output_file.write_text(content, encoding='utf-8')
+        output_file = self.output_dir / "tabelas" / category / f"{table.name}.md"
+        output_file.write_text(content, encoding="utf-8")
+
 
 class ERDiagramGenerator:
     """
     Produces several ER diagram representations (mermaid) based on discovered relationships and tables.
     """
+
     def __init__(self, output_dir: Path):
         self.output_dir = output_dir
 
@@ -581,12 +613,16 @@ class ERDiagramGenerator:
 erDiagram
 """
         for rel in relationships:
-            content += f"    {rel.from_table} ||--o{{ {rel.to_table} : \"{rel.from_col}\"\n"
+            content += (
+                f'    {rel.from_table} ||--o{{ {rel.to_table} : "{rel.from_col}"\n'
+            )
         content += "```\n\n**Legenda:** `||--o{` = Um para Muitos\n"
-        output_file = self.output_dir / 'relacionamentos' / 'diagrama_er.md'
-        output_file.write_text(content, encoding='utf-8')
+        output_file = self.output_dir / "relacionamentos" / "diagrama_er.md"
+        output_file.write_text(content, encoding="utf-8")
 
-    def generate_visual_schema(self, tables: Dict[str, Table], relationships: List[Relationship]):
+    def generate_visual_schema(
+        self, tables: Dict[str, Table], relationships: List[Relationship]
+    ):
         """
         Generates a visual schema (mermaid flowchart) rendering tables with PK/FK summaries and relationship arrows.
         """
@@ -612,28 +648,28 @@ flowchart TB
                     fk_text = f"<br/><small>🔗 {', '.join(fk_cols)}</small>"
                 else:
                     fk_text = f"<br/><small>🔗 {', '.join(fk_cols[:2])} +{len(fk_cols)-2}</small>"
-            node_id = table_name.replace('_', '')
+            node_id = table_name.replace("_", "")
             label = f'"{table_name}<br/><small>🔑 {pk_text}</small>{fk_text}"'
-            if table.type == 'dimension':
-                content += f'    {node_id}[{label}]\n'
-                content += f'    style {node_id} fill:#e3f2fd,stroke:#1976d2,stroke-width:3px\n'
+            if table.type == "dimension":
+                content += f"    {node_id}[{label}]\n"
+                content += f"    style {node_id} fill:#e3f2fd,stroke:#1976d2,stroke-width:3px\n"
                 dimensions.append(node_id)
-            elif table.type == 'fact':
-                content += f'    {node_id}[{label}]\n'
-                content += f'    style {node_id} fill:#fff3e0,stroke:#f57c00,stroke-width:3px\n'
+            elif table.type == "fact":
+                content += f"    {node_id}[{label}]\n"
+                content += f"    style {node_id} fill:#fff3e0,stroke:#f57c00,stroke-width:3px\n"
                 facts.append(node_id)
             else:
-                content += f'    {node_id}[{label}]\n'
-                content += f'    style {node_id} fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px\n'
+                content += f"    {node_id}[{label}]\n"
+                content += f"    style {node_id} fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px\n"
                 others.append(node_id)
-        content += '\n'
+        content += "\n"
         added_relations = set()
         for rel in relationships:
-            from_id = rel.to_table.replace('_', '')
-            to_id = rel.from_table.replace('_', '')
+            from_id = rel.to_table.replace("_", "")
+            to_id = rel.from_table.replace("_", "")
             rel_key = (from_id, to_id, rel.from_col)
             if rel_key not in added_relations:
-                content += f'    {from_id} -->|{rel.from_col}| {to_id}\n'
+                content += f"    {from_id} -->|{rel.from_col}| {to_id}\n"
                 added_relations.add(rel_key)
         content += """
 ```
@@ -672,23 +708,25 @@ Significa: `F_ENROLLMENT.student_id` é FK que referencia `D_STUDENT.HASH_ID`
 """
         if dimensions:
             content += f"\n### 📊 Dimensões ({len(dimensions)})\n\n"
-            dim_names = [t for t in tables.keys() if tables[t].type == 'dimension']
+            dim_names = [t for t in tables.keys() if tables[t].type == "dimension"]
             for name in sorted(dim_names):
                 content += f"* **{name}**\n"
         if facts:
             content += f"\n### 📈 Fatos ({len(facts)})\n\n"
-            fact_names = [t for t in tables.keys() if tables[t].type == 'fact']
+            fact_names = [t for t in tables.keys() if tables[t].type == "fact"]
             for name in sorted(fact_names):
                 content += f"* **{name}**\n"
         if others:
             content += f"\n### 📋 Outras ({len(others)})\n\n"
-            other_names = [t for t in tables.keys() if tables[t].type == 'other']
+            other_names = [t for t in tables.keys() if tables[t].type == "other"]
             for name in sorted(other_names):
                 content += f"* **{name}**\n"
-        output_file = self.output_dir / 'relacionamentos' / 'diagrama_visual.md'
-        output_file.write_text(content, encoding='utf-8')
+        output_file = self.output_dir / "relacionamentos" / "diagrama_visual.md"
+        output_file.write_text(content, encoding="utf-8")
 
-    def generate_interactive(self, tables: Dict[str, Table], relationships: List[Relationship]):
+    def generate_interactive(
+        self, tables: Dict[str, Table], relationships: List[Relationship]
+    ):
         """
         Generates a detailed ER diagram including every column and indicators (PK, FK, NOT NULL).
         Also writes statistics and a relationship table for reference.
@@ -700,13 +738,13 @@ Este diagrama mostra todas as tabelas com TODAS as suas colunas e relacionamento
 ```mermaid
 erDiagram
 """
-        dimensions = {k: v for k, v in tables.items() if v.type == 'dimension'}
-        facts = {k: v for k, v in tables.items() if v.type == 'fact'}
-        others = {k: v for k, v in tables.items() if v.type == 'other'}
+        dimensions = {k: v for k, v in tables.items() if v.type == "dimension"}
+        facts = {k: v for k, v in tables.items() if v.type == "fact"}
+        others = {k: v for k, v in tables.items() if v.type == "other"}
         for table_name, table in sorted(tables.items()):
             content += f"\n    {table_name} {{\n"
             for col in table.columns:
-                col_type = col.data_type.upper().split('(')[0]
+                col_type = col.data_type.upper().split("(")[0]
                 indicators = []
                 if col.is_pk:
                     indicators.append("PK")
@@ -719,7 +757,7 @@ erDiagram
             content += "    }\n"
         content += "\n    %% Relacionamentos\n"
         for rel in relationships:
-            content += f"    {rel.to_table} ||--o{{ {rel.from_table} : \"{rel.from_col} -> {rel.to_col}\"\n"
+            content += f'    {rel.to_table} ||--o{{ {rel.from_table} : "{rel.from_col} -> {rel.to_col}"\n'
         content += """```
 
 ## Legenda
@@ -757,12 +795,17 @@ erDiagram
                 content += f"* **{table_name}** ({len(table.columns)} colunas)\n"
         if relationships:
             content += "\n## Tabela de Relacionamentos\n\n"
-            content += "| Tabela Origem (FK) | Coluna FK | Tabela Destino (PK) | Coluna PK |\n"
-            content += "|-------------------|-----------|---------------------|----------|\n"
+            content += (
+                "| Tabela Origem (FK) | Coluna FK | Tabela Destino (PK) | Coluna PK |\n"
+            )
+            content += (
+                "|-------------------|-----------|---------------------|----------|\n"
+            )
             for rel in sorted(relationships, key=lambda x: (x.from_table, x.to_table)):
                 content += f"| {rel.from_table} | `{rel.from_col}` | {rel.to_table} | `{rel.to_col}` |\n"
-        output_file = self.output_dir / 'relacionamentos' / 'diagrama_completo.md'
-        output_file.write_text(content, encoding='utf-8')
+        output_file = self.output_dir / "relacionamentos" / "diagrama_completo.md"
+        output_file.write_text(content, encoding="utf-8")
+
 
 class DocumentationOrchestrator:
     """
@@ -772,10 +815,11 @@ class DocumentationOrchestrator:
     - generates per-table docs and ER diagrams
     - attempts to run sphinx-build to produce static HTML
     """
+
     def __init__(self, project_root: Path):
         self.project_root = project_root
-        self.sources_dir = project_root / 'docs' / 'schemas_definitions'
-        self.docs_dir = project_root / 'docs'
+        self.sources_dir = project_root / "docs" / "schemas_definitions"
+        self.docs_dir = project_root / "docs"
 
     def run(self):
         """
@@ -798,15 +842,17 @@ class DocumentationOrchestrator:
         builder.create_config_files()
         Logger.success("Estrutura criada")
         Logger.info("Gerando documentação das tabelas...")
-        doc_gen = TableDocGenerator(self.docs_dir / 'source')
+        doc_gen = TableDocGenerator(self.docs_dir / "source")
         Logger.info(f"  Total de tabelas a documentar: {len(tables)}")
         for table_name in sorted(tables.keys()):
             table = tables[table_name]
-            Logger.info(f"  • {table_name} ({table.type}) - {len(table.columns)} colunas")
+            Logger.info(
+                f"  • {table_name} ({table.type}) - {len(table.columns)} colunas"
+            )
             doc_gen.generate(table)
         Logger.success(f"{len(tables)} tabelas documentadas")
         Logger.info("Gerando diagramas ER...")
-        er_gen = ERDiagramGenerator(self.docs_dir / 'source')
+        er_gen = ERDiagramGenerator(self.docs_dir / "source")
         er_gen.generate_simple(relationships)
         er_gen.generate_visual_schema(tables, relationships)
         er_gen.generate_interactive(tables, relationships)
@@ -814,7 +860,9 @@ class DocumentationOrchestrator:
         Logger.info("Construindo HTML com Sphinx...")
         self._build_html()
         Logger.header("\n✅ DOCUMENTAÇÃO GERADA COM SUCESSO!")
-        Logger.info(f"\n📂 HTML estático: {self.docs_dir / 'build' / 'html' / 'index.html'}")
+        Logger.info(
+            f"\n📂 HTML estático: {self.docs_dir / 'build' / 'html' / 'index.html'}"
+        )
         Logger.info("💡 Abra o arquivo index.html no navegador")
         Logger.info("🔄 Para atualizar: execute este script novamente\n")
 
@@ -824,37 +872,48 @@ class DocumentationOrchestrator:
         a warning is shown with instructions to install the docs requirements.
         """
         import subprocess
+
         try:
             result = subprocess.run(
-                ['sphinx-build', '-b', 'html',
-                 str(self.docs_dir / 'source'),
-                 str(self.docs_dir / 'build' / 'html')],
+                [
+                    "sphinx-build",
+                    "-b",
+                    "html",
+                    str(self.docs_dir / "source"),
+                    str(self.docs_dir / "build" / "html"),
+                ],
                 capture_output=True,
-                text=True
+                text=True,
             )
             if result.returncode == 0:
                 Logger.success("Build HTML concluído")
             else:
                 Logger.warning("Build teve avisos (verifique logs)")
         except FileNotFoundError:
-            Logger.warning("sphinx-build não encontrado. Execute: pip install -r docs/requirements.txt")
+            Logger.warning(
+                "sphinx-build não encontrado. Execute: pip install -r docs/requirements.txt"
+            )
 
     def clean(self):
         """
         Removes the docs directory tree produced by this tool.
         """
         import shutil
+
         Logger.info("Limpando arquivos gerados...")
         if self.docs_dir.exists():
             shutil.rmtree(self.docs_dir)
         Logger.success("Limpeza concluída")
 
+
 def main():
     """
     CLI entrypoint that either runs the documentation generation pipeline or cleans generated docs.
     """
-    parser = argparse.ArgumentParser(description='Gerador de Documentação Sphinx Estática - TIA')
-    parser.add_argument('--clean', action='store_true', help='Limpar arquivos gerados')
+    parser = argparse.ArgumentParser(
+        description="Gerador de Documentação Sphinx Estática - TIA"
+    )
+    parser.add_argument("--clean", action="store_true", help="Limpar arquivos gerados")
     args = parser.parse_args()
     orchestrator = DocumentationOrchestrator(Path.cwd())
     if args.clean:
@@ -862,5 +921,6 @@ def main():
     else:
         orchestrator.run()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

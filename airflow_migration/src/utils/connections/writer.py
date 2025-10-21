@@ -293,7 +293,7 @@ class CopyAndLoader:
             List of dictionaries containing source information
         """
         try:
-            sources_info: list[str, Any]= []
+            sources_info: list[str, Any] = []
 
             if not self.dbt_sources_config or "sources" not in self.dbt_sources_config:
                 return sources_info
@@ -333,12 +333,12 @@ class CopyAndLoader:
         """
         try:
             target_schema = schema or self.db_manager.sqlserver_config.schema
-            
+
             query = f"SELECT MAX([{timestamp_column}]) as max_ts FROM [{target_schema}].[{target_table}]"
 
             result = self.db_manager.execute_sqlserver_query(query)
 
-            if result and (last_timestamp := result[0].get('max_ts')):
+            if result and (last_timestamp := result[0].get("max_ts")):
                 self.logger.info(
                     "Retrieved last timestamp from target table",
                     {
