@@ -88,9 +88,7 @@ class CopyAndLoader:
         """
         self.logger = get_logger("writer")
         self.db_manager = db_manager or get_db_manager()
-        self.dbt_config_file = dbt_config_file or "dbo_tia.yml"
         self._qc_function_cache: Dict[str, Callable] = {}
-        self.dbt_sources_config = self._load_dbt_sources_config()
 
         self._schema_cache: Dict[str, Dict[str, Any]] = {}
         connection_info = self.db_manager.get_connection_info()
@@ -100,108 +98,8 @@ class CopyAndLoader:
             {
                 "environment": connection_info.get("environment"),
                 "sqlserver_schema": self.db_manager.sqlserver_config.schema,
-                "dbt_config_file": self.dbt_config_file,
-                "dbt_sources_loaded": len(self.dbt_sources_config) > 0,
             },
         )
-
-    def _load_dbt_sources_config(self) -> Dict[str, Any]:
-        try:
-            project_root = Path(__file__).resolve().parent.parent.parent.parent
-            dbt_sources_path = (
-                project_root / "dbt/models/sources" / self.dbt_config_file
-            )
-
-            if not dbt_sources_path.exists():
-                self.logger.warning(
-                    "dbt sources configuration file not found",
-                    {
-                        "config_file": self.dbt_config_file,
-                        "searched_path": str(dbt_sources_path),
-                    },
-                )
-                return {}
-
-            with open(dbt_sources_path, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f)
-
-            self.logger.info(
-                "dbt sources configuration loaded successfully",
-                {
-                    "config_file": str(dbt_sources_path),
-                    "sources_found": len(config.get("sources", [])),
-                },
-            )
-            return config
-
-        except Exception as e:
-            self.logger.error(
-                "Failed to load dbt sources configuration",
-                exception=e,
-                extra_data={"config_file": self.dbt_config_file},
-            )
-            return {}
-
-    def load_additional_dbt_config(self, config_file: str) -> Dict[str, Any]:
-        """
-        Load an additional dbt sources configuration file and merge with existing config.
-
-        Args:
-            config_file: Name of the dbt config file (e.g., 'other_schema.yml')
-
-        Returns:
-            Dictionary containing the loaded configuration
-        """
-        try:
-            original_config_file = self.dbt_config_file
-            self.dbt_config_file = config_file
-
-            new_config = self._load_dbt_sources_config()
-
-            if new_config and "sources" in new_config:
-                if "sources" not in self.dbt_sources_config:
-                    self.dbt_sources_config["sources"] = []
-
-                for new_source in new_config["sources"]:
-                    existing_source = None
-                    for existing in self.dbt_sources_config["sources"]:
-                        if existing["name"] == new_source["name"]:
-                            existing_source = existing
-                            break
-
-                    if existing_source:
-                        if "tables" not in existing_source:
-                            existing_source["tables"] = []
-
-                        existing_table_names = {
-                            table["name"] for table in existing_source["tables"]
-                        }
-                        for new_table in new_source.get("tables", []):
-                            if new_table["name"] not in existing_table_names:
-                                existing_source["tables"].append(new_table)
-                    else:
-                        self.dbt_sources_config["sources"].append(new_source)
-
-                self.logger.info(
-                    "Additional dbt configuration loaded and merged",
-                    {
-                        "config_file": config_file,
-                        "new_sources_count": len(new_config["sources"]),
-                        "total_sources_count": len(self.dbt_sources_config["sources"]),
-                    },
-                )
-
-            self.dbt_config_file = original_config_file
-
-            return new_config
-
-        except Exception as e:
-            self.logger.error(
-                "Failed to load additional dbt configuration",
-                exception=e,
-                extra_data={"config_file": config_file},
-            )
-            return {}
 
     def _get_table_schema(
         self, connection: Connection, table_name: str, schema: Optional[str] = None
@@ -244,85 +142,6 @@ class CopyAndLoader:
                 extra_data={"table": table_name, "schema": schema},
             )
             return {"columns": {}, "column_names": [], "primary_keys": []}
-
-    def _get_dbt_table_config(
-        self, table_name: str, source_name: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Get table configuration from dbt sources.
-
-        Args:
-            table_name: Name of the table
-            source_name: Optional source name to search within. If None, searches all sources.
-
-        Returns:
-            Table configuration dictionary or None if not found
-        """
-        try:
-            if not self.dbt_sources_config or "sources" not in self.dbt_sources_config:
-                return None
-
-            for source in self.dbt_sources_config["sources"]:
-                if source_name and source.get("name") != source_name:
-                    continue
-
-                if "tables" in source:
-                    for table in source["tables"]:
-                        if table["name"] == table_name:
-                            table_config = table.copy()
-                            table_config["_source_name"] = source.get("name")
-                            table_config["_source_description"] = source.get(
-                                "description"
-                            )
-                            return table_config
-            return None
-
-        except Exception as e:
-            self.logger.error(
-                "Error retrieving dbt table configuration",
-                exception=e,
-                extra_data={"table_name": table_name, "source_name": source_name},
-            )
-            return None
-
-    def get_available_dbt_sources(self) -> List[Dict[str, Any]]:
-        """
-        Get list of all available dbt sources and their tables.
-
-        Returns:
-            List of dictionaries containing source information
-        """
-        try:
-            sources_info: list[str, Any] = []
-
-            if not self.dbt_sources_config or "sources" not in self.dbt_sources_config:
-                return sources_info
-
-            for source in self.dbt_sources_config["sources"]:
-                source_info = {
-                    "name": source.get("name"),
-                    "description": source.get("description", ""),
-                    "tags": source.get("tags", []),
-                    "tables": [],
-                }
-
-                if "tables" in source:
-                    for table in source["tables"]:
-                        table_info = {
-                            "name": table.get("name"),
-                            "description": table.get("description", ""),
-                            "tags": table.get("tags", []),
-                            "columns": len(table.get("columns", [])),
-                        }
-                        source_info["tables"].append(table_info)
-
-                sources_info.append(source_info)
-
-            return sources_info
-
-        except Exception as e:
-            self.logger.error("Error retrieving available dbt sources", exception=e)
-            return []
 
     def _get_last_timestamp(
         self, target_table: str, timestamp_column: str, schema: Optional[str] = None
