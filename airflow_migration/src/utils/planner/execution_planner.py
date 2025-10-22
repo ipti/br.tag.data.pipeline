@@ -59,6 +59,8 @@ class TableExecution:
     execution_context: Dict[str, Any] = field(default_factory=dict)
     quality_check_pipeline: List[str] = field(default_factory=list)
     quality_check_params: Dict[str, Any] = field(default_factory=dict)
+    transformation_pipeline: Optional[List[str]] = None
+    transformation_params: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):
         """Add metadata to execution context"""
