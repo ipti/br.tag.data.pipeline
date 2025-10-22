@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagrama ER Interativo - Sistema TIA</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            overflow: hidden;
+        }
+        
+        #container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            background: white;
+        }
+        
+        #header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            flex-shrink: 0;
+        }
+        
+        #header h1 {
+            margin: 0;
+            font-size: clamp(18px, 3vw, 24px);
+        }
+        
+        #header p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+            font-size: clamp(12px, 2vw, 14px);
+        }
+        
+        #controls {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            flex-shrink: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-size: clamp(12px, 2vw, 14px);
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        #diagram-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+        }
+        
+        #diagram {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .node-dimension {
+            fill: #e3f2fd;
+            stroke: #1976d2;
+            stroke-width: 3px;
+            cursor: move;
+        }
+        
+        .node-fact {
+            fill: #fff3e0;
+            stroke: #f57c00;
+            stroke-width: 3px;
+            cursor: move;
+        }
+        
+        .node-other {
+            fill: #f3e5f5;
+            stroke: #7b1fa2;
+            stroke-width: 3px;
+            cursor: move;
+        }
+        
+        .node:hover circle {
+            filter: brightness(1.1);
+            stroke-width: 4px;
+        }
+        
+        .node text {
+            font-size: 12px;
+            font-weight: 600;
+            pointer-events: none;
+            user-select: none;
+        }
+        
+        .node text.subtitle {
+            font-size: 10px;
+            font-weight: normal;
+            fill: #666;
+        }
+        
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+            stroke-width: 2px;
+            fill: none;
+        }
+        
+        .link:hover {
+            stroke: #667eea;
+            stroke-opacity: 1;
+            stroke-width: 3px;
+        }
+        
+        .link-label {
+            font-size: 10px;
+            fill: #666;
+            pointer-events: none;
+            user-select: none;
+        }
+        
+        .legend {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            flex-shrink: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: clamp(12px, 2vw, 14px);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .legend-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        
+        /* Responsivo */
+        @media (max-width: 768px) {
+            #header {
+                padding: 10px 15px;
+            }
+            
+            #controls {
+                padding: 8px;
+            }
+            
+            button {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            
+            .legend {
+                padding: 8px;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="header">
+            <h1>🗂️ Diagrama ER Interativo - Sistema TIA</h1>
+            <p>Arraste os nós | Zoom com scroll | Clique duplo em nó para fixar</p>
+        </div>
+        
+        <div id="controls">
+            <button onclick="resetZoom()">🔄 Reset Zoom</button>
+            <button onclick="fitToScreen()">📐 Ajustar Tela</button>
+            <button onclick="toggleLabels()">🏷️ Toggle Labels</button>
+            <button onclick="centerGraph()">🎯 Centralizar</button>
+        </div>
+        
+        <div id="diagram-container">
+            <svg id="diagram"></svg>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <span class="legend-box" style="background: #e3f2fd; border: 3px solid #1976d2;"></span>
+                <span>Dimensão (D_*)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-box" style="background: #fff3e0; border: 3px solid #f57c00;"></span>
+                <span>Fato (F_*)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-box" style="background: #f3e5f5; border: 3px solid #7b1fa2;"></span>
+                <span>Outras</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dados do diagrama
+        const graphData = {
+            nodes: [
+        {
+                "id": "D_CLASSROOM",
+                "type": "dimension",
+                "columns": 9
+        },
+        {
+                "id": "D_HEALTH",
+                "type": "dimension",
+                "columns": 13
+        },
+        {
+                "id": "D_SCHOOL",
+                "type": "dimension",
+                "columns": 13
+        },
+        {
+                "id": "D_SCHOOL_GEOGRAPH",
+                "type": "dimension",
+                "columns": 6
+        },
+        {
+                "id": "D_STUDENT",
+                "type": "dimension",
+                "columns": 22
+        },
+        {
+                "id": "D_STUDENT_DISCIPLINE",
+                "type": "dimension",
+                "columns": 17
+        },
+        {
+                "id": "F_CLASS",
+                "type": "fact",
+                "columns": 13
+        },
+        {
+                "id": "F_STUDENT_CLASS",
+                "type": "fact",
+                "columns": 10
+        },
+        {
+                "id": "F_AVALIATION",
+                "type": "fact",
+                "columns": 6
+        },
+        {
+                "id": "F_ENROLLMENT",
+                "type": "fact",
+                "columns": 11
+        },
+        {
+                "id": "classroom",
+                "type": "other",
+                "columns": 8
+        }
+],
+            links: [
+        {
+                "source": "D_SCHOOL_GEOGRAPH",
+                "target": "D_SCHOOL",
+                "label": "F_HASH_ID"
+        },
+        {
+                "source": "D_STUDENT_DISCIPLINE",
+                "target": "D_STUDENT",
+                "label": "F_HASH_ID"
+        },
+        {
+                "source": "F_CLASS",
+                "target": "D_CLASSROOM",
+                "label": "classroom_id"
+        },
+        {
+                "source": "F_CLASS",
+                "target": "D_SCHOOL",
+                "label": "school_id"
+        },
+        {
+                "source": "F_STUDENT_CLASS",
+                "target": "D_STUDENT",
+                "label": "student_id"
+        },
+        {
+                "source": "F_STUDENT_CLASS",
+                "target": "F_CLASS",
+                "label": "class_id"
+        },
+        {
+                "source": "F_AVALIATION",
+                "target": "D_STUDENT",
+                "label": "student_id"
+        },
+        {
+                "source": "F_AVALIATION",
+                "target": "D_STUDENT_DISCIPLINE",
+                "label": "discipline_id"
+        },
+        {
+                "source": "F_ENROLLMENT",
+                "target": "D_SCHOOL",
+                "label": "school_id"
+        },
+        {
+                "source": "F_ENROLLMENT",
+                "target": "D_CLASSROOM",
+                "label": "classroom_id"
+        },
+        {
+                "source": "F_ENROLLMENT",
+                "target": "D_STUDENT",
+                "label": "student_id"
+        },
+        {
+                "source": "F_ENROLLMENT",
+                "target": "D_HEALTH",
+                "label": "health_id"
+        },
+        {
+                "source": "F_AVALIATION",
+                "target": "D_STUDENT",
+                "label": "student_id"
+        },
+        {
+                "source": "F_AVALIATION",
+                "target": "D_STUDENT_DISCIPLINE",
+                "label": "discipline_id"
+        },
+        {
+                "source": "F_ENROLLMENT",
+                "target": "D_SCHOOL",
+                "label": "school_id"
+        },
+        {
+                "source": "F_ENROLLMENT",
+                "target": "D_CLASSROOM",
+                "label": "classroom_id"
+        },
+        {
+                "source": "F_ENROLLMENT",
+                "target": "D_STUDENT",
+                "label": "student_id"
+        },
+        {
+                "source": "F_ENROLLMENT",
+                "target": "D_HEALTH",
+                "label": "health_id"
+        }
+]
+        };
+
+        // Variáveis globais
+        let width, height, svg, g, simulation, link, linkLabel, node;
+        let labelsVisible = true;
+
+        // Inicializar diagrama
+        function initDiagram() {
+            // Obter dimensões
+            const container = document.getElementById('diagram-container');
+            width = container.clientWidth;
+            height = container.clientHeight;
+
+            // Criar SVG
+            svg = d3.select("#diagram")
+                .attr("width", width)
+                .attr("height", height);
+
+            // Limpar SVG existente
+            svg.selectAll("*").remove();
+
+            g = svg.append("g");
+
+            // Configurar zoom
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 4])
+                .on("zoom", (event) => {
+                    g.attr("transform", event.transform);
+                });
+
+            svg.call(zoom);
+
+            // Copiar dados para evitar mutação
+            const nodes = graphData.nodes.map(d => ({...d}));
+            const links = graphData.links.map(d => ({...d}));
+
+            // Simulação de forças
+            simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id).distance(150))
+                .force("charge", d3.forceManyBody().strength(-1000))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collision", d3.forceCollide().radius(60));
+
+            // Links
+            link = g.append("g")
+                .selectAll("path")
+                .data(links)
+                .join("path")
+                .attr("class", "link");
+
+            // Link labels
+            linkLabel = g.append("g")
+                .selectAll("text")
+                .data(links)
+                .join("text")
+                .attr("class", "link-label")
+                .text(d => d.label);
+
+            // Nodes
+            node = g.append("g")
+                .selectAll("g")
+                .data(nodes)
+                .join("g")
+                .attr("class", "node")
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended))
+                .on("dblclick", fixNode);
+
+            // Node círculos
+            node.append("circle")
+                .attr("r", 40)
+                .attr("class", d => `node-${d.type}`);
+
+            // Node labels (nome)
+            node.append("text")
+                .attr("text-anchor", "middle")
+                .attr("dy", -5)
+                .text(d => d.id);
+
+            // Node labels (subtítulo)
+            node.append("text")
+                .attr("class", "subtitle")
+                .attr("text-anchor", "middle")
+                .attr("dy", 10)
+                .text(d => `${d.columns} cols`);
+
+            // Atualizar posições
+            simulation.on("tick", () => {
+                link.attr("d", d => {
+                    const dx = d.target.x - d.source.x;
+                    const dy = d.target.y - d.source.y;
+                    return `M${d.source.x},${d.source.y} L${d.target.x},${d.target.y}`;
+                });
+
+                linkLabel
+                    .attr("x", d => (d.source.x + d.target.x) / 2)
+                    .attr("y", d => (d.source.y + d.target.y) / 2);
+
+                node.attr("transform", d => `translate(${d.x},${d.y})`);
+            });
+
+            // Zoom inicial para ajustar
+            setTimeout(() => fitToScreen(), 500);
+        }
+
+        // Funções de drag
+        function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+
+        function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            // Não libera fixação automática
+        }
+
+        function fixNode(event, d) {
+            // Duplo clique fixa/desfixa nó
+            if (d.fx === null) {
+                d.fx = d.x;
+                d.fy = d.y;
+            } else {
+                d.fx = null;
+                d.fy = null;
+            }
+        }
+
+        // Funções dos botões
+        function resetZoom() {
+            svg.transition().duration(750).call(
+                d3.zoom().transform,
+                d3.zoomIdentity
+            );
+        }
+
+        function fitToScreen() {
+            if (!g) return;
+            
+            const bounds = g.node().getBBox();
+            const fullWidth = width;
+            const fullHeight = height;
+            
+            if (bounds.width === 0 || bounds.height === 0) return;
+            
+            const midX = bounds.x + bounds.width / 2;
+            const midY = bounds.y + bounds.height / 2;
+            const scale = 0.8 / Math.max(bounds.width / fullWidth, bounds.height / fullHeight);
+            const translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+
+            svg.transition().duration(750).call(
+                d3.zoom().transform,
+                d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
+            );
+        }
+
+        function toggleLabels() {
+            labelsVisible = !labelsVisible;
+            linkLabel.style("opacity", labelsVisible ? 1 : 0);
+        }
+
+        function centerGraph() {
+            simulation.force("center", d3.forceCenter(width / 2, height / 2));
+            simulation.alpha(0.3).restart();
+        }
+
+        // Resize responsivo
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                initDiagram();
+            }, 250);
+        });
+
+        // Inicializar ao carregar
+        window.addEventListener('load', () => {
+            initDiagram();
+        });
+    </script>
+</body>
+</html>

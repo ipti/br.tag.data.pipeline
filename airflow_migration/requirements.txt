@@ -1,13 +1,22 @@
 # Database providers
-apache-airflow-providers-mysql==6.2.2
-apache-airflow-providers-odbc==4.9.2
+apache-airflow-providers-mysql
+apache-airflow-providers-odbc
 apache-airflow-providers-common-messaging
 
 # Database drivers
-pyodbc==5.1.0
+pyodbc
 pymysql
 
-# DBT and Cosmos
-dbt-core==1.8.2
-dbt-sqlserver==1.8.2
-dbt-fabric==1.8.2
+sphinx
+sphinx-autoapi
+sphinx-rtd-theme
+
+scikit-learn
+xgboost
+lightgbm
+mlflow
+shap
+
+sentence-transformers
+langchain
+openai

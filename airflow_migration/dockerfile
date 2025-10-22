@@ -1,4 +1,4 @@
-FROM apache/airflow:3.0.1
+FROM apache/airflow:3.1.0
 
 USER root
 
@@ -21,8 +21,10 @@ RUN apt-get update \
 
 USER airflow
 
-# Set environment variable to locate the driver
 ENV ODBC_DRIVER_18_FOR_SQL_SERVER=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.1.so.1.1
 
+RUN curl -o /tmp/constraints.txt "https://raw.githubusercontent.com/apache/airflow/constraints-3.1.0/constraints-3.12.txt"
+
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+RUN pip install --no-cache-dir -r /tmp/requirements.txt -c /tmp/constraints.txt
