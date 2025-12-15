@@ -24,6 +24,14 @@ Sistema TIA - Data Warehouse Educacional
 
 .. toctree::
    :maxdepth: 2
+   :caption: Dados Externos
+
+   dados_externos/censo_escolar
+   dados_externos/pnad
+   dados_externos/qedu
+
+.. toctree::
+   :maxdepth: 2
    :caption: Relacionamentos
 
    relacionamentos/diagrama_visual
