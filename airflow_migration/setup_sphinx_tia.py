@@ -424,7 +424,7 @@ myst_enable_extensions = ["colon_fence", "deflist", "tasklist"]
    :glob:
 
    tabelas/dimensoes/*
-
+ 
 .. toctree::
    :maxdepth: 3
    :caption: Tabelas Fato
@@ -814,6 +814,7 @@ erDiagram
                 content += f"| {rel.from_table} | `{rel.from_col}` | {rel.to_table} | `{rel.to_col}` |\n"
         output_file = self.output_dir / "relacionamentos" / "diagrama_completo.md"
         output_file.write_text(content, encoding="utf-8")
+
 
 class ExternalDataDocGenerator:
     """
