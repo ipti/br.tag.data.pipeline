@@ -20,3 +20,7 @@ shap
 sentence-transformers
 langchain
 openai
+
+# Graph Database
+neo4j
+apache-airflow-providers-neo4j
