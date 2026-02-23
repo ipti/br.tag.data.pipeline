@@ -25,26 +25,27 @@ class Neo4jIngestor:
         self.batch_size = batch_size
         self.connector = Neo4jConnector()
 
-    def ingest_data(self, cypher_query: str, data: List[Dict[str, Any]]) -> int:
+    def ingest_data(self, cypher_query: str, data: List[Dict[str, Any]], max_retries: int = 5) -> int:
         """
         Push data to Neo4j in batches using the UNWIND pattern.
         
-        The Cypher query must expect a parameter named $rows which is a list of maps.
-        Example Query:
-            UNWIND $rows AS row
-            MERGE (n:Node {id: row.id})
-            SET n += row
+        Includes retry with exponential backoff for transient errors (e.g., deadlocks)
+        which occur when parallel tasks write to the same nodes simultaneously.
         
         Args:
             cypher_query (str): The parameterized Cypher query.
             data (list): List of dictionaries containing the data to load.
+            max_retries (int): Maximum retry attempts per batch on transient errors.
             
         Returns:
             int: Total number of records processed.
             
         Raises:
-            Neo4jError: If a batch fails to commit.
+            Neo4jError: If a batch fails after all retries.
         """
+        import time
+        import random
+
         driver = self.connector.get_driver()
         total_processed = 0
         
@@ -54,27 +55,49 @@ class Neo4jIngestor:
         
         logger.info(f"Starting ingestion of {len(data)} records with batch size {self.batch_size}...")
         
-        try:
-            with driver.session() as session:
-                for i in range(0, len(data), self.batch_size):
-                    batch = data[i : i + self.batch_size]
-                    batch_idx = i // self.batch_size + 1
-                    
-                    try:
-                        # Execute the query with the current batch
+        for i in range(0, len(data), self.batch_size):
+            batch = data[i : i + self.batch_size]
+            batch_idx = i // self.batch_size + 1
+            
+            for attempt in range(1, max_retries + 1):
+                try:
+                    with driver.session() as session:
                         session.run(cypher_query, rows=batch)
-                        total_processed += len(batch)
-                        logger.debug(f"Batch {batch_idx}: Processed {len(batch)} records.")
-                    except Neo4jError as e:
-                        logger.error(f"Error committing batch {batch_idx} (records {i} to {i+len(batch)}): {e}")
+                    total_processed += len(batch)
+                    logger.debug(f"Batch {batch_idx}: Processed {len(batch)} records.")
+                    break  # Success, move to next batch
+                except Neo4jError as e:
+                    is_transient = "TransientError" in str(type(e).__name__) or "Deadlock" in str(e)
+                    if is_transient and attempt < max_retries:
+                        wait_time = (2 ** attempt) + random.uniform(0, 1)
+                        logger.warning(
+                            f"Batch {batch_idx}: Transient error (attempt {attempt}/{max_retries}). "
+                            f"Retrying in {wait_time:.1f}s... Error: {e}"
+                        )
+                        time.sleep(wait_time)
+                    else:
+                        logger.error(f"Batch {batch_idx} failed after {attempt} attempts: {e}")
                         raise e
-                        
-        except Exception as e:
-            logger.error(f"Critical error during ingestion: {e}")
-            raise e
             
         logger.info(f"Ingestion complete. Total processed: {total_processed}")
         return total_processed
+
+    def run_query(self, cypher_query: str, **params):
+        """
+        Execute a standalone Cypher query (e.g., index creation).
+
+        Args:
+            cypher_query: The Cypher query to execute.
+            **params: Optional parameters for the query.
+        """
+        driver = self.connector.get_driver()
+        try:
+            with driver.session() as session:
+                session.run(cypher_query, **params)
+                logger.info(f"Query executed: {cypher_query[:80]}...")
+        except Neo4jError as e:
+            logger.error(f"Error executing query: {e}")
+            raise e
 
     def close(self):
         """Closes the underlying connector."""
