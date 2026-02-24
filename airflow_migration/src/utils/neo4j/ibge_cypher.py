@@ -175,68 +175,68 @@ SET m.name                        = row.name,
 
 ENRICH_MUNICIPALITY_IDEB = """
 UNWIND $rows AS row
-MATCH (m:Municipality {id: row.ibge_id})
-SET m['qedu_ideb_'        + toLower(row.ciclo_id)] = row.ideb,
-    m['qedu_fluxo_'       + toLower(row.ciclo_id)] = row.fluxo,
-    m['qedu_aprendizado_' + toLower(row.ciclo_id)] = row.aprendizado,
-    m['qedu_nota_mt_'     + toLower(row.ciclo_id)] = row.nota_mt,
-    m['qedu_nota_lp_'     + toLower(row.ciclo_id)] = row.nota_lp,
-    m['qedu_ideb_ano_'    + toLower(row.ciclo_id)] = row.ano
+MATCH (s:State {id: row.ibge_id})
+SET s['qedu_ideb_'        + toLower(row.ciclo_id)] = row.ideb,
+    s['qedu_fluxo_'       + toLower(row.ciclo_id)] = row.fluxo,
+    s['qedu_aprendizado_' + toLower(row.ciclo_id)] = row.aprendizado,
+    s['qedu_nota_mt_'     + toLower(row.ciclo_id)] = row.nota_mt,
+    s['qedu_nota_lp_'     + toLower(row.ciclo_id)] = row.nota_lp,
+    s['qedu_ideb_ano_'    + toLower(row.ciclo_id)] = row.ano
 """
 
 ENRICH_MUNICIPALITY_APRENDIZADO = """
 UNWIND $rows AS row
-MATCH (m:Municipality {id: row.ibge_id})
-SET m['qedu_lp_adequado_'     + toLower(row.ciclo_id)] = row.lp_adequado,
-    m['qedu_mt_adequado_'     + toLower(row.ciclo_id)] = row.mt_adequado,
-    m['qedu_lp_insuficiente_' + toLower(row.ciclo_id)] = row.lp_insuficiente,
-    m['qedu_lp_basico_'       + toLower(row.ciclo_id)] = row.lp_basico,
-    m['qedu_lp_proficiente_'  + toLower(row.ciclo_id)] = row.lp_proficiente,
-    m['qedu_lp_avancado_'     + toLower(row.ciclo_id)] = row.lp_avancado,
-    m['qedu_mt_insuficiente_' + toLower(row.ciclo_id)] = row.mt_insuficiente,
-    m['qedu_mt_basico_'       + toLower(row.ciclo_id)] = row.mt_basico,
-    m['qedu_mt_proficiente_'  + toLower(row.ciclo_id)] = row.mt_proficiente,
-    m['qedu_mt_avancado_'     + toLower(row.ciclo_id)] = row.mt_avancado
+MATCH (s:State {id: row.ibge_id})
+SET s['qedu_lp_adequado_'     + toLower(row.ciclo_id)] = row.lp_adequado,
+    s['qedu_mt_adequado_'     + toLower(row.ciclo_id)] = row.mt_adequado,
+    s['qedu_lp_insuficiente_' + toLower(row.ciclo_id)] = row.lp_insuficiente,
+    s['qedu_lp_basico_'       + toLower(row.ciclo_id)] = row.lp_basico,
+    s['qedu_lp_proficiente_'  + toLower(row.ciclo_id)] = row.lp_proficiente,
+    s['qedu_lp_avancado_'     + toLower(row.ciclo_id)] = row.lp_avancado,
+    s['qedu_mt_insuficiente_' + toLower(row.ciclo_id)] = row.mt_insuficiente,
+    s['qedu_mt_basico_'       + toLower(row.ciclo_id)] = row.mt_basico,
+    s['qedu_mt_proficiente_'  + toLower(row.ciclo_id)] = row.mt_proficiente,
+    s['qedu_mt_avancado_'     + toLower(row.ciclo_id)] = row.mt_avancado
 """
 
 ENRICH_MUNICIPALITY_DISTORCAO = """
 UNWIND $rows AS row
-MATCH (m:Municipality {id: row.ibge_id})
-SET m.qedu_distorcao_ef1      = row.ef_1ano,
-    m.qedu_distorcao_ef2      = row.ef_2ano,
-    m.qedu_distorcao_ef3      = row.ef_3ano,
-    m.qedu_distorcao_ef4      = row.ef_4ano,
-    m.qedu_distorcao_ef5      = row.ef_5ano,
-    m.qedu_distorcao_ef6      = row.ef_6ano,
-    m.qedu_distorcao_ef7      = row.ef_7ano,
-    m.qedu_distorcao_ef8      = row.ef_8ano,
-    m.qedu_distorcao_ef9      = row.ef_9ano,
-    m.qedu_distorcao_ef_ai    = row.ef_total_ai,
-    m.qedu_distorcao_ef_af    = row.ef_total_af,
-    m.qedu_distorcao_ef_total = row.ef_total,
-    m.qedu_distorcao_em1      = row.em_1ano,
-    m.qedu_distorcao_em2      = row.em_2ano,
-    m.qedu_distorcao_em3      = row.em_3ano,
-    m.qedu_distorcao_em_total = row.em_total,
-    m.qedu_distorcao_ano      = row.ano
+MATCH (s:State {id: row.ibge_id})
+SET s.qedu_distorcao_ef1      = row.ef_1ano,
+    s.qedu_distorcao_ef2      = row.ef_2ano,
+    s.qedu_distorcao_ef3      = row.ef_3ano,
+    s.qedu_distorcao_ef4      = row.ef_4ano,
+    s.qedu_distorcao_ef5      = row.ef_5ano,
+    s.qedu_distorcao_ef6      = row.ef_6ano,
+    s.qedu_distorcao_ef7      = row.ef_7ano,
+    s.qedu_distorcao_ef8      = row.ef_8ano,
+    s.qedu_distorcao_ef9      = row.ef_9ano,
+    s.qedu_distorcao_ef_ai    = row.ef_total_ai,
+    s.qedu_distorcao_ef_af    = row.ef_total_af,
+    s.qedu_distorcao_ef_total = row.ef_total,
+    s.qedu_distorcao_em1      = row.em_1ano,
+    s.qedu_distorcao_em2      = row.em_2ano,
+    s.qedu_distorcao_em3      = row.em_3ano,
+    s.qedu_distorcao_em_total = row.em_total,
+    s.qedu_distorcao_ano      = row.ano
 """
 
 ENRICH_MUNICIPALITY_RENDIMENTO = """
 UNWIND $rows AS row
-MATCH (m:Municipality {id: row.ibge_id})
-SET m.qedu_total_matriculas = row.total_matriculas,
-    m.qedu_taxa_aprovacao   = row.taxa_aprovacao,
-    m.qedu_taxa_reprovacao  = row.taxa_reprovacao,
-    m.qedu_taxa_abandono    = row.taxa_abandono,
-    m.qedu_rendimento_ano   = row.ano
+MATCH (s:State {id: row.ibge_id})
+SET s.qedu_total_matriculas = row.total_matriculas,
+    s.qedu_taxa_aprovacao   = row.taxa_aprovacao,
+    s.qedu_taxa_reprovacao  = row.taxa_reprovacao,
+    s.qedu_taxa_abandono    = row.taxa_abandono,
+    s.qedu_rendimento_ano   = row.ano
 """
 
 ENRICH_MUNICIPALITY_PERMANENCIA = """
 UNWIND $rows AS row
-MATCH (m:Municipality {id: row.ibge_id})
-SET m.qedu_permanencia     = row.permanencia,
-    m.qedu_pct_fora_escola = row.fora,
-    m.qedu_permanencia_ano = row.ano_censo
+MATCH (s:State {id: row.ibge_id})
+SET s.qedu_permanencia     = row.permanencia,
+    s.qedu_pct_fora_escola = row.fora,
+    s.qedu_permanencia_ano = row.ano_censo
 """
 
 LINK_MUNICIPALITY_STATE = """

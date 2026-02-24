@@ -66,10 +66,19 @@ def transform_state_sexo(row: dict) -> dict | None:
     return {**row, "prefix": prefix, "state_id": int(row["state_id"])}
 
 
-def transform_ideb_by_ciclo(row: dict) -> dict:
+def transform_ideb_by_ciclo(row: dict) -> dict | None:
     """
     Uppercases ciclo_id ('ai', 'af', 'em' → 'AI', 'AF', 'EM') so the
-    Cypher toLower() call produces consistent property names:
-      qedu_ideb_ai, qedu_ideb_af, qedu_ideb_em
+    Cypher toLower() call produces consistent property names.
+    Safely casts ibge_id to INT so it can successfully MATCH the Node ID in Neo4j.
     """
-    return {**row, "ciclo_id": str(row.get("ciclo_id", "")).strip().upper()}
+    try:
+        ibge_id = int(float(row.get("ibge_id")))
+    except (ValueError, TypeError):
+        return None
+        
+    return {
+        **row, 
+        "ibge_id": ibge_id,
+        "ciclo_id": str(row.get("ciclo_id", "")).strip().upper()
+    }

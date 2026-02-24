@@ -101,8 +101,8 @@ with DAG(
         },
     )
 
-    enrich_municipality_ideb = PythonOperator(
-        task_id='enrich_municipality_ideb',
+    enrich_state_ideb = PythonOperator(
+        task_id='enrich_state_ideb',
         python_callable=stream_to_neo4j,
         op_kwargs={
             'sql_query': q.SQL_MUNICIPALITY_IDEB,
@@ -111,8 +111,8 @@ with DAG(
         },
     )
 
-    enrich_municipality_aprendizado = PythonOperator(
-        task_id='enrich_municipality_aprendizado',
+    enrich_state_aprendizado = PythonOperator(
+        task_id='enrich_state_aprendizado',
         python_callable=stream_to_neo4j,
         op_kwargs={
             'sql_query': q.SQL_MUNICIPALITY_APRENDIZADO,
@@ -121,8 +121,8 @@ with DAG(
         },
     )
 
-    enrich_municipality_distorcao = PythonOperator(
-        task_id='enrich_municipality_distorcao',
+    enrich_state_distorcao = PythonOperator(
+        task_id='enrich_state_distorcao',
         python_callable=stream_to_neo4j,
         op_kwargs={
             'sql_query': q.SQL_MUNICIPALITY_DISTORCAO,
@@ -130,8 +130,8 @@ with DAG(
         },
     )
 
-    enrich_municipality_rendimento = PythonOperator(
-        task_id='enrich_municipality_rendimento',
+    enrich_state_rendimento = PythonOperator(
+        task_id='enrich_state_rendimento',
         python_callable=stream_to_neo4j,
         op_kwargs={
             'sql_query': q.SQL_MUNICIPALITY_RENDIMENTO,
@@ -139,8 +139,8 @@ with DAG(
         },
     )
 
-    enrich_municipality_permanencia = PythonOperator(
-        task_id='enrich_municipality_permanencia',
+    enrich_state_permanencia = PythonOperator(
+        task_id='enrich_state_permanencia',
         python_callable=stream_to_neo4j,
         op_kwargs={
             'sql_query': q.SQL_MUNICIPALITY_PERMANENCIA,
@@ -175,21 +175,16 @@ with DAG(
 
     task_create_ibge_indexes >> [load_states, load_municipalities]
 
-    load_states >> [enrich_state_cor, enrich_state_sexo]
+    load_states >> [enrich_state_cor, enrich_state_sexo, enrich_state_ideb, enrich_state_aprendizado, enrich_state_distorcao, enrich_state_rendimento, enrich_state_permanencia]
 
-    load_municipalities >> [
-        enrich_municipality_ideb,
-        enrich_municipality_aprendizado,
-        enrich_municipality_distorcao,
-        enrich_municipality_rendimento,
-        enrich_municipality_permanencia,
-    ]
+    # No QEdu enrichments for load_municipalities anymore
+    # The Atlas base load automatically captures municipality indicators.
 
     all_enrichments = [
         enrich_state_cor, enrich_state_sexo,
-        enrich_municipality_ideb, enrich_municipality_aprendizado,
-        enrich_municipality_distorcao, enrich_municipality_rendimento,
-        enrich_municipality_permanencia,
+        enrich_state_ideb, enrich_state_aprendizado,
+        enrich_state_distorcao, enrich_state_rendimento,
+        enrich_state_permanencia,
     ]
 
     # Explicit list needed here to fan out to multiple downstreams
