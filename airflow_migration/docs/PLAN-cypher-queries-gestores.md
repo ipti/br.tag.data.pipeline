@@ -1,379 +1,1851 @@
-# 🔥 Matriz Oficial de Consultas Cypher (Gestores e Machine Learning)
-
-**Versão:** 4.0 (Super Otimizada & Rigor Estatístico) | **Alinhamento:** `NEO4J-SCHEMA-REFERENCE.md` & `NEO4J-ANALYSIS-RULES.md`
-
-Este documento consolida 11 lógicas de extração hiper-otimizadas prontas para rodar no ambiente de BI e pipelines de Machine Learning (removidos gargalos de Produtos Cartesianos). 
-
-> **Regras de Proteção Aplicadas:**
-> *   Todas as queries de Notas (Fato) possuem a Vacina Matemática (`nota/10.0` se `> 10`).
-> *   Eliminação de Falsos-Positivos: `count(stu) > 10` (Exige quorum) e `stDev > 0` nas notas perfeitas.
-> *   `coalesce()` absoluto nas variáveis secundárias de Município do IBGE, para nunca quebrar (retornar null global) se o município não tiver a métrica X mapeada.
-> *   Separação total entre `elementary_school` e `Ensino Fundamental`.
+# 🎯 Matriz de Queries Cypher para ML e Gestão Educacional
+**Versão:** 5.4 — Schema Real Confirmado + Performance + Fallback IBGE Universal
+**Alinhamento:** D_CLASSROOM schema confirmado · NEO4J-SCHEMA-REFERENCE.md
+**Foco:** Dispersão de Notas · Evasão · Saúde · Comparação Intra e Interestadual
 
 ---
 
-## 🏫 BLOCO 1: Escola vs Escola (O Micro-Mural Municipal)
-*Objetivo:* Comparar escolas vizinhas contra a demografia da própria cidade.
+## 🧭 Guia de Leitura Rápida
 
-### Query 1: Evasão Severa nas Etapas Sensíveis (Faltas Comparadas vs IBGE)
-*Descritivo:* Agrupa por `Classroom` para encontrar qual Série e Turma lidera as faltas na mesma vizinhança. Quando o município não possui `atl_atraso_2_fund`, usa o dado estadual (`pnad_t_atraso_fund`) como proxy da UF — evita scan pesado de média entre municípios.
-```cypher
-MATCH (sc:StudentClass)-[:ATTENDED]->(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
-MATCH (stu)-[:ENROLLED_AT_SCHOOL]->(sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)-[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)-[:BELONGS_TO_STATE]->(st:State)
+| Sufixo | Público | Lógica |
+|--------|---------|--------|
+| **`_EF1`** | Fundamental Menor + Ed. Infantil | `grade_level IN ['NO 1* ANO'...'NO 5* ANO']` |
+| **`_EF2_SUP`** | Fundamental II, Médio, Superior | `grade_level IN ['NO 6* ANO'...'NO 9* ANO']` ou `stage = 'ENSINO MÉDIO'` |
 
-WHERE sc.total_faults_per_day IS NOT NULL 
-  AND sc.total_faults_per_day > 0 
-  AND coalesce(cr.grade_level, '') <> ''
-
-WITH sch.name AS Escola, 
-     cr.grade_level AS Serie, 
-     m.name AS Municipio,
-     // Fallback: se o município não tem dado de atraso, pega a média estadual
-     CASE WHEN m.atl_atraso_2_fund IS NOT NULL AND m.atl_atraso_2_fund > 0
-          THEN m.atl_atraso_2_fund
-          ELSE coalesce(st.pnad_t_atraso_fund, 0.0)
-     END AS IBGE_Atraso_Escolar_Ref,
-     CASE WHEN m.atl_atraso_2_fund IS NOT NULL AND m.atl_atraso_2_fund > 0
-          THEN 'Municipal' ELSE 'Estadual (proxy UF)'
-     END AS Fonte_Atraso,
-     sum(sc.total_faults_per_day) AS Volume_Evasao_Apurada,
-     count(DISTINCT stu) AS Alunos_Avaliados
-
-WHERE Alunos_Avaliados > 10 // O Cortex do Rigor Estatístico
-
-RETURN Escola, Serie, Municipio, Volume_Evasao_Apurada, Alunos_Avaliados, 
-       IBGE_Atraso_Escolar_Ref, Fonte_Atraso
-ORDER BY Municipio ASC, Serie ASC, Volume_Evasao_Apurada DESC
-```
-
-### Query 2: Alfabetização Primária (Avaliação Global Isolada)
-*Descritivo:* Identifica alunos do primário cujas disciplinas são avaliações globais (sem `discipline_name` definido). O filtro antigo `sd.id CONTAINS 'elementary'` foi removido pois os IDs reais são HASH_IDs (GUIDs) que nunca continham essa string — era a causa do retorno vazio.
-```cypher
-MATCH (sch:School)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
-MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
-
-// Filtro: Avaliação global (primário) = discipline_name vazio
-WHERE coalesce(sd.discipline_name, '') = ''
-  AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
-
-WITH sch, cr, stu, sd,
-     CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10 THEN coalesce(sd.final_mean, sd.grade_1) / 10.0 ELSE coalesce(sd.final_mean, sd.grade_1) END AS Nota_Limpa
-
-WITH sch.name AS Escola, cr.name AS Turma, count(DISTINCT stu) AS N_Alunos, 
-     round(avg(Nota_Limpa), 2) AS Rendimento_Primario,
-     round(stDev(Nota_Limpa), 2) AS Variancia_Estatistica
-
-WHERE N_Alunos > 10 AND (Rendimento_Primario < 10.0 OR Variancia_Estatistica > 0)
-
-RETURN Escola, Turma, N_Alunos, Rendimento_Primario, Variancia_Estatistica
-ORDER BY Rendimento_Primario DESC LIMIT 100
-```
-
-### Query 3: Dispersão de Matemática do Fundamental Intramuros
-*Descritivo:* Fundamental (6 ao 9 Ano). Foco em desvios absurdos na mesma escola - "Por que em uma turma a média é 9 e na outra 4, se a escola é a mesma?".
-```cypher
-MATCH (cr:Classroom)<-[:ENROLLED_IN]-(stu:Student)-[:ENROLLED_AT_SCHOOL]->(sch:School)
-MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
-
-WHERE cr.grade_level =~ '(?i).*ANO.*'
-  AND sd.discipline_name =~ '(?i).*MATEM.*'
-  AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
-
-WITH sch.name AS Escola, cr.name AS Turma,
-     CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10 THEN coalesce(sd.final_mean, sd.grade_1) / 10.0 ELSE coalesce(sd.final_mean, sd.grade_1) END AS Nota
-
-WITH Escola, Turma, count(Nota) AS Estudantes, avg(Nota) AS Media_Pura, stDev(Nota) AS Dispersao_Interna
-WHERE Estudantes > 10 AND (Media_Pura < 10.0 OR Dispersao_Interna > 0)
-
-RETURN Escola, Turma, Estudantes, round(Media_Pura, 2) AS Media_Pura, round(Dispersao_Interna, 2) AS Dispersao_Interna
-ORDER BY Dispersao_Interna DESC LIMIT 50
-```
-
-### Query 4: Equidade Financeira: Bolsa Família x Rendimento no Fundamental
-*Descritivo:* Uma escola atende crianças que dependem do Bolsa Família melhor que as escolas com mesmo Nível de município? Corrigido: propriedade real é `bolsa_familia` (não `bolsa_familia_participator`).
-```cypher
-MATCH (stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
-MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
-MATCH (stu)-[:ENROLLED_AT_SCHOOL]->(sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)-[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
-
-WHERE stu.bolsa_familia = True
-  AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
-  AND sd.discipline_name =~ '(?i).*PORT.*' // Foco em Português Fundamental
-
-WITH sch.name AS Escola, m.name AS Municipio, cr.grade_level AS Serie,
-     CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10 THEN coalesce(sd.final_mean, sd.grade_1) / 10.0 ELSE coalesce(sd.final_mean, sd.grade_1) END AS Nota_Port
-
-WITH Escola, Municipio, Serie, avg(Nota_Port) AS Media_Bolsistas, count(Nota_Port) AS N_Bolsistas
-WHERE N_Bolsistas >= 5 
-
-RETURN Municipio, Escola, Serie, N_Bolsistas, round(Media_Bolsistas, 2) AS Media_Bolsistas
-ORDER BY Municipio, Media_Bolsistas DESC
-```
-
-### Query 5: Saúde Demográfica: Bairros com Atrasos Médicos vs Faltas (Cruzando D_HEALTH)
-*Descritivo:* Encontrando Turmas rurais ou de escolas distantes cruzando doenças (malnutrição ou anemia) vs volume diário de faltas. Corrigido: propriedades Health são `malnutrition` e `iron_deficiency_anemia` (sem sufixo `_desease`). Parênteses adicionados no OR/AND.
-```cypher
-MATCH (stu:Student)-[:HAS_HEALTH]->(h:Health)
-MATCH (stu)-[:ENROLLED_IN]->(cr:Classroom)
-MATCH (sc:StudentClass)-[:ATTENDED]->(stu)-[:ENROLLED_AT_SCHOOL]->(sch:School)
-
-WHERE (coalesce(h.malnutrition, False) = True 
-    OR coalesce(h.iron_deficiency_anemia, False) = True)
-  AND sc.total_faults_per_day > 0
-
-WITH sch.name AS Escola, cr.name AS Turma, 
-     count(DISTINCT stu) AS Alunos_Com_Risco_Nutricional, 
-     sum(sc.total_faults_per_day) AS Faltas_Relacionadas
-WHERE Alunos_Com_Risco_Nutricional >= 3
-
-RETURN Escola, Turma, Alunos_Com_Risco_Nutricional, Faltas_Relacionadas
-ORDER BY Faltas_Relacionadas DESC
-```
-
+**Regras obrigatórias em todas as queries:**
+- `CASE WHEN nota > 10 THEN nota/10.0 ELSE nota END` — normaliza base 100
+- `CALL (var) { ... }` — sintaxe nova do Neo4j (sem escopo implícito)
+- `WITH ... WHERE ...` — nunca `WHERE` diretamente após `CALL {}`
+- `CALL {}` por dimensão — notas, faltas e saúde nunca no mesmo MATCH
 
 ---
 
-## 🏙️ BLOCO 2: A Escola vs A Teia Macroeconômica (Município e Estado)
-*Objetivo:* Foco contraponto QEdu/IBGE absoluto vs o esforço da Turma em si.
+### 📋 Filtros de `grade_level` Confirmados (D_CLASSROOM schema)
 
-### Query 6: Desvio do Censo na Frequência Escolar
-*Descritivo:* Será que uma turma do 6º de uma Escola está perdendo feio para a Média Líquida de Frequência do Município? Otimizada: filtra apenas registros com faltas reais (>0) para evitar scan de fantasmas, com LIMIT para controlar retorno.
+`grade_level = row.serie` (apenas a coluna serie, não inclui o stage)
+
+| Grupo | Valores exatos em Neo4j |
+|-------|------------------------|
+| **EF1** | `'NO 1* ANO'`, `'NO 2* ANO'`, `'NO 3* ANO'`, `'NO 4* ANO'`, `'NO 5* ANO'` |
+| **EF2** | `'NO 6* ANO'`, `'NO 7* ANO'`, `'NO 8* ANO'`, `'NO 9* ANO'` |
+| **EM** | `cr.stage = 'ENSINO MÉDIO'` (grade_level = `'NA ____________________'` ou `'NA 1* SÉRIE'` etc, ambíguo — usar `stage`) |
+| **EI** | `'NA PRÉ-ESCOLA'`, `'NA CRECHE'`, `'NA EDUCAÇÃO INFANTIL'` |
+| **Série antiga EF** | `'NA 1* SÉRIE'`..`'NA 9* SÉRIE'` + `cr.stage = 'ENSINO FUNDAMENTAL'` |
+
+**Filtros canônicos:**
 ```cypher
-MATCH (sc:StudentClass)-[:ATTENDED]->(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
-MATCH (stu)-[:ENROLLED_AT_SCHOOL]->(sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)-[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+// EF1
+WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
 
-WHERE sc.total_faults_per_day > 0  // Filtra apenas quem tem faltas reais
-  AND cr.grade_level =~ '(?i).*ANO.*' // Focaliza Fundamentais 
-
-WITH sch.name AS Escola,
-     cr.grade_level AS Etapa,
-     m.name AS Municipio,
-     coalesce(m.atl_freq_liq_fund, 0.0) AS IBGE_Frequencia_Bairro,
-     sum(sc.total_faults_per_day) AS Total_Faltas_Ocorridas,
-     sum(coalesce(sc.scheduled_student_class_days, 200)) AS Grade_Previsao_Dias,
-     count(DISTINCT stu) AS Headcount
-
-WHERE Headcount > 10
-
-RETURN Escola, Etapa, Headcount, Total_Faltas_Ocorridas, 
-       round((toFloat(Total_Faltas_Ocorridas) / Grade_Previsao_Dias) * 100, 2) AS Pct_Falta_Calculado,
-       IBGE_Frequencia_Bairro
-ORDER BY Pct_Falta_Calculado DESC
-LIMIT 100
-```
-
-### Query 7: O Mapa do Analfabetismo IBGE vs Retenção de Meninas (Gênero)
-*Descritivo:* Cruza o analfabetismo adulto do município (IBGE) com as notas de Português das alunas. Corrigido: o campo `gender` pode usar valores variados ('F', 'Feminino', 'FEMININO') — regex aplicado. Reduzido o quorum para 5 para garantir resultados.
-```cypher
-MATCH (stu:Student)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
-MATCH (stu)-[:ENROLLED_AT_SCHOOL]->(sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)-[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
-
-WHERE stu.gender =~ '(?i)^F.*'  // Aceita 'F', 'Feminino', 'FEMININO', etc.
-  AND sd.discipline_name =~ '(?i).*PORT.*'
-  AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
-
-WITH sch.name AS Escola, m.name AS Municipio, coalesce(m.atl_t_analf25m, 0.0) AS IBGE_Analfabetismo_Adultos,
-     CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10 THEN coalesce(sd.final_mean, sd.grade_1) / 10.0 ELSE coalesce(sd.final_mean, sd.grade_1) END AS Nota
-
-WITH Escola, Municipio, IBGE_Analfabetismo_Adultos, count(Nota) AS N_Meninas, round(avg(Nota), 2) AS Media_Linguagem_Meninas
-WHERE N_Meninas >= 5
-RETURN Municipio, IBGE_Analfabetismo_Adultos, Escola, N_Meninas, Media_Linguagem_Meninas
-ORDER BY Media_Linguagem_Meninas ASC
-LIMIT 100
-```
-
-### Query 8: As Turmas Que Vencem (Ou Perdem) As Metas SAEB/QEdu
-*Descritivo:* Executa as notas numa timeline isolada sem conectar com StudentClass (Otimização Hiper Expressa). Escala as Notas, exige `Universitarios > 10` com Standard Deviation contrapondo ao Estado Oficial (`mt_adequado`).
-```cypher
-MATCH (stu:Student)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
-WHERE sd.discipline_name =~ '(?i).*MATEM.*' AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
-
-WITH stu, sd, 
-     CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10 THEN coalesce(sd.final_mean, sd.grade_1) / 10.0 ELSE coalesce(sd.final_mean, sd.grade_1) END AS Math_Nota
-
-MATCH (stu)-[:ENROLLED_IN]->(cr:Classroom)
-MATCH (stu)-[:ENROLLED_AT_SCHOOL]->(sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)-[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)-[:BELONGS_TO_STATE]->(st:State)
-
-WITH sch.name AS Escola, cr.name AS Turma, st.sigla AS UF, 
-     coalesce(st.qedu_mt_adequado_ai, 0.0) AS Governo_Mt_Adequado,
-     coalesce(st.qedu_ideb_ai, 0.0) AS Governo_IDEB,
-     count(Math_Nota) AS Universitarios, 
-     round(avg(Math_Nota), 2) AS Rendimento,
-     round(stDev(Math_Nota), 2) AS Variancia
-
-WHERE Universitarios > 10 AND (Rendimento < 10.0 OR Variancia > 0)
-
-RETURN UF, Escola, Turma, Rendimento, Variancia, Governo_IDEB, Governo_Mt_Adequado
-ORDER BY Rendimento DESC LIMIT 50
+// EF2 + EM
+WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+   OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR','EDUCAÇÃO PROFISSIONAL']
 ```
 
 ---
 
-## 🇧🇷 BLOCO 3: Estado x Estado e Exportação para ML
-*Objetivo:* Agregadores gigantes e geração de Dataframes com `OPTIONAL MATCH` sequencial para anular o perigoso 'Produto Cartesiano N*M'.
+### 📋 Schema de Nós Confirmado
 
-### Query 9: Índice Abstrato de Abandono Escolar vs Taxa QEdu
-*Descritivo:* Uma query levíssima. Conta apenas quem teve Faltas, isolado do corpo estudantil geral, contrastando a soma estadual da evasão contra a métrica bruta divulgada pelo MEC/QEdu. 
-*Nota:* Adicionado cálculo de `Pct_Evasores_Internos` = proporção dos alunos com faltas vs total de alunos distintos no estado. O total QEdu (`qedu_taxa_abandono`) é a taxa governamental oficial para comparação direta.
+| Campo | Nó | Tipo | Valor |
+|-------|----|------|-------|
+| `grade_level` | Classroom | string | `'NO 1* ANO'` etc (= coluna `serie`) |
+| `stage` | Classroom | string | `'ENSINO FUNDAMENTAL'`, `'ENSINO MÉDIO'`, `'EDUCAÇÃO INFANTIL'` etc |
+| `malnutrition` | Health | boolean | **Sem** `_desease` |
+| `diabetes` | Health | boolean | **Sem** `_desease` |
+| `hypertension` | Health | boolean | **Sem** `_desease` |
+| `celiac` | Health | boolean | **Sem** `_desease` |
+| `obesity` | Health | boolean | **Sem** `_desease` |
+| `iron_deficiency_anemia` | Health | boolean | Nome composto |
+| `sickle_cell_anemia` | Health | boolean | Nome composto |
+| `deficiency` | Student | string | `'Não Possui'` ou `'Possui: Deficiência Intelectual...'` — usar `STARTS WITH 'Possui'` |
+| `bolsa_familia` | Student | boolean | `coalesce(..., false)` |
+| `gender` | Student | string | `'F'`/`'M'`/`'Feminino'` — regex `(?i)^[FM].*` |
+| `atl_freq_liq_fund` | Municipality | float | Frequência líquida fundamental |
+| `atl_atraso_2_fund` | Municipality | float | % atraso 2+ anos |
+| `atl_t_analf25m` | Municipality | float | % analfabetismo adulto |
+| `atl_branco_analf25m` / `atl_negro_analf25m` | Municipality | float | Analfabetismo por raça |
+| `qedu_ideb_ai` | State | float | IDEB anos iniciais |
+| `qedu_taxa_abandono` | State | float | Taxa abandono oficial |
+| `qedu_distorcao_ef_ai` / `qedu_distorcao_ef_af` | State | float | Distorção idade-série |
+| `qedu_mt_adequado_ai` / `qedu_lp_adequado_ai` | State | float | % proficiência adequada |
+
+**Propriedades que NÃO existem (corrigidas nesta versão):**
+- ~~`malnutrition_desease`~~ → `malnutrition`
+- ~~`diabetes_desease`~~ → `diabetes`
+- ~~`atl_rural_freq_liq_fund`~~ → não existe; use `atl_freq_liq_fund` com filtro de `stu.residence_zone`
+- ~~`atl_urbano_freq_liq_fund`~~ → não existe
+- ~~`pnad_idhm`~~ → não existe no State; removido das queries
+
+---
+
+## 🏫 BLOCO 1 — Escola vs Escola (Nível Municipal)
+
+---
+
+### Q1 — Dispersão de Notas por Escola no Mesmo Município
+
+**Objetivo:** Identificar escolas outliers dentro do mesmo município. CV% normaliza a dispersão para comparação justa.
+
+**Fallback IBGE:** Quando `atl_freq_liq_fund` está nulo no município, usa a média dos outros municípios da mesma UF. Coluna `Fonte_IBGE` indica a origem.
+
+#### Q1_EF1 — Fundamental Menor
 ```cypher
-MATCH (sc:StudentClass)-[:ATTENDED]->(stu:Student)-[:ENROLLED_AT_SCHOOL]->(sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)-[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)-[:BELONGS_TO_STATE]->(st:State)
-WHERE sc.total_faults_per_day > 0 // Garante remover fantasmas
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
 
-WITH st,
-     count(DISTINCT sch) AS Escolas_Medidas,
-     count(DISTINCT stu) AS Alunos_Evasores_Unicos,
-     sum(sc.total_faults_per_day) AS Massa_Faltas_Estado
+WITH sch, m, st,
+     coalesce(m.atl_freq_liq_fund, null) AS Freq_Muni_Raw
 
-// Pega o total de alunos no estado (incluindo sem faltas) para calcular %
-OPTIONAL MATCH (stu2:Student)-[:ENROLLED_AT_SCHOOL]->(:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)-[:LOCATED_IN_MUNICIPALITY]->(:Municipality)-[:BELONGS_TO_STATE]->(st)
-WITH st.name AS Nome_Estado,
-     coalesce(st.qedu_taxa_abandono, 0.0) AS QEdu_Abandono_Oficial,
-     Escolas_Medidas, Alunos_Evasores_Unicos, Massa_Faltas_Estado,
-     count(DISTINCT stu2) AS Total_Alunos_Estado
-
-RETURN Nome_Estado, Escolas_Medidas, Alunos_Evasores_Unicos, Total_Alunos_Estado,
-       round(toFloat(Alunos_Evasores_Unicos) / Total_Alunos_Estado * 100, 2) AS Pct_Evasores_Internos,
-       Massa_Faltas_Estado, QEdu_Abandono_Oficial
-ORDER BY Pct_Evasores_Internos DESC
-```
-
-### Query 10: Rendimento Pós-Pandemia: Série Atraso vs Distorção (QEdu)
-*Descritivo:* Acompanha alunos com discrepância brutal (`cr.year` ou Idade atrelados ao Rendimento Deficiente) validando contra `qedu_distorcao_ef_ai`.
-*Nota:* Adicionado cálculo de distorção idade-série do nosso lado. Contamos alunos onde o `cr.year` (ano letivo) aparece incompatível com o `grade_level` esperado, contrastando com o QEdu oficial.
-```cypher
-MATCH (cr:Classroom)<-[:ENROLLED_IN]-(stu:Student)-[:ENROLLED_AT_SCHOOL]->(sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)-[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)-[:BELONGS_TO_STATE]->(st:State)
-
-WHERE coalesce(cr.grade_level, '') <> ''
-
-WITH st, cr.grade_level AS Etapa, 
-     count(DISTINCT stu) AS Estudantes,
-     count(DISTINCT sch) AS Qtd_Escolas
-
-WHERE Estudantes > 10
-
-WITH st.sigla AS UF, Etapa, Qtd_Escolas, Estudantes,
-     coalesce(st.qedu_distorcao_ef_ai, 0.0) AS QEdu_Distorcao_Oficial
-
-RETURN UF, Etapa, Qtd_Escolas, Estudantes, QEdu_Distorcao_Oficial
-ORDER BY UF ASC, Estudantes DESC 
-LIMIT 100
-```
-
-### Query 11: The God Matrix 360 v2 (Extract Otimizado de ML)
-*Nota Arquitetural Tática:* O erro de "Query Longa Infinita" anterior sumiu. Dividimos em Agregações Subquery Seguras limitadas a `Classroom_ID`. O Neo4j renderiza ela em ms.
-```cypher
-MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)-[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)-[:BELONGS_TO_STATE]->(st:State)
-MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
-
-WITH sch, m, st, cr, collect(stu) AS AlunosDaTurma
-WHERE size(AlunosDaTurma) > 10
-
-// Fase 1: Abstrair as Matérias (Só Fundamental Math) sem cruzar por enquanto
-CALL {
-  WITH AlunosDaTurma
-  UNWIND AlunosDaTurma AS stu
-  MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
-  WHERE sd.discipline_name =~ '(?i).*MATEM.*' AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
-  WITH CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10 THEN coalesce(sd.final_mean, sd.grade_1) / 10.0 ELSE coalesce(sd.final_mean, sd.grade_1) END AS Nota
-  RETURN round(avg(Nota), 2) AS Avg_Matematica, round(stDev(Nota), 2) AS StDev_Matematica
+// Fallback IBGE: média UF (nova sintaxe CALL com escopo explícito)
+CALL (st) {
+  MATCH (m2:Municipality)-[:BELONGS_TO_STATE]->(st)
+  WHERE m2.atl_freq_liq_fund IS NOT NULL AND m2.atl_freq_liq_fund > 0
+  RETURN avg(m2.atl_freq_liq_fund) AS Media_Freq_UF
 }
 
-// Fase 2: Abstrair a Evasão separadamente das Notas (Corta Cartesiano)
-CALL {
-  WITH AlunosDaTurma
-  UNWIND AlunosDaTurma AS stu
-  MATCH (stu)<-[:ATTENDED]-(sc:StudentClass)
-  WHERE sc.total_faults_per_day > 0
-  RETURN sum(sc.total_faults_per_day) AS Total_Evasao
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+     OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+  RETURN count(DISTINCT stu) AS Total_Alunos,
+         collect(DISTINCT stu) AS Lista_Alunos
 }
 
-// Aplicação Final da Regra das Mentirosas e Nulos
-WITH sch.id AS School_ID, cr.grade_level AS Classroom_Stage, cr.name AS Classroom_Name,
-     coalesce(m.atl_t_analf25m, 0.0) AS FEAT_Muni_Analfabetismo, coalesce(m.atl_freq_liq_fund, 0.0) AS FEAT_Muni_Freq,
-     coalesce(st.qedu_ideb_ai, 0.0) AS FEAT_State_Ideb,
-     Avg_Matematica, StDev_Matematica, coalesce(Total_Evasao, 0) AS Target_Evasao
-
-WHERE Avg_Matematica IS NOT NULL 
-  AND (Avg_Matematica < 10.0 OR StDev_Matematica > 0)
-
-RETURN School_ID, Classroom_Stage, Classroom_Name, 
-       Avg_Matematica, StDev_Matematica, Target_Evasao,
-       FEAT_Muni_Analfabetismo, FEAT_Muni_Freq, FEAT_State_Ideb
-```
-
----
-
-## 📊 BLOCO 4: Queries Explicativas (Cálculos de % do Nosso Lado)
-*Objetivo:* Queries complementares que calculam percentuais internos para contrastar com indicadores IBGE/QEdu, gerando insights mais ricos para gestores.
-
-### Query 1-A: Taxa de Ausência % por Escola (Complementar à Query 1)
-*Descritivo:* Em vez de apenas volume absoluto de faltas, calcula a **taxa de ausência percentual** (faltas / dias previstos × 100) por escola, mostrando ao gestor qual escola perde mais dias proporcionalmente. Cruza com o atraso escolar do IBGE.
-```cypher
-MATCH (sc:StudentClass)-[:ATTENDED]->(stu:Student)-[:ENROLLED_AT_SCHOOL]->(sch:School)
-MATCH (sch)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)-[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
-
-WHERE sc.total_faults_per_day > 0
-
-WITH sch.name AS Escola, m.name AS Municipio,
-     count(DISTINCT stu) AS Total_Alunos,
-     sum(sc.total_faults_per_day) AS Total_Faltas,
-     sum(coalesce(sc.scheduled_student_class_days, 200)) AS Total_Dias_Previstos,
-     coalesce(m.atl_atraso_2_fund, 0.0) AS IBGE_Atraso_Fund
-
+WITH sch, m, st, Freq_Muni_Raw, Media_Freq_UF, Total_Alunos, Lista_Alunos
 WHERE Total_Alunos > 10
 
-RETURN Escola, Municipio, Total_Alunos, Total_Faltas, Total_Dias_Previstos,
-       round(toFloat(Total_Faltas) / Total_Dias_Previstos * 100, 2) AS Pct_Ausencia_Escola,
-       IBGE_Atraso_Fund
-ORDER BY Pct_Ausencia_Escola DESC
-LIMIT 50
+CALL (Lista_Alunos) {
+  UNWIND Lista_Alunos AS stu
+  OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') = ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  WHERE Nota IS NOT NULL
+  RETURN count(Nota) AS N_Notas,
+         round(avg(Nota), 2) AS Media,
+         round(stDev(Nota), 2) AS Dispersao
+}
+
+RETURN sch.name AS Escola,
+       m.name   AS Municipio,
+       st.sigla AS UF,
+       Total_Alunos, N_Notas,
+       CASE WHEN N_Notas = 0 THEN 'Sem Notas' ELSE 'Com Notas' END AS Status_Notas,
+       Media, Dispersao,
+       round(CASE WHEN Media > 0 THEN (Dispersao / Media) * 100 ELSE null END, 1) AS CV_Pct,
+       round(coalesce(Freq_Muni_Raw, Media_Freq_UF), 2) AS IBGE_Freq_Liq_Fund,
+       CASE WHEN Freq_Muni_Raw IS NOT NULL THEN 'Municipal' ELSE 'Media_UF_Proxy' END AS Fonte_IBGE
+ORDER BY Municipio ASC,
+         CASE WHEN Media IS NULL THEN 1 ELSE 0 END ASC,
+         Media ASC
+LIMIT 100
 ```
 
-### Query 4-A: Bolsistas vs Não-Bolsistas na Mesma Escola (Complementar à Query 4)
-*Descritivo:* Na mesma escola, quem vai melhor em Português: bolsistas ou não-bolsistas? Calcula a média e o **delta percentual** entre os dois grupos. Se o delta for positivo, bolsistas estão indo melhor.
+#### Q1_EF2_SUP — Fundamental II / Médio / Superior
 ```cypher
-MATCH (stu:Student)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
-MATCH (stu)-[:ENROLLED_AT_SCHOOL]->(sch:School)
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
 
-WHERE sd.discipline_name =~ '(?i).*PORT.*'
-  AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+WITH sch, m, st,
+     coalesce(m.atl_freq_liq_fund, null) AS Freq_Muni_Raw
 
-WITH sch.name AS Escola, stu.bolsa_familia AS BolsaFamilia,
-     CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10 THEN coalesce(sd.final_mean, sd.grade_1) / 10.0 ELSE coalesce(sd.final_mean, sd.grade_1) END AS Nota
+CALL (st) {
+  MATCH (m2:Municipality)-[:BELONGS_TO_STATE]->(st)
+  WHERE m2.atl_freq_liq_fund IS NOT NULL AND m2.atl_freq_liq_fund > 0
+  RETURN avg(m2.atl_freq_liq_fund) AS Media_Freq_UF
+}
 
-WITH Escola, 
-     CASE WHEN BolsaFamilia = True THEN 'Bolsista' ELSE 'Nao_Bolsista' END AS Grupo,
-     count(Nota) AS N, round(avg(Nota), 2) AS Media
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+     OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR','EDUCAÇÃO PROFISSIONAL']
+  MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') <> ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH sd.discipline_name AS Materia,
+       CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  RETURN Materia,
+         count(Nota) AS N_Notas,
+         round(avg(Nota), 2) AS Media,
+         round(stDev(Nota), 2) AS Dispersao,
+         round(min(Nota), 2) AS Nota_Min,
+         round(max(Nota), 2) AS Nota_Max
+}
 
-WHERE N >= 5
+WITH sch, m, Freq_Muni_Raw, Media_Freq_UF,
+     Materia, N_Notas, Media, Dispersao, Nota_Min, Nota_Max
+WHERE N_Notas > 25
+  AND Materia IS NOT NULL
+  AND (Media < 10.0 OR Dispersao > 0)
 
-RETURN Escola, Grupo, N, Media
-ORDER BY Escola, Grupo
+RETURN sch.name AS Escola,
+       m.name   AS Municipio,
+       Materia, N_Notas, Media, Dispersao,
+       round(CASE WHEN Media > 0 THEN (Dispersao / Media) * 100 ELSE null END, 1) AS CV_Pct,
+       Nota_Min, Nota_Max,
+       round(coalesce(Freq_Muni_Raw, Media_Freq_UF), 2) AS IBGE_Freq_Liq_Fund,
+       CASE WHEN Freq_Muni_Raw IS NOT NULL THEN 'Municipal' ELSE 'Media_UF_Proxy' END AS Fonte_IBGE
+ORDER BY m.name ASC, Materia ASC, Media ASC
+LIMIT 100
+```
+
+---
+
+### Q2 — Evasão e Faltas por Escola vs Referência Municipal IBGE
+
+**Objetivo:** Quais escolas perdem mais dias-aluno? Compara taxa de ausência interna com benchmark IBGE.
+
+**Fallback IBGE:** Se `atl_atraso_2_fund` do município for nulo, usa média dos municípios da mesma UF.
+
+#### Q2_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+
+WITH sch, m, st,
+     coalesce(m.atl_atraso_2_fund, null) AS Atraso_Muni_Raw
+
+CALL (st) {
+  MATCH (m2:Municipality)-[:BELONGS_TO_STATE]->(st)
+  WHERE m2.atl_atraso_2_fund IS NOT NULL AND m2.atl_atraso_2_fund > 0
+  RETURN avg(m2.atl_atraso_2_fund) AS Media_Atraso_UF
+}
+
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+     OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+  RETURN count(DISTINCT stu) AS Total_Alunos,
+         collect(DISTINCT stu) AS Lista_Alunos
+}
+
+WITH sch, m, Atraso_Muni_Raw, Media_Atraso_UF, Total_Alunos, Lista_Alunos
+WHERE Total_Alunos > 10
+
+CALL (Lista_Alunos) {
+  UNWIND Lista_Alunos AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  WHERE sc.total_faults_per_day IS NOT NULL AND sc.total_faults_per_day > 0
+  RETURN
+    count(DISTINCT CASE WHEN sc IS NOT NULL THEN stu END) AS Alunos_Com_Falta,
+    sum(coalesce(sc.total_faults_per_day, 0))             AS Total_Faltas,
+    sum(coalesce(sc.scheduled_student_class_days, 200))   AS Total_Dias_Previstos
+}
+
+WITH sch.name AS Escola,
+     m.name   AS Municipio,
+     coalesce(Atraso_Muni_Raw, Media_Atraso_UF) AS IBGE_Atraso_Ref,
+     CASE WHEN Atraso_Muni_Raw IS NOT NULL THEN 'Municipal' ELSE 'Media_UF_Proxy' END AS Fonte_IBGE,
+     Total_Alunos, Alunos_Com_Falta, Total_Faltas, Total_Dias_Previstos,
+     CASE WHEN Total_Dias_Previstos > 0
+          THEN round(toFloat(Total_Faltas) / Total_Dias_Previstos * 100, 2)
+          ELSE null
+     END AS Taxa_Ausencia_Pct
+
+RETURN Escola, Municipio, Total_Alunos, Alunos_Com_Falta,
+       CASE WHEN Alunos_Com_Falta = 0
+            THEN 'Sem Diário Eletrônico'
+            ELSE toString(round(toFloat(Alunos_Com_Falta) / Total_Alunos * 100, 1)) + '%'
+       END AS Pct_Alunos_Com_Falta,
+       Total_Faltas, Taxa_Ausencia_Pct,
+       round(IBGE_Atraso_Ref, 2) AS IBGE_Atraso_2Anos_Fund,
+       Fonte_IBGE
+ORDER BY Municipio ASC,
+         CASE WHEN Taxa_Ausencia_Pct IS NULL THEN 1 ELSE 0 END ASC,
+         Taxa_Ausencia_Pct DESC
+LIMIT 100
+```
+
+#### Q2_EF2_SUP — Fundamental II / Médio / Superior
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+
+WITH sch, m, st,
+     coalesce(m.atl_atraso_2_fund, null) AS Atraso_Muni_Raw
+
+CALL (st) {
+  MATCH (m2:Municipality)-[:BELONGS_TO_STATE]->(st)
+  WHERE m2.atl_atraso_2_fund IS NOT NULL AND m2.atl_atraso_2_fund > 0
+  RETURN avg(m2.atl_atraso_2_fund) AS Media_Atraso_UF
+}
+
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+     OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR','EDUCAÇÃO PROFISSIONAL']
+  RETURN count(DISTINCT stu) AS Total_Alunos,
+         collect(DISTINCT stu) AS Lista_Alunos,
+         head(collect(DISTINCT cr.stage)) AS Etapa_Label
+}
+
+WITH sch, m, Atraso_Muni_Raw, Media_Atraso_UF,
+     Total_Alunos, Lista_Alunos, Etapa_Label
+WHERE Total_Alunos > 10
+
+CALL (Lista_Alunos) {
+  UNWIND Lista_Alunos AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  WHERE sc.total_faults_per_day IS NOT NULL AND sc.total_faults_per_day > 0
+  RETURN
+    count(DISTINCT CASE WHEN sc IS NOT NULL THEN stu END) AS Alunos_Com_Falta,
+    sum(coalesce(sc.total_faults_per_day, 0))             AS Total_Faltas,
+    sum(coalesce(sc.scheduled_student_class_days, 200))   AS Total_Dias_Previstos
+}
+
+WITH sch.name AS Escola,
+     m.name   AS Municipio,
+     Etapa_Label AS Etapa,
+     coalesce(Atraso_Muni_Raw, Media_Atraso_UF) AS IBGE_Atraso_Ref,
+     CASE WHEN Atraso_Muni_Raw IS NOT NULL THEN 'Municipal' ELSE 'Media_UF_Proxy' END AS Fonte_IBGE,
+     Total_Alunos, Alunos_Com_Falta, Total_Faltas, Total_Dias_Previstos,
+     CASE WHEN Total_Dias_Previstos > 0
+          THEN round(toFloat(Total_Faltas) / Total_Dias_Previstos * 100, 2)
+          ELSE null
+     END AS Taxa_Ausencia_Pct
+
+RETURN Escola, Municipio, Etapa, Total_Alunos, Alunos_Com_Falta,
+       CASE WHEN Alunos_Com_Falta = 0
+            THEN 'Sem Diário Eletrônico'
+            ELSE toString(round(toFloat(Alunos_Com_Falta) / Total_Alunos * 100, 1)) + '%'
+       END AS Pct_Alunos_Com_Falta,
+       Total_Faltas, Taxa_Ausencia_Pct,
+       round(IBGE_Atraso_Ref, 2) AS IBGE_Atraso_2Anos_Fund,
+       Fonte_IBGE
+ORDER BY Municipio ASC,
+         CASE WHEN Taxa_Ausencia_Pct IS NULL THEN 1 ELSE 0 END ASC,
+         Taxa_Ausencia_Pct DESC
+LIMIT 100
+```
+
+---
+
+### Q3 — Equidade: Bolsa Família vs Desempenho na Mesma Escola
+
+#### Q3_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)
+
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+     OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+  WITH stu,
+       CASE WHEN coalesce(stu.bolsa_familia, false) = true
+            THEN 'Bolsista' ELSE 'Nao_Bolsista'
+       END AS Grupo
+  OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') = ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH Grupo, stu,
+       CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  RETURN Grupo,
+         count(DISTINCT stu)   AS N_Alunos,
+         count(Nota)           AS N_Notas,
+         round(avg(Nota), 2)   AS Media,
+         round(stDev(Nota), 2) AS Dispersao,
+         round(min(Nota), 2)   AS Nota_Min,
+         round(max(Nota), 2)   AS Nota_Max
+}
+
+WITH sch, Grupo, N_Alunos, N_Notas, Media, Dispersao, Nota_Min, Nota_Max
+WHERE N_Alunos >= 5
+
+RETURN sch.name AS Escola,
+       Grupo, N_Alunos, N_Notas,
+       CASE WHEN N_Notas = 0 THEN 'Sem Notas' ELSE 'Com Notas' END AS Status_Notas,
+       Media, Dispersao, Nota_Min, Nota_Max
+ORDER BY Escola ASC, Grupo ASC
 LIMIT 200
 ```
 
-### Query 7-A: Disparidade Racial: Analfabetismo IBGE por Raça vs Rendimento por Etnia
-*Descritivo:* Cruza os dados do Atlas IBGE de analfabetismo desagregado por raça (`atl_branco_analf25m` e `atl_negro_analf25m`) com o desempenho real dos alunos por etnia (`stu.ethnicity`) na nossa base. Mostra se a desigualdade histórica do IBGE se reflete nas notas atuais. **As % de analfabetismo já vêm do IBGE** — calculamos do nosso lado a **média e contagem** por grupo étnico.
+#### Q3_EF2_SUP — Fundamental II / Médio
 ```cypher
-MATCH (stu:Student)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
-MATCH (stu)-[:ENROLLED_AT_SCHOOL]->(sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)-[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+MATCH (sch:School)
 
-WHERE coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
-  AND coalesce(stu.ethnicity, '') <> ''
-  AND sd.discipline_name =~ '(?i).*PORT.*'
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+     OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR']
+  WITH stu,
+       CASE WHEN coalesce(stu.bolsa_familia, false) = true
+            THEN 'Bolsista' ELSE 'Nao_Bolsista'
+       END AS Grupo
+  MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') <> ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH Grupo, stu, sd.discipline_name AS Materia,
+       CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  RETURN Grupo, Materia,
+         count(DISTINCT stu)   AS N_Alunos,
+         count(Nota)           AS N_Notas,
+         round(avg(Nota), 2)   AS Media,
+         round(stDev(Nota), 2) AS Dispersao
+}
 
-WITH m.name AS Municipio, stu.ethnicity AS Etnia,
-     coalesce(m.atl_branco_analf25m, 0.0) AS IBGE_Analf_Branco,
-     coalesce(m.atl_negro_analf25m, 0.0) AS IBGE_Analf_Negro,
-     CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10 THEN coalesce(sd.final_mean, sd.grade_1) / 10.0 ELSE coalesce(sd.final_mean, sd.grade_1) END AS Nota
+WITH sch, Grupo, Materia, N_Alunos, N_Notas, Media, Dispersao
+WHERE N_Notas >= 5 AND Materia IS NOT NULL
 
-WITH Municipio, Etnia, IBGE_Analf_Branco, IBGE_Analf_Negro,
-     count(Nota) AS N_Alunos, round(avg(Nota), 2) AS Media_Nota
+RETURN sch.name AS Escola,
+       Materia, Grupo, N_Alunos, N_Notas, Media, Dispersao
+ORDER BY Escola ASC, Materia ASC, Grupo ASC
+LIMIT 200
+```
 
-WHERE N_Alunos >= 5
+---
 
-RETURN Municipio, Etnia, N_Alunos, Media_Nota, 
-       IBGE_Analf_Branco, IBGE_Analf_Negro
-ORDER BY Municipio, Media_Nota ASC
+### Q4 — Saúde vs Faltas e Desempenho
+
+**Objetivo:** Alunos com condições de saúde têm mais faltas e notas menores?
+
+**Correlação:** Condições como desnutrição, anemia e diabetes reduzem energia, concentração e presença. O gestor vê se existe gap real de desempenho entre o grupo "Com Condição / PCD" e o restante — o que justifica protocolos de acompanhamento diferenciado. O campo `deficiency` do aluno também entra aqui pois PCDs tendem a ter dinâmica de frequência distinta.
+
+**Performance v5.5 — padrão coletar→isolar→agregar:**
+O anti-padrão anterior encadeava 3 `OPTIONAL MATCH` sequenciais dentro de um único `CALL(sch)`, criando um produto cartesiano `N_alunos × N_faltas × N_notas × N_health` antes de qualquer agregação. A solução é um pipeline em 4 passos isolados:
+```
+CALL(sch)   → filtra por etapa, classifica saúde, retorna Map<stu → GrupoSaude>
+CALL(mapa)  → UNWIND, busca faltas, agrega por grupo  (O(N))
+CALL(mapa)  → UNWIND, busca notas, agrega por grupo  (O(N×K), K=notas por aluno)
+```
+Cada `CALL` opera sobre a lista já reduzida, sem cruzar com as outras dimensões.
+
+#### Q4_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)
+
+// Passo 1: filtra alunos EF1, classifica saúde no mesmo passo
+// collect() segrega por grupo — evita cross com faltas/notas
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+     OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+  WITH DISTINCT stu
+  OPTIONAL MATCH (stu)-[:HAS_HEALTH]->(h:Health)
+  WITH stu,
+       CASE WHEN (h IS NOT NULL AND (
+                  coalesce(h.malnutrition, false)
+               OR coalesce(h.diabetes, false)
+               OR coalesce(h.hypertension, false)
+               OR coalesce(h.celiac, false)
+               OR coalesce(h.obesity, false)
+               OR coalesce(h.iron_deficiency_anemia, false)
+               OR coalesce(h.sickle_cell_anemia, false)
+               ))
+             OR coalesce(stu.deficiency, 'Não') STARTS WITH 'Possui'
+            THEN 'Com Condição / PCD'
+            ELSE 'Sem Condição'
+       END AS GrupoSaude
+  RETURN GrupoSaude, collect(stu) AS ListaAlunos
+}
+
+WITH sch, GrupoSaude, ListaAlunos
+WHERE size(ListaAlunos) >= 5
+
+// Passo 2: faltas (dimensão isolada)
+CALL (ListaAlunos) {
+  UNWIND ListaAlunos AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  RETURN sum(coalesce(sc.total_faults_per_day, 0)) AS TotalFaltas
+}
+
+// Passo 3: notas globais (dimensão isolada)
+CALL (ListaAlunos) {
+  UNWIND ListaAlunos AS stu
+  OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') = ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  WHERE Nota IS NOT NULL
+  RETURN count(Nota)           AS N_Notas,
+         round(avg(Nota), 2)   AS Media_Nota,
+         round(stDev(Nota), 2) AS Dispersao_Nota
+}
+
+RETURN sch.name AS Escola,
+       GrupoSaude,
+       size(ListaAlunos) AS N_Alunos,
+       TotalFaltas,
+       round(toFloat(TotalFaltas) / size(ListaAlunos), 2) AS Media_Faltas_Por_Aluno,
+       N_Notas,
+       CASE WHEN N_Notas = 0 THEN null ELSE Media_Nota END AS Media_Nota,
+       Dispersao_Nota
+ORDER BY Escola ASC, GrupoSaude ASC
+LIMIT 200
+```
+
+#### Q4_EF2_SUP — Fundamental II / Médio (por matéria)
+```cypher
+MATCH (sch:School)
+
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+     OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR']
+  WITH DISTINCT stu
+  OPTIONAL MATCH (stu)-[:HAS_HEALTH]->(h:Health)
+  WITH stu,
+       CASE WHEN (h IS NOT NULL AND (
+                  coalesce(h.malnutrition, false)
+               OR coalesce(h.diabetes, false)
+               OR coalesce(h.hypertension, false)
+               OR coalesce(h.iron_deficiency_anemia, false)
+               OR coalesce(h.obesity, false)
+               ))
+             OR coalesce(stu.deficiency, 'Não') STARTS WITH 'Possui'
+            THEN 'Com Condição / PCD'
+            ELSE 'Sem Condição'
+       END AS GrupoSaude
+  RETURN GrupoSaude, collect(stu) AS ListaAlunos
+}
+
+WITH sch, GrupoSaude, ListaAlunos
+WHERE size(ListaAlunos) >= 5
+
+CALL (ListaAlunos) {
+  UNWIND ListaAlunos AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  RETURN sum(coalesce(sc.total_faults_per_day, 0)) AS TotalFaltas
+}
+
+CALL (ListaAlunos) {
+  UNWIND ListaAlunos AS stu
+  MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') <> ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH sd.discipline_name AS Materia,
+       CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  RETURN Materia,
+         count(Nota)           AS N_Notas,
+         round(avg(Nota), 2)   AS Media_Nota,
+         round(stDev(Nota), 2) AS Dispersao_Nota
+}
+
+WITH sch, GrupoSaude, ListaAlunos, TotalFaltas,
+     Materia, N_Notas, Media_Nota, Dispersao_Nota
+WHERE Materia IS NOT NULL
+
+RETURN sch.name AS Escola,
+       Materia, GrupoSaude,
+       size(ListaAlunos) AS N_Alunos,
+       round(toFloat(TotalFaltas) / size(ListaAlunos), 2) AS Media_Faltas_Por_Aluno,
+       N_Notas,
+       CASE WHEN N_Notas = 0 THEN null ELSE Media_Nota END AS Media_Nota,
+       Dispersao_Nota
+ORDER BY Escola ASC, Materia ASC, GrupoSaude ASC
+LIMIT 200
+```
+
+---
+
+### Q5 — Disparidade de Gênero vs Contexto Educacional do Estado
+
+**Objetivo:** O gap de desempenho entre meninas e meninos na escola reproduz (ou contraria) a desigualdade educacional estrutural do estado?
+
+**Por que analfabetismo adulto por gênero e não outra métrica?** O PNAD mede `homem_pnad_t_analf25m` e `mulher_pnad_t_analf25m` — a taxa de analfabetismo de adultos +25 por sexo no estado. Isso é o espelho geracional do que a escola está tentando superar: se o estado tem historicamente 4% de analfabetismo feminino contra 2% masculino, e a escola mostra desempenho inverso, ela está **rompendo** o ciclo. Se reproduz o mesmo padrão, está perpetuando. Essa é a correlação relevante.
+
+**Fix v5.5 — dados iguais EF1 e EF2:** O problema estava no escopo da lista. O `CALL(sch)` anterior retornava `collect(stu)` sem separar por gênero, e a separação acontecia fora do escopo filtrado. Resultado: o mesmo conjunto de alunos da escola entrava em ambas as queries. Fix: a separação por gênero e a filtragem por etapa acontecem **dentro do mesmo `CALL`**, retornando listas já segregadas.
+
+#### Q5_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+
+WITH sch, m, st,
+     coalesce(st.homem_pnad_t_analf25m, null)  AS PNAD_Analf_Homem_Estado,
+     coalesce(st.mulher_pnad_t_analf25m, null) AS PNAD_Analf_Mulher_Estado
+
+// Filtra por EF1 e segrega por gênero no mesmo CALL
+// → garante que a lista de cada gênero só contém alunos dessa etapa
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE (cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+     OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL'])
+    AND stu.gender =~ '(?i)^[FM].*'
+  WITH DISTINCT stu,
+       CASE WHEN stu.gender =~ '(?i)^F.*' THEN 'Feminino' ELSE 'Masculino' END AS Genero
+  RETURN Genero, collect(stu) AS ListaGenero
+}
+
+WITH sch, m, st, PNAD_Analf_Homem_Estado, PNAD_Analf_Mulher_Estado,
+     Genero, ListaGenero
+WHERE size(ListaGenero) >= 5
+
+// Notas globais para esse grupo de gênero dessa etapa
+CALL (ListaGenero) {
+  UNWIND ListaGenero AS stu
+  OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') = ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  WHERE Nota IS NOT NULL
+  RETURN count(Nota)           AS N_Notas,
+         round(avg(Nota), 2)   AS Media,
+         round(stDev(Nota), 2) AS Dispersao
+}
+
+RETURN sch.name AS Escola,
+       m.name   AS Municipio,
+       st.sigla AS UF,
+       Genero,
+       size(ListaGenero)  AS N_Alunos,
+       N_Notas,
+       CASE WHEN N_Notas = 0 THEN null ELSE Media END AS Media,
+       Dispersao,
+       // Referência estrutural: qual o analfabetismo adulto do mesmo gênero no estado?
+       CASE WHEN Genero = 'Feminino'  THEN PNAD_Analf_Mulher_Estado
+            ELSE                           PNAD_Analf_Homem_Estado
+       END AS PNAD_Analf_Adulto_Genero_Estado_Pct
+ORDER BY Municipio ASC, Escola ASC, Genero ASC
+LIMIT 200
+```
+
+#### Q5_EF2_SUP — Fundamental II / Médio
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+
+WITH sch, m, st,
+     coalesce(st.homem_pnad_t_analf25m, null)  AS PNAD_Analf_Homem_Estado,
+     coalesce(st.mulher_pnad_t_analf25m, null) AS PNAD_Analf_Mulher_Estado
+
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE (cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+     OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR'])
+    AND stu.gender =~ '(?i)^[FM].*'
+  WITH DISTINCT stu,
+       CASE WHEN stu.gender =~ '(?i)^F.*' THEN 'Feminino' ELSE 'Masculino' END AS Genero
+  RETURN Genero, collect(stu) AS ListaGenero
+}
+
+WITH sch, m, st, PNAD_Analf_Homem_Estado, PNAD_Analf_Mulher_Estado,
+     Genero, ListaGenero
+WHERE size(ListaGenero) >= 5
+
+CALL (ListaGenero) {
+  UNWIND ListaGenero AS stu
+  MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') <> ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH sd.discipline_name AS Materia,
+       CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  RETURN Materia,
+         count(Nota)           AS N_Notas,
+         round(avg(Nota), 2)   AS Media,
+         round(stDev(Nota), 2) AS Dispersao
+}
+
+WITH sch, m, st, PNAD_Analf_Homem_Estado, PNAD_Analf_Mulher_Estado,
+     Genero, ListaGenero, Materia, N_Notas, Media, Dispersao
+WHERE Materia IS NOT NULL
+
+RETURN sch.name AS Escola,
+       m.name   AS Municipio,
+       st.sigla AS UF,
+       Genero, Materia,
+       size(ListaGenero) AS N_Alunos,
+       N_Notas,
+       CASE WHEN N_Notas = 0 THEN null ELSE Media END AS Media,
+       Dispersao,
+       CASE WHEN Genero = 'Feminino'  THEN PNAD_Analf_Mulher_Estado
+            ELSE                           PNAD_Analf_Homem_Estado
+       END AS PNAD_Analf_Adulto_Genero_Estado_Pct
+ORDER BY Municipio ASC, Escola ASC, Materia ASC, Genero ASC
+LIMIT 200
+```
+
+---
+
+### Q6 — Frequência Escolar Real vs Meta Líquida IBGE
+
+**Objetivo:** A escola perde mais ou menos dias-aluno do que seria esperado pelo contexto do município?
+
+**Fix v5.5 — mesmos dados EF1 e EF2:** O `StudentClass → Student` não depende de qual classroom o aluno está — ele conta faltas gerais do aluno. Quando a query coletava `Lista_Alunos` filtrada por etapa mas depois contava faltas sobre esses alunos, o resultado era idêntico para ambas as etapas em escolas mistas. Fix: o CALL de faltas opera sobre a lista já filtrada por etapa, e o `Etapa_Label` é derivado do `cr.stage` **dentro** do mesmo CALL de coleta.
+
+#### Q6_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+
+WITH sch, m, st,
+     coalesce(m.atl_freq_liq_fund, null) AS Freq_Muni_Raw
+
+CALL (st) {
+  MATCH (m2:Municipality)-[:BELONGS_TO_STATE]->(st)
+  WHERE m2.atl_freq_liq_fund IS NOT NULL AND m2.atl_freq_liq_fund > 0
+  RETURN avg(m2.atl_freq_liq_fund) AS Media_Freq_UF
+}
+
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+     OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+  RETURN collect(DISTINCT stu) AS ListaAlunos
+}
+
+WITH sch, m, Freq_Muni_Raw, Media_Freq_UF, ListaAlunos
+WHERE size(ListaAlunos) > 10
+
+CALL (ListaAlunos) {
+  UNWIND ListaAlunos AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  RETURN
+    count(DISTINCT CASE WHEN sc IS NOT NULL AND sc.total_faults_per_day > 0 THEN stu END) AS Alunos_Com_Falta,
+    sum(coalesce(sc.total_faults_per_day, 0))           AS TotalFaltas,
+    sum(coalesce(sc.scheduled_student_class_days, 200)) AS TotalDias
+}
+
+WITH sch.name AS Escola,
+     m.name   AS Municipio,
+     size(ListaAlunos) AS Total_Alunos,
+     coalesce(Freq_Muni_Raw, Media_Freq_UF) AS IBGE_Freq_Ref,
+     CASE WHEN Freq_Muni_Raw IS NOT NULL THEN 'Municipal' ELSE 'Media_UF_Proxy' END AS Fonte_IBGE,
+     Alunos_Com_Falta,
+     CASE WHEN TotalDias > 0
+          THEN round(toFloat(TotalFaltas) / TotalDias * 100, 2)
+          ELSE null
+     END AS Taxa_Ausencia_Pct
+
+RETURN Escola, Municipio, Total_Alunos,
+       Alunos_Com_Falta,
+       CASE WHEN Alunos_Com_Falta = 0 THEN 'Sem Diário'
+            ELSE toString(Taxa_Ausencia_Pct) + '%'
+       END AS Taxa_Ausencia_Escola,
+       round(IBGE_Freq_Ref, 2) AS IBGE_Frequencia_Liquida_Pct,
+       Fonte_IBGE,
+       CASE WHEN Taxa_Ausencia_Pct IS NOT NULL AND IBGE_Freq_Ref IS NOT NULL
+            THEN round(Taxa_Ausencia_Pct - (100.0 - IBGE_Freq_Ref), 2)
+            ELSE null
+       END AS Delta_Vs_IBGE
+ORDER BY Municipio ASC, Delta_Vs_IBGE DESC
 LIMIT 100
 ```
+
+#### Q6_EF2_SUP — Fundamental II / Médio
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+
+WITH sch, m, st,
+     coalesce(m.atl_freq_liq_fund, null) AS Freq_Muni_Raw
+
+CALL (st) {
+  MATCH (m2:Municipality)-[:BELONGS_TO_STATE]->(st)
+  WHERE m2.atl_freq_liq_fund IS NOT NULL AND m2.atl_freq_liq_fund > 0
+  RETURN avg(m2.atl_freq_liq_fund) AS Media_Freq_UF
+}
+
+// Coleta separada por stage para que EF2 e EF1 nunca se sobreponham
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+     OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR']
+  WITH DISTINCT stu, cr.stage AS Etapa
+  RETURN Etapa, collect(stu) AS ListaAlunos
+}
+
+WITH sch, m, Freq_Muni_Raw, Media_Freq_UF, Etapa, ListaAlunos
+WHERE size(ListaAlunos) > 10
+
+CALL (ListaAlunos) {
+  UNWIND ListaAlunos AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  RETURN
+    count(DISTINCT CASE WHEN sc IS NOT NULL AND sc.total_faults_per_day > 0 THEN stu END) AS Alunos_Com_Falta,
+    sum(coalesce(sc.total_faults_per_day, 0))           AS TotalFaltas,
+    sum(coalesce(sc.scheduled_student_class_days, 200)) AS TotalDias
+}
+
+WITH sch.name AS Escola,
+     m.name   AS Municipio,
+     Etapa,
+     size(ListaAlunos) AS Total_Alunos,
+     coalesce(Freq_Muni_Raw, Media_Freq_UF) AS IBGE_Freq_Ref,
+     CASE WHEN Freq_Muni_Raw IS NOT NULL THEN 'Municipal' ELSE 'Media_UF_Proxy' END AS Fonte_IBGE,
+     Alunos_Com_Falta,
+     CASE WHEN TotalDias > 0
+          THEN round(toFloat(TotalFaltas) / TotalDias * 100, 2)
+          ELSE null
+     END AS Taxa_Ausencia_Pct
+
+RETURN Escola, Municipio, Etapa, Total_Alunos,
+       Alunos_Com_Falta,
+       CASE WHEN Alunos_Com_Falta = 0 THEN 'Sem Diário'
+            ELSE toString(Taxa_Ausencia_Pct) + '%'
+       END AS Taxa_Ausencia_Escola,
+       round(IBGE_Freq_Ref, 2) AS IBGE_Frequencia_Liquida_Pct,
+       Fonte_IBGE,
+       CASE WHEN Taxa_Ausencia_Pct IS NOT NULL AND IBGE_Freq_Ref IS NOT NULL
+            THEN round(Taxa_Ausencia_Pct - (100.0 - IBGE_Freq_Ref), 2)
+            ELSE null
+       END AS Delta_Vs_IBGE
+ORDER BY Municipio ASC, Etapa ASC, Delta_Vs_IBGE DESC
+LIMIT 100
+```
+
+---
+
+### Q7 — Disparidade Racial: Desempenho por Etnia vs PNAD Racial do Estado
+
+**Objetivo:** O desempenho de alunos brancos e negros na rede reproduz (ou contraria) a desigualdade histórica de analfabetismo racial do estado?
+
+**Fix v5.5 — IBGE racial saía nulo:** O schema real do nó `Municipality` tem apenas métricas de **acesso a infraestrutura escolar** por raça (`atl_branco_mat_pub_fund`, `atl_negro_internet_fund` etc.), **não analfabetismo**. O analfabetismo racial está confirmado no nó **`State`**: `branco_pnad_t_analf25m` e `negro_pnad_t_analf25m`. Todas as queries agora buscam do nó correto.
+
+#### Q7_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+
+WITH sch, m, st,
+     // CONFIRMADO no nó State — não Municipality
+     coalesce(st.branco_pnad_t_analf25m, null) AS PNAD_Analf_Branco,
+     coalesce(st.negro_pnad_t_analf25m, null)  AS PNAD_Analf_Negro
+
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE (cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+     OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL'])
+    AND coalesce(stu.ethnicity, '') <> ''
+  WITH DISTINCT stu, stu.ethnicity AS Etnia
+  RETURN Etnia, collect(stu) AS ListaEtnia
+}
+
+WITH sch, m, st, PNAD_Analf_Branco, PNAD_Analf_Negro,
+     Etnia, ListaEtnia
+WHERE size(ListaEtnia) >= 10
+
+CALL (ListaEtnia) {
+  UNWIND ListaEtnia AS stu
+  OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') = ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  WHERE Nota IS NOT NULL
+  RETURN count(Nota)           AS N_Notas,
+         round(avg(Nota), 2)   AS Media,
+         round(stDev(Nota), 2) AS Dispersao
+}
+
+RETURN m.name   AS Municipio,
+       st.sigla AS UF,
+       Etnia,
+       size(ListaEtnia) AS N_Alunos,
+       N_Notas,
+       CASE WHEN N_Notas = 0 THEN null ELSE Media END AS Media,
+       Dispersao,
+       PNAD_Analf_Branco AS PNAD_Analf_Branco_Estado_Pct,
+       PNAD_Analf_Negro  AS PNAD_Analf_Negro_Estado_Pct
+ORDER BY Municipio ASC, Media ASC
+LIMIT 100
+```
+
+#### Q7_EF2_SUP — Fundamental II / Médio
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+
+WITH sch, m, st,
+     coalesce(st.branco_pnad_t_analf25m, null) AS PNAD_Analf_Branco,
+     coalesce(st.negro_pnad_t_analf25m, null)  AS PNAD_Analf_Negro
+
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE (cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+     OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR'])
+    AND coalesce(stu.ethnicity, '') <> ''
+  WITH DISTINCT stu, stu.ethnicity AS Etnia
+  RETURN Etnia, collect(stu) AS ListaEtnia
+}
+
+WITH sch, m, st, PNAD_Analf_Branco, PNAD_Analf_Negro,
+     Etnia, ListaEtnia
+WHERE size(ListaEtnia) >= 10
+
+CALL (ListaEtnia) {
+  UNWIND ListaEtnia AS stu
+  MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') <> ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH sd.discipline_name AS Materia,
+       CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  RETURN Materia,
+         count(Nota)           AS N_Notas,
+         round(avg(Nota), 2)   AS Media,
+         round(stDev(Nota), 2) AS Dispersao
+}
+
+WITH sch, m, st, PNAD_Analf_Branco, PNAD_Analf_Negro,
+     Etnia, ListaEtnia, Materia, N_Notas, Media, Dispersao
+WHERE Materia IS NOT NULL
+
+RETURN m.name   AS Municipio,
+       st.sigla AS UF,
+       Etnia, Materia,
+       size(ListaEtnia) AS N_Alunos,
+       N_Notas,
+       CASE WHEN N_Notas = 0 THEN null ELSE Media END AS Media,
+       Dispersao,
+       PNAD_Analf_Branco AS PNAD_Analf_Branco_Estado_Pct,
+       PNAD_Analf_Negro  AS PNAD_Analf_Negro_Estado_Pct
+ORDER BY Municipio ASC, Materia ASC, Media ASC
+LIMIT 100
+```
+
+---
+
+### Q8 — Alunos em Risco de Abandono (Alta Falta + Nota Crítica + Saúde)
+
+**Performance v5.5:** Coleta alunos da turma, depois 3 CALL independentes para faltas, notas e saúde. Nenhum cross entre dimensões.
+
+#### Q8_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)
+
+// Coleta por turma — granularidade é turma, não escola
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+     OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+  RETURN cr.name AS Turma, collect(DISTINCT stu) AS ListaTurma
+}
+
+WITH sch, Turma, ListaTurma
+WHERE size(ListaTurma) > 10
+
+// Dimensão 1: faltas
+CALL (ListaTurma) {
+  UNWIND ListaTurma AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  RETURN stu,
+         sum(coalesce(sc.total_faults_per_day, 0)) AS FaltasStu
+}
+
+// Dimensão 2: nota global
+CALL (ListaTurma) {
+  UNWIND ListaTurma AS stu
+  OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') = ''
+  RETURN stu,
+         CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+              THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+              ELSE coalesce(sd.final_mean, sd.grade_1)
+         END AS NotaStu
+}
+
+// Dimensão 3: saúde
+CALL (ListaTurma) {
+  UNWIND ListaTurma AS stu
+  OPTIONAL MATCH (stu)-[:HAS_HEALTH]->(h:Health)
+  RETURN stu,
+         CASE WHEN (h IS NOT NULL AND (
+                    coalesce(h.malnutrition, false)
+                 OR coalesce(h.iron_deficiency_anemia, false)
+                 OR coalesce(h.diabetes, false)
+                 OR coalesce(h.obesity, false)
+                 ))
+               OR coalesce(stu.deficiency, 'Não') STARTS WITH 'Possui'
+              THEN 1 ELSE 0
+         END AS RiscoSaudeStu
+}
+
+// Agrega os 3 sinais por turma
+WITH sch.name AS Escola, Turma,
+     size(ListaTurma) AS Total_Alunos,
+     count(DISTINCT CASE WHEN FaltasStu > 5                             THEN stu END) AS Alunos_Alta_Falta,
+     count(DISTINCT CASE WHEN NotaStu IS NOT NULL AND NotaStu < 5.0     THEN stu END) AS Alunos_Nota_Critica,
+     count(DISTINCT CASE WHEN RiscoSaudeStu = 1                         THEN stu END) AS Alunos_Risco_Saude
+
+RETURN Escola, Turma, Total_Alunos,
+       Alunos_Alta_Falta,
+       round(toFloat(Alunos_Alta_Falta)   / Total_Alunos * 100, 1) AS Pct_Alta_Falta,
+       Alunos_Nota_Critica,
+       round(toFloat(Alunos_Nota_Critica) / Total_Alunos * 100, 1) AS Pct_Nota_Critica,
+       Alunos_Risco_Saude,
+       Alunos_Alta_Falta + Alunos_Nota_Critica + Alunos_Risco_Saude AS Soma_Sinais_Risco
+ORDER BY Soma_Sinais_Risco DESC, Escola ASC
+LIMIT 100
+```
+
+#### Q8_EF2_SUP — Fundamental II / Médio
+```cypher
+MATCH (sch:School)
+
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+     OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR']
+  RETURN cr.name AS Turma, cr.stage AS Etapa, collect(DISTINCT stu) AS ListaTurma
+}
+
+WITH sch, Turma, Etapa, ListaTurma
+WHERE size(ListaTurma) > 10
+
+CALL (ListaTurma) {
+  UNWIND ListaTurma AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  RETURN stu, sum(coalesce(sc.total_faults_per_day, 0)) AS FaltasStu
+}
+
+// Nota de Matemática como proxy de risco cognitivo
+CALL (ListaTurma) {
+  UNWIND ListaTurma AS stu
+  OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE sd.discipline_name =~ '(?i).*MATEM.*'
+  RETURN stu,
+         CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+              THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+              ELSE coalesce(sd.final_mean, sd.grade_1)
+         END AS NotaStu
+}
+
+CALL (ListaTurma) {
+  UNWIND ListaTurma AS stu
+  OPTIONAL MATCH (stu)-[:HAS_HEALTH]->(h:Health)
+  RETURN stu,
+         CASE WHEN (h IS NOT NULL AND (
+                    coalesce(h.malnutrition, false)
+                 OR coalesce(h.iron_deficiency_anemia, false)
+                 OR coalesce(h.diabetes, false)
+                 ))
+               OR coalesce(stu.deficiency, 'Não') STARTS WITH 'Possui'
+              THEN 1 ELSE 0
+         END AS RiscoSaudeStu
+}
+
+WITH sch.name AS Escola, Turma, Etapa,
+     size(ListaTurma) AS Total_Alunos,
+     count(DISTINCT CASE WHEN FaltasStu > 5                             THEN stu END) AS Alunos_Alta_Falta,
+     count(DISTINCT CASE WHEN NotaStu IS NOT NULL AND NotaStu < 5.0     THEN stu END) AS Alunos_Nota_Critica,
+     count(DISTINCT CASE WHEN RiscoSaudeStu = 1                         THEN stu END) AS Alunos_Risco_Saude
+
+RETURN Escola, Turma, Etapa, Total_Alunos,
+       Alunos_Alta_Falta,
+       round(toFloat(Alunos_Alta_Falta)   / Total_Alunos * 100, 1) AS Pct_Alta_Falta,
+       Alunos_Nota_Critica,
+       round(toFloat(Alunos_Nota_Critica) / Total_Alunos * 100, 1) AS Pct_Nota_Critica,
+       Alunos_Risco_Saude,
+       Alunos_Alta_Falta + Alunos_Nota_Critica + Alunos_Risco_Saude AS Soma_Sinais_Risco
+ORDER BY Soma_Sinais_Risco DESC, Escola ASC
+LIMIT 100
+```
+
+---
+
+### Q9 — Zona Rural vs Urbana: Faltas e Notas
+
+**Performance v5.5:** Coleta por zona dentro do CALL de filtragem. Faltas e notas em CALLs separados sobre a lista pré-segregada.
+
+#### Q9_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+
+WITH sch, m, st,
+     coalesce(m.atl_freq_liq_fund, null) AS Freq_Muni_Raw
+
+CALL (st) {
+  MATCH (m2:Municipality)-[:BELONGS_TO_STATE]->(st)
+  WHERE m2.atl_freq_liq_fund IS NOT NULL AND m2.atl_freq_liq_fund > 0
+  RETURN avg(m2.atl_freq_liq_fund) AS Media_Freq_UF
+}
+
+// Segrega por zona já no CALL de filtragem
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+     OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+  WITH DISTINCT stu, coalesce(stu.residence_zone, 'Não Informado') AS Zona
+  RETURN Zona, collect(stu) AS ListaZona
+}
+
+WITH sch, m, Freq_Muni_Raw, Media_Freq_UF, Zona, ListaZona
+WHERE size(ListaZona) >= 5
+
+CALL (ListaZona) {
+  UNWIND ListaZona AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  RETURN sum(coalesce(sc.total_faults_per_day, 0)) AS TotalFaltas
+}
+
+CALL (ListaZona) {
+  UNWIND ListaZona AS stu
+  OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') = ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  WHERE Nota IS NOT NULL
+  RETURN count(Nota)           AS N_Notas,
+         round(avg(Nota), 2)   AS Media,
+         round(stDev(Nota), 2) AS Dispersao
+}
+
+RETURN sch.name AS Escola,
+       m.name   AS Municipio,
+       Zona,
+       size(ListaZona) AS N_Alunos,
+       round(toFloat(TotalFaltas) / size(ListaZona), 2) AS Faltas_Por_Aluno,
+       N_Notas,
+       CASE WHEN N_Notas = 0 THEN null ELSE Media END AS Media_Nota,
+       Dispersao,
+       round(coalesce(Freq_Muni_Raw, Media_Freq_UF), 2) AS IBGE_Freq_Liq_Fund
+ORDER BY Municipio ASC, Escola ASC, Zona ASC
+LIMIT 200
+```
+
+#### Q9_EF2_SUP — Fundamental II / Médio
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+
+WITH sch, m, st,
+     coalesce(m.atl_freq_liq_fund, null) AS Freq_Muni_Raw
+
+CALL (st) {
+  MATCH (m2:Municipality)-[:BELONGS_TO_STATE]->(st)
+  WHERE m2.atl_freq_liq_fund IS NOT NULL AND m2.atl_freq_liq_fund > 0
+  RETURN avg(m2.atl_freq_liq_fund) AS Media_Freq_UF
+}
+
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+     OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR']
+  WITH DISTINCT stu, coalesce(stu.residence_zone, 'Não Informado') AS Zona
+  RETURN Zona, collect(stu) AS ListaZona
+}
+
+WITH sch, m, Freq_Muni_Raw, Media_Freq_UF, Zona, ListaZona
+WHERE size(ListaZona) >= 5
+
+CALL (ListaZona) {
+  UNWIND ListaZona AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  RETURN sum(coalesce(sc.total_faults_per_day, 0)) AS TotalFaltas
+}
+
+CALL (ListaZona) {
+  UNWIND ListaZona AS stu
+  MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') <> ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH sd.discipline_name AS Materia,
+       CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  RETURN Materia,
+         count(Nota)           AS N_Notas,
+         round(avg(Nota), 2)   AS Media,
+         round(stDev(Nota), 2) AS Dispersao
+}
+
+WITH sch, m, Freq_Muni_Raw, Media_Freq_UF, Zona, ListaZona, TotalFaltas,
+     Materia, N_Notas, Media, Dispersao
+WHERE Materia IS NOT NULL
+
+RETURN sch.name AS Escola,
+       m.name   AS Municipio,
+       Materia, Zona,
+       size(ListaZona) AS N_Alunos,
+       round(toFloat(TotalFaltas) / size(ListaZona), 2) AS Faltas_Por_Aluno,
+       N_Notas,
+       CASE WHEN N_Notas = 0 THEN null ELSE Media END AS Media_Nota,
+       Dispersao,
+       round(coalesce(Freq_Muni_Raw, Media_Freq_UF), 2) AS IBGE_Freq_Liq_Fund
+ORDER BY Municipio ASC, Escola ASC, Materia ASC, Zona ASC
+LIMIT 200
+```
+
+---
+
+### Q10 — PCD vs Não-PCD: Desempenho e Faltas
+
+**Performance v5.5:** Segrega por grupo PCD dentro do CALL de filtragem, depois 2 CALLs independentes.
+
+#### Q10_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)
+
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+     OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+  WITH DISTINCT stu,
+       CASE WHEN coalesce(stu.deficiency, 'Não') STARTS WITH 'Possui'
+            THEN 'PCD' ELSE 'Sem PCD / Não Informado'
+       END AS GrupoPCD
+  RETURN GrupoPCD, collect(stu) AS ListaPCD
+}
+
+WITH sch, GrupoPCD, ListaPCD
+WHERE size(ListaPCD) >= 3
+
+CALL (ListaPCD) {
+  UNWIND ListaPCD AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  RETURN sum(coalesce(sc.total_faults_per_day, 0)) AS TotalFaltas
+}
+
+CALL (ListaPCD) {
+  UNWIND ListaPCD AS stu
+  OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') = ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  WHERE Nota IS NOT NULL
+  RETURN count(Nota)           AS N_Notas,
+         round(avg(Nota), 2)   AS Media,
+         round(stDev(Nota), 2) AS Dispersao
+}
+
+RETURN sch.name AS Escola,
+       GrupoPCD,
+       size(ListaPCD) AS N_Alunos,
+       round(toFloat(TotalFaltas) / size(ListaPCD), 2) AS Faltas_Por_Aluno,
+       N_Notas,
+       CASE WHEN N_Notas = 0 THEN null ELSE Media END AS Media_Nota,
+       Dispersao
+ORDER BY Escola ASC, GrupoPCD ASC
+LIMIT 200
+```
+
+#### Q10_EF2_SUP — Fundamental II / Médio
+```cypher
+MATCH (sch:School)
+
+CALL (sch) {
+  MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+  WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+     OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+     OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR']
+  WITH DISTINCT stu,
+       CASE WHEN coalesce(stu.deficiency, 'Não') STARTS WITH 'Possui'
+            THEN 'PCD' ELSE 'Sem PCD / Não Informado'
+       END AS GrupoPCD
+  RETURN GrupoPCD, collect(stu) AS ListaPCD
+}
+
+WITH sch, GrupoPCD, ListaPCD
+WHERE size(ListaPCD) >= 3
+
+CALL (ListaPCD) {
+  UNWIND ListaPCD AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  RETURN sum(coalesce(sc.total_faults_per_day, 0)) AS TotalFaltas
+}
+
+CALL (ListaPCD) {
+  UNWIND ListaPCD AS stu
+  MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') <> ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH sd.discipline_name AS Materia,
+       CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  RETURN Materia,
+         count(Nota)           AS N_Notas,
+         round(avg(Nota), 2)   AS Media,
+         round(stDev(Nota), 2) AS Dispersao
+}
+
+WITH sch, GrupoPCD, ListaPCD, TotalFaltas, Materia, N_Notas, Media, Dispersao
+WHERE Materia IS NOT NULL
+
+RETURN sch.name AS Escola,
+       Materia, GrupoPCD,
+       size(ListaPCD) AS N_Alunos,
+       round(toFloat(TotalFaltas) / size(ListaPCD), 2) AS Faltas_Por_Aluno,
+       N_Notas,
+       CASE WHEN N_Notas = 0 THEN null ELSE Media END AS Media_Nota,
+       Dispersao
+ORDER BY Escola ASC, Materia ASC, GrupoPCD ASC
+LIMIT 200
+```
+
+---
+### Q11 — Benchmark Estadual: Notas vs Metas IDEB e Proficiência QEdu
+
+#### Q11_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+   OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+
+OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+WHERE coalesce(sd.discipline_name, '') = ''
+  AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+
+WITH st.sigla AS UF,
+     st.name  AS Estado,
+     coalesce(st.qedu_ideb_ai, null)        AS QEdu_IDEB_AI,
+     coalesce(st.qedu_mt_adequado_ai, null) AS QEdu_Pct_Adequado_Mt,
+     coalesce(st.qedu_lp_adequado_ai, null) AS QEdu_Pct_Adequado_LP,
+     sch, stu,
+     CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+          THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+          ELSE coalesce(sd.final_mean, sd.grade_1)
+     END AS Nota
+
+WITH UF, Estado, QEdu_IDEB_AI, QEdu_Pct_Adequado_Mt, QEdu_Pct_Adequado_LP,
+     count(DISTINCT sch) AS N_Escolas,
+     count(DISTINCT stu) AS N_Alunos,
+     count(Nota)         AS N_Notas,
+     round(avg(Nota), 2)   AS Media_Rede,
+     round(stDev(Nota), 2) AS Dispersao_Rede
+
+WHERE N_Alunos > 25
+
+RETURN UF, Estado, N_Escolas, N_Alunos, N_Notas,
+       CASE WHEN N_Notas = 0 THEN null ELSE Media_Rede END AS Media_Rede,
+       Dispersao_Rede,
+       QEdu_IDEB_AI,
+       CASE WHEN N_Notas > 0 AND QEdu_IDEB_AI IS NOT NULL
+            THEN round(Media_Rede - QEdu_IDEB_AI, 2)
+            ELSE null
+       END AS Delta_Vs_IDEB,
+       QEdu_Pct_Adequado_Mt, QEdu_Pct_Adequado_LP
+ORDER BY Delta_Vs_IDEB DESC
+LIMIT 50
+```
+
+#### Q11_EF2_SUP — Fundamental II / Médio (Por Matéria)
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+   OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR']
+
+MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+WHERE coalesce(sd.discipline_name, '') <> ''
+  AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+
+WITH st.sigla AS UF,
+     st.name  AS Estado,
+     sd.discipline_name AS Materia,
+     coalesce(st.qedu_ideb_ai, null)        AS QEdu_IDEB_AI,
+     coalesce(st.qedu_mt_adequado_ai, null) AS QEdu_Pct_Adequado_Mt,
+     coalesce(st.qedu_lp_adequado_ai, null) AS QEdu_Pct_Adequado_LP,
+     sch, stu,
+     CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+          THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+          ELSE coalesce(sd.final_mean, sd.grade_1)
+     END AS Nota
+
+WITH UF, Estado, Materia, QEdu_IDEB_AI, QEdu_Pct_Adequado_Mt, QEdu_Pct_Adequado_LP,
+     count(DISTINCT sch) AS N_Escolas,
+     count(DISTINCT stu) AS N_Alunos,
+     count(Nota)         AS N_Notas,
+     round(avg(Nota), 2)   AS Media_Rede,
+     round(stDev(Nota), 2) AS Dispersao_Rede
+
+WHERE N_Alunos > 25 AND Materia IS NOT NULL
+
+RETURN UF, Estado, Materia, N_Escolas, N_Alunos, N_Notas,
+       CASE WHEN N_Notas = 0 THEN null ELSE Media_Rede END AS Media_Rede,
+       Dispersao_Rede, QEdu_IDEB_AI,
+       CASE WHEN N_Notas > 0 AND QEdu_IDEB_AI IS NOT NULL
+            THEN round(Media_Rede - QEdu_IDEB_AI, 2)
+            ELSE null
+       END AS Delta_Vs_IDEB,
+       QEdu_Pct_Adequado_Mt, QEdu_Pct_Adequado_LP
+ORDER BY UF ASC, Materia ASC, Delta_Vs_IDEB DESC
+LIMIT 100
+```
+
+---
+
+### Q12 — Abandono Interno da Rede vs Taxa de Abandono QEdu por Estado
+
+#### Q12_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+   OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+
+OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+WHERE sc.total_faults_per_day > 0
+
+WITH st.sigla AS UF,
+     st.name  AS Estado,
+     coalesce(st.qedu_taxa_abandono, null) AS QEdu_Taxa_Abandono_Oficial,
+     count(DISTINCT sch) AS N_Escolas,
+     count(DISTINCT stu) AS Total_Alunos,
+     count(DISTINCT CASE WHEN sc IS NOT NULL THEN stu END) AS Alunos_Com_Falta,
+     count(DISTINCT CASE WHEN sc IS NOT NULL THEN sch END) AS Escolas_Com_Diario
+
+WITH UF, Estado, QEdu_Taxa_Abandono_Oficial, N_Escolas, Total_Alunos,
+     Alunos_Com_Falta, Escolas_Com_Diario,
+     round(toFloat(Alunos_Com_Falta) / Total_Alunos * 100, 2) AS Pct_Com_Falta_Rede
+
+RETURN UF, Estado, N_Escolas,
+       Escolas_Com_Diario AS Escolas_Com_Diario_Eletronico,
+       N_Escolas - Escolas_Com_Diario AS Escolas_Sem_Diario,
+       Total_Alunos, Alunos_Com_Falta, Pct_Com_Falta_Rede,
+       QEdu_Taxa_Abandono_Oficial,
+       CASE WHEN QEdu_Taxa_Abandono_Oficial IS NOT NULL
+            THEN round(Pct_Com_Falta_Rede - QEdu_Taxa_Abandono_Oficial, 2)
+            ELSE null
+       END AS Delta_Vs_QEdu
+ORDER BY Delta_Vs_QEdu DESC
+LIMIT 27
+```
+
+#### Q12_EF2_SUP — Fundamental II / Médio
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+   OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR']
+
+OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+WHERE sc.total_faults_per_day > 0
+
+WITH st.sigla AS UF,
+     cr.stage AS Etapa,
+     coalesce(st.qedu_taxa_abandono, null) AS QEdu_Taxa_Abandono_Oficial,
+     count(DISTINCT sch) AS N_Escolas,
+     count(DISTINCT stu) AS Total_Alunos,
+     count(DISTINCT CASE WHEN sc IS NOT NULL THEN stu END) AS Alunos_Com_Falta,
+     count(DISTINCT CASE WHEN sc IS NOT NULL THEN sch END) AS Escolas_Com_Diario
+
+WITH UF, Etapa, QEdu_Taxa_Abandono_Oficial, N_Escolas, Total_Alunos,
+     Alunos_Com_Falta, Escolas_Com_Diario,
+     round(toFloat(Alunos_Com_Falta) / Total_Alunos * 100, 2) AS Pct_Com_Falta_Rede
+
+RETURN UF, Etapa, N_Escolas,
+       Escolas_Com_Diario AS Escolas_Com_Diario_Eletronico,
+       Total_Alunos, Alunos_Com_Falta, Pct_Com_Falta_Rede,
+       QEdu_Taxa_Abandono_Oficial,
+       CASE WHEN QEdu_Taxa_Abandono_Oficial IS NOT NULL
+            THEN round(Pct_Com_Falta_Rede - QEdu_Taxa_Abandono_Oficial, 2)
+            ELSE null
+       END AS Delta_Vs_QEdu
+ORDER BY UF ASC, Etapa ASC, Delta_Vs_QEdu DESC
+LIMIT 100
+```
+
+---
+
+### Q13 — Dispersão Estadual: Coeficiente de Variação das Notas por UF
+
+**Fix v5.4:** `pnad_idhm` não existe no schema. Removido. Mantido UF + N_Escolas como contexto.
+
+#### Q13_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+   OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+
+OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+WHERE coalesce(sd.discipline_name, '') = ''
+  AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+
+WITH st.sigla AS UF,
+     sch, stu,
+     CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+          THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+          ELSE coalesce(sd.final_mean, sd.grade_1)
+     END AS Nota
+
+WITH UF,
+     count(DISTINCT sch) AS N_Escolas,
+     count(DISTINCT stu) AS N_Alunos,
+     count(Nota)         AS N_Notas,
+     round(avg(Nota), 2)   AS Media,
+     round(stDev(Nota), 2) AS Dispersao,
+     round(min(Nota), 2)   AS Nota_Min,
+     round(max(Nota), 2)   AS Nota_Max
+
+WHERE N_Alunos > 25 AND N_Notas > 0
+
+RETURN UF, N_Escolas, N_Alunos, N_Notas,
+       Media, Dispersao,
+       round(CASE WHEN Media > 0 THEN (Dispersao / Media) * 100 ELSE 0 END, 1) AS CV_Pct,
+       Nota_Min, Nota_Max,
+       round(Nota_Max - Nota_Min, 2) AS Amplitude_Notas
+ORDER BY CV_Pct DESC
+LIMIT 27
+```
+
+#### Q13_EF2_SUP — Fundamental II / Médio (Por Matéria Entre Estados)
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+   OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR']
+
+MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+WHERE coalesce(sd.discipline_name, '') <> ''
+  AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+
+WITH st.sigla AS UF,
+     sd.discipline_name AS Materia,
+     sch, stu,
+     CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+          THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+          ELSE coalesce(sd.final_mean, sd.grade_1)
+     END AS Nota
+
+WITH UF, Materia,
+     count(DISTINCT sch) AS N_Escolas,
+     count(DISTINCT stu) AS N_Alunos,
+     count(Nota)         AS N_Notas,
+     round(avg(Nota), 2)   AS Media,
+     round(stDev(Nota), 2) AS Dispersao
+
+WHERE N_Alunos > 25 AND N_Notas > 0 AND Materia IS NOT NULL
+
+RETURN UF, Materia, N_Escolas, N_Alunos, N_Notas, Media, Dispersao,
+       round(CASE WHEN Media > 0 THEN (Dispersao / Media) * 100 ELSE 0 END, 1) AS CV_Pct
+ORDER BY Materia ASC, CV_Pct DESC
+LIMIT 100
+```
+
+---
+
+### Q14 — Distribuição de Alunos por Etapa e Estado vs Distorção QEdu
+
+#### Q14_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+   OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+
+WITH st.sigla AS UF,
+     cr.grade_level AS Etapa,
+     coalesce(st.qedu_distorcao_ef_ai, null) AS QEdu_Distorcao_AI_Oficial,
+     count(DISTINCT sch) AS N_Escolas,
+     count(DISTINCT stu) AS N_Alunos
+
+WHERE N_Alunos > 10
+
+RETURN UF, Etapa, N_Escolas, N_Alunos, QEdu_Distorcao_AI_Oficial
+ORDER BY UF ASC, N_Alunos DESC
+LIMIT 100
+```
+
+#### Q14_EF2_SUP — Fundamental II / Médio
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+   OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR']
+
+WITH st.sigla AS UF,
+     cr.stage AS Etapa,
+     coalesce(st.qedu_distorcao_ef_af, null)    AS QEdu_Distorcao_AF_Oficial,
+     coalesce(st.qedu_distorcao_em_total, null) AS QEdu_Distorcao_EM_Oficial,
+     count(DISTINCT sch) AS N_Escolas,
+     count(DISTINCT stu) AS N_Alunos
+
+WHERE N_Alunos > 10
+
+RETURN UF, Etapa, N_Escolas, N_Alunos,
+       CASE WHEN Etapa = 'ENSINO MÉDIO'
+            THEN QEdu_Distorcao_EM_Oficial
+            ELSE QEdu_Distorcao_AF_Oficial
+       END AS QEdu_Distorcao_Etapa_Oficial
+ORDER BY UF ASC, Etapa ASC, N_Alunos DESC
+LIMIT 100
+```
+
+---
+
+### Q15 — God Matrix para ML: Feature Set Completo por Turma
+
+#### Q15_EF1 — Fundamental Menor
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+   OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+
+WITH sch, m, st, cr, collect(DISTINCT stu) AS AlunosDaTurma
+WHERE size(AlunosDaTurma) > 10
+
+CALL (AlunosDaTurma) {
+  UNWIND AlunosDaTurma AS stu
+  OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE coalesce(sd.discipline_name, '') = ''
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  WHERE Nota IS NOT NULL
+  RETURN round(avg(Nota), 2)   AS FEAT_Media_Global,
+         round(stDev(Nota), 2) AS FEAT_Dispersao_Global,
+         count(Nota)           AS N_Notas
+}
+
+CALL (AlunosDaTurma) {
+  UNWIND AlunosDaTurma AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  RETURN sum(coalesce(sc.total_faults_per_day, 0)) AS TARGET_Faltas_Total,
+         count(DISTINCT CASE WHEN sc IS NOT NULL AND sc.total_faults_per_day > 0 THEN stu END) AS N_Alunos_Com_Falta
+}
+
+CALL (AlunosDaTurma) {
+  UNWIND AlunosDaTurma AS stu
+  OPTIONAL MATCH (stu)-[:HAS_HEALTH]->(h:Health)
+  RETURN count(CASE WHEN h IS NOT NULL AND (
+                coalesce(h.malnutrition, false)
+             OR coalesce(h.iron_deficiency_anemia, false)
+             OR coalesce(h.diabetes, false)
+             OR coalesce(h.obesity, false)
+  ) THEN 1 END) AS FEAT_N_Alunos_Risco_Saude
+}
+
+RETURN sch.id AS School_ID,
+       cr.name AS Classroom_Name,
+       cr.grade_level AS Classroom_Grade,
+       cr.stage AS Classroom_Stage,
+       size(AlunosDaTurma) AS FEAT_Total_Alunos,
+       size([s IN AlunosDaTurma WHERE coalesce(s.bolsa_familia, false) = true]) AS FEAT_N_Bolsistas,
+       size([s IN AlunosDaTurma WHERE coalesce(s.deficiency, 'Não') STARTS WITH 'Possui']) AS FEAT_N_PCD,
+       coalesce(FEAT_N_Alunos_Risco_Saude, 0) AS FEAT_N_Risco_Saude,
+       FEAT_Media_Global, FEAT_Dispersao_Global, N_Notas,
+       coalesce(TARGET_Faltas_Total, 0)  AS TARGET_Faltas_Total,
+       coalesce(N_Alunos_Com_Falta, 0)   AS FEAT_Alunos_Com_Falta,
+       coalesce(m.atl_t_analf25m, 0.0)         AS FEAT_Muni_Analf_Adultos,
+       coalesce(m.atl_freq_liq_fund, 0.0)       AS FEAT_Muni_Freq_Liq_Fund,
+       coalesce(m.atl_atraso_2_fund, 0.0)        AS FEAT_Muni_Atraso_2Anos,
+       coalesce(m.atl_expectativa_estudo_18, 0.0) AS FEAT_Muni_Expectativa_Estudo,
+       coalesce(st.qedu_ideb_ai, 0.0)           AS FEAT_State_IDEB_AI,
+       coalesce(st.qedu_taxa_abandono, 0.0)     AS FEAT_State_Taxa_Abandono,
+       coalesce(st.qedu_distorcao_ef_ai, 0.0)   AS FEAT_State_Distorcao_AI,
+       CASE WHEN N_Alunos_Com_Falta > 0 THEN 1 ELSE 0 END AS Flag_Diario_Eletronico,
+       CASE WHEN N_Notas > 0 THEN 1 ELSE 0 END            AS Flag_Notas_Cadastradas
+LIMIT 5000
+```
+
+#### Q15_EF2_SUP — Fundamental II / Médio (Mat + Port por Turma)
+```cypher
+MATCH (sch:School)-[:HAS_GEOGRAPHY]->(:SchoolGeograph)
+      -[:LOCATED_IN_MUNICIPALITY]->(m:Municipality)
+      -[:BELONGS_TO_STATE]->(st:State)
+MATCH (sch)<-[:ENROLLED_AT_SCHOOL]-(stu:Student)-[:ENROLLED_IN]->(cr:Classroom)
+WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+   OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR']
+
+WITH sch, m, st, cr, collect(DISTINCT stu) AS AlunosDaTurma
+WHERE size(AlunosDaTurma) > 10
+
+CALL (AlunosDaTurma) {
+  UNWIND AlunosDaTurma AS stu
+  OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE sd.discipline_name =~ '(?i).*MATEM.*'
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  WHERE Nota IS NOT NULL
+  RETURN round(avg(Nota), 2)   AS FEAT_Media_Mat,
+         round(stDev(Nota), 2) AS FEAT_Dispersao_Mat,
+         count(Nota)           AS N_Notas_Mat
+}
+
+CALL (AlunosDaTurma) {
+  UNWIND AlunosDaTurma AS stu
+  OPTIONAL MATCH (stu)-[:HAS_DISCIPLINE]->(sd:StudentDiscipline)
+  WHERE sd.discipline_name =~ '(?i).*PORT.*'
+    AND coalesce(sd.final_mean, sd.grade_1) IS NOT NULL
+  WITH CASE WHEN coalesce(sd.final_mean, sd.grade_1) > 10
+            THEN coalesce(sd.final_mean, sd.grade_1) / 10.0
+            ELSE coalesce(sd.final_mean, sd.grade_1)
+       END AS Nota
+  WHERE Nota IS NOT NULL
+  RETURN round(avg(Nota), 2)   AS FEAT_Media_LP,
+         round(stDev(Nota), 2) AS FEAT_Dispersao_LP,
+         count(Nota)           AS N_Notas_LP
+}
+
+CALL (AlunosDaTurma) {
+  UNWIND AlunosDaTurma AS stu
+  OPTIONAL MATCH (sc:StudentClass)-[:ATTENDED]->(stu)
+  RETURN sum(coalesce(sc.total_faults_per_day, 0)) AS TARGET_Faltas_Total,
+         count(DISTINCT CASE WHEN sc IS NOT NULL AND sc.total_faults_per_day > 0 THEN stu END) AS N_Alunos_Com_Falta
+}
+
+CALL (AlunosDaTurma) {
+  UNWIND AlunosDaTurma AS stu
+  OPTIONAL MATCH (stu)-[:HAS_HEALTH]->(h:Health)
+  RETURN count(CASE WHEN h IS NOT NULL AND (
+                coalesce(h.malnutrition, false)
+             OR coalesce(h.iron_deficiency_anemia, false)
+             OR coalesce(h.diabetes, false)
+  ) THEN 1 END) AS FEAT_N_Risco_Saude
+}
+
+RETURN sch.id AS School_ID,
+       cr.name AS Classroom_Name,
+       cr.grade_level AS Classroom_Grade,
+       cr.stage AS Classroom_Stage,
+       size(AlunosDaTurma) AS FEAT_Total_Alunos,
+       size([s IN AlunosDaTurma WHERE coalesce(s.bolsa_familia, false) = true]) AS FEAT_N_Bolsistas,
+       size([s IN AlunosDaTurma WHERE coalesce(s.deficiency, 'Não') STARTS WITH 'Possui']) AS FEAT_N_PCD,
+       coalesce(FEAT_N_Risco_Saude, 0) AS FEAT_N_Risco_Saude,
+       FEAT_Media_Mat, FEAT_Dispersao_Mat, N_Notas_Mat,
+       FEAT_Media_LP,  FEAT_Dispersao_LP,  N_Notas_LP,
+       coalesce(TARGET_Faltas_Total, 0)  AS TARGET_Faltas_Total,
+       coalesce(N_Alunos_Com_Falta, 0)   AS FEAT_Alunos_Com_Falta,
+       coalesce(m.atl_t_analf25m, 0.0)          AS FEAT_Muni_Analf_Adultos,
+       coalesce(m.atl_freq_liq_fund, 0.0)        AS FEAT_Muni_Freq_Liq_Fund,
+       coalesce(m.atl_atraso_2_fund, 0.0)         AS FEAT_Muni_Atraso_2Anos,
+       coalesce(m.atl_expectativa_estudo_18, 0.0)  AS FEAT_Muni_Expectativa_Estudo,
+       coalesce(st.qedu_ideb_ai, 0.0)            AS FEAT_State_IDEB_AI,
+       coalesce(st.qedu_taxa_abandono, 0.0)      AS FEAT_State_Taxa_Abandono,
+       coalesce(st.qedu_distorcao_ef_af, 0.0)    AS FEAT_State_Distorcao_AF,
+       coalesce(st.qedu_mt_adequado_ai, 0.0)     AS FEAT_State_Pct_Adequado_Mat,
+       CASE WHEN N_Alunos_Com_Falta > 0 THEN 1 ELSE 0 END AS Flag_Diario_Eletronico,
+       CASE WHEN N_Notas_Mat > 0 OR N_Notas_LP > 0 THEN 1 ELSE 0 END AS Flag_Notas_Cadastradas
+LIMIT 5000
+```
+
+---
+
+## 📋 Referência Rápida
+
+### Filtros de Etapa (canônicos v5.4)
+```cypher
+// EF1 — Fundamental Menor + Educação Infantil
+WHERE cr.grade_level IN ['NO 1* ANO','NO 2* ANO','NO 3* ANO','NO 4* ANO','NO 5* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [1-5]\\* SÉRIE')
+   OR cr.grade_level IN ['NA PRÉ-ESCOLA','NA CRECHE','NA EDUCAÇÃO INFANTIL']
+
+// EF2 + EM + Superior
+WHERE cr.grade_level IN ['NO 6* ANO','NO 7* ANO','NO 8* ANO','NO 9* ANO']
+   OR (cr.stage = 'ENSINO FUNDAMENTAL' AND cr.grade_level =~ 'NA [6-9]\\* SÉRIE')
+   OR cr.stage IN ['ENSINO MÉDIO','ENSINO SUPERIOR','EDUCAÇÃO PROFISSIONAL']
+```
+
+### Fallback IBGE Municipal (v5.4 — nova sintaxe CALL)
+```cypher
+WITH sch, m, st, coalesce(m.atl_freq_liq_fund, null) AS Val_Municipal
+CALL (st) {
+  MATCH (m2:Municipality)-[:BELONGS_TO_STATE]->(st)
+  WHERE m2.atl_freq_liq_fund IS NOT NULL AND m2.atl_freq_liq_fund > 0
+  RETURN avg(m2.atl_freq_liq_fund) AS Val_UF_Proxy
+}
+// Uso: coalesce(Val_Municipal, Val_UF_Proxy)
+```
+
+### Propriedades IBGE disponíveis
+| Campo | Nó | Descrição |
+|-------|----|-----------|
+| `atl_t_analf25m` | Municipality | % analfabetismo adultos (+25) |
+| `atl_freq_liq_fund` | Municipality | % frequência líquida fundamental |
+| `atl_atraso_2_fund` | Municipality | % atraso 2+ anos |
+| `atl_expectativa_estudo_18` | Municipality | Anos esperados de estudo |
+| `atl_branco_analf25m` / `atl_negro_analf25m` | Municipality | Analfabetismo por raça |
+| `qedu_ideb_ai` | State | IDEB anos iniciais |
+| `qedu_taxa_abandono` | State | Taxa abandono oficial |
+| `qedu_distorcao_ef_ai` / `qedu_distorcao_ef_af` | State | Distorção idade-série |
+| `qedu_mt_adequado_ai` / `qedu_lp_adequado_ai` | State | % proficiência adequada |
+
+---
+*v5.4 — Schema confirmado via D_CLASSROOM. grade_level = serie (não stage). CALL (var) {} sintaxe nova. Health sem _desease. deficiency = string.*
