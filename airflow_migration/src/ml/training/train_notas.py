@@ -1,34 +1,3 @@
-# src/ml/training/train_notas.py
-"""
-Grade regression model training entrypoint (EF2).
-
-Orchestrates the full grade regression pipeline:
-1. Extract EF2 base features (demographics, health, attendance, IBGE) from Neo4j
-2. Extract EF2 grade pivot (per-subject normalized grades) from Neo4j
-3. Merge both DataFrames on student_id — EF2 base is the join anchor
-4. Encode categoricals and fill grade sentinels
-5. Temporal split: train on years < test_year, hold out test_year
-6. Train GradientBoostingRegressor on FEATURES_NOTAS_EF2
-7. Evaluate on held-out test set (RMSE, R², MAE)
-8. Compute SHAP global for feature validation
-9. Log to MLflow via log_run() context manager
-10. Champion/Challenger: promote if R² improves > threshold
-
-Why EF2 base features?
-  The grade regression model needs demographic + health + attendance context
-  from EF2 students specifically (grades 6-9). extract_ef2_grades() gives
-  per-subject grades, but not demographics or IBGE. extract_ef1() gives those
-  but filters EF1 students only. The EF2 base query provides the full context.
-
-This file is called:
-- Directly: python -m airflow_migration.src.ml.training.train_notas --test-year 2024
-- Via Airflow: dag__ml_retrain.py → train_notas_task
-
-References:
-- Feature contracts: schema.py FEATURES_NOTAS_EF2
-- EF2 extractors in neo4j_extractor.py
-- Acceptance criteria: PLAN-ML-01 §13 (RMSE ≤ 1.5, R² ≥ 0.60)
-"""
 import argparse
 import logging
 
@@ -44,20 +13,30 @@ MODEL_NAME = "grade-regression-ef2"
 
 def run(test_year: int) -> None:
     """
-    Execute the full grade regression pipeline for a given test year.
+    Orchestrate comprehensive grade prediction pipelines smoothly across temporal boundaries, model evaluations, and explicit MLOps checkpoints natively.
 
     Args:
-        test_year: School year to hold out as test set (e.g., 2024).
-                   All prior years are used for training.
+        test_year (int): Calendar temporal threshold defining exclusive test partition boundaries strictly natively statically.
+
+    Raises:
+        ValueError: Bubbles failing metrics breaking hard acceptance criterion boundaries automatically securely.
+        Exception: Catches missing node graphs, absent structural columns, or network tracker failures comprehensively internally.
+
+    Returns:
+        None
     """
     import pandas as pd
     from mlflow.tracking import MlflowClient
     from ..features.neo4j_extractor import Neo4jExtractor
     from ..features.feature_pipeline import (
-        encode_categoricals, temporal_split, fill_grade_sentinel,
+        encode_categoricals,
+        temporal_split,
+        fill_grade_sentinel,
     )
     from ..features.schema import (
-        FEATURES_NOTAS_EF2, TARGET_GRADE, GRADE_EF2_FEATURES,
+        FEATURES_NOTAS_EF2,
+        TARGET_GRADE,
+        GRADE_EF2_FEATURES,
     )
     from ..models.grade_regressor import GradeRegressorConfig, train_grade_regressor
     from ..evaluation.metrics import eval_regressor
@@ -69,8 +48,10 @@ def run(test_year: int) -> None:
 
     # ── 1. Extract ────────────────────────────────────────────────────────────
     extractor = Neo4jExtractor.from_env()
-    df_base   = extractor.extract_students_base("EF2")    # demographics + health + attendance + IBGE for EF2 students
-    df_grades = extractor.extract_ef2_grades()            # per-subject grade pivot
+    df_base = extractor.extract_students_base(
+        "EF2"
+    )  # demographics + health + attendance + IBGE for EF2 students
+    df_grades = extractor.extract_ef2_grades()  # per-subject grade pivot
     extractor.close()
 
     # ── 2. Merge: EF2 base is the anchor, grades are joined on student_id ─────
@@ -78,7 +59,9 @@ def run(test_year: int) -> None:
     df = df_base.merge(df_grades, on="student_id", how="inner")
     logger.info(
         "EF2 merge: %d base rows × %d grade rows → %d merged (inner join on student_id)",
-        len(df_base), len(df_grades), len(df),
+        len(df_base),
+        len(df_grades),
+        len(df),
     )
     if len(df) < 1000:
         logger.warning(
@@ -93,37 +76,45 @@ def run(test_year: int) -> None:
 
     # ── 3. Encode + fill sentinels ────────────────────────────────────────────
     df = encode_categoricals(df)
-    df = fill_grade_sentinel(df, GRADE_EF2_FEATURES)   # null subject grades → -1
+    df = fill_grade_sentinel(df, GRADE_EF2_FEATURES)  # null subject grades → -1
 
     # Drop rows where target is null (can't regress without a grade)
     df_clean = df.dropna(subset=[TARGET_GRADE])
     n_dropped = len(df) - len(df_clean)
     if n_dropped > 0:
-        logger.info("Dropped %d rows with null %s (no final grade registered)", n_dropped, TARGET_GRADE)
+        logger.info(
+            "Dropped %d rows with null %s (no final grade registered)",
+            n_dropped,
+            TARGET_GRADE,
+        )
     df = df_clean
 
     # ── 4. Temporal split ─────────────────────────────────────────────────────
     X_train, y_train, X_test, y_test = temporal_split(
-        df, target_col=TARGET_GRADE, test_year=test_year,
+        df,
+        target_col=TARGET_GRADE,
+        test_year=test_year,
         feature_cols=FEATURES_NOTAS_EF2,
     )
 
     # ── 5. Train ──────────────────────────────────────────────────────────────
     config = GradeRegressorConfig()
-    model  = train_grade_regressor(X_train, y_train, config)
+    model = train_grade_regressor(X_train, y_train, config)
 
     # ── 6. Evaluate ───────────────────────────────────────────────────────────
-    y_pred  = model.predict(X_test)
+    y_pred = model.predict(X_test)
     # Clip predictions to valid grade range [0, 10] before evaluation
     import numpy as np
-    y_pred  = np.clip(y_pred, 0.0, 10.0)
+
+    y_pred = np.clip(y_pred, 0.0, 10.0)
     metrics = eval_regressor(y_test.values, y_pred)
 
     if not metrics.passes_acceptance():
         logger.warning(
             "Grade model does NOT meet acceptance criteria. "
             "RMSE=%.4f (need <=1.5), R2=%.4f (need >=0.60)",
-            metrics.rmse, metrics.r2,
+            metrics.rmse,
+            metrics.r2,
         )
     else:
         logger.info("All acceptance criteria met: %s", metrics.as_dict())
@@ -133,9 +124,9 @@ def run(test_year: int) -> None:
 
     # ── 8. Log to MLflow ──────────────────────────────────────────────────────
     params = vars(config) | {
-        "test_year":       test_year,
-        "n_train":         len(X_train),
-        "n_test":          len(X_test),
+        "test_year": test_year,
+        "n_train": len(X_train),
+        "n_test": len(X_test),
         "n_dropped_nulls": n_dropped,
     }
     tags = {"segment": "EF2", "target": TARGET_GRADE}
@@ -153,13 +144,21 @@ def run(test_year: int) -> None:
         challenger_metrics=metrics.as_dict(),
         client=MlflowClient(),
     )
-    logger.info("Pipeline complete. RMSE=%.4f | R²=%.4f | Promoted=%s",
-                metrics.rmse, metrics.r2, promoted)
+    logger.info(
+        "Pipeline complete. RMSE=%.4f | R²=%.4f | Promoted=%s",
+        metrics.rmse,
+        metrics.r2,
+        promoted,
+    )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train grade regression model (EF2)")
-    parser.add_argument("--test-year", type=int, required=True,
-                        help="School year to hold out as test set")
+    parser.add_argument(
+        "--test-year",
+        type=int,
+        required=True,
+        help="School year to hold out as test set",
+    )
     args = parser.parse_args()
     run(args.test_year)

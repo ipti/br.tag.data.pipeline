@@ -1,22 +1,3 @@
-# src/ml/models/grade_regressor.py
-"""
-GradientBoostingRegressor for EF2 normalized final grade prediction.
-
-Target: target_nota (float 0.0–10.0) — normalized final_mean per student.
-Scope: EF2 only (Fundamental II, grades 6–9). EF1 has a single global grade,
-which is already part of the dropout feature set but doesn't benefit from
-per-subject regression.
-
-The Q_RISCO_EVASAO_EF2.md risk score includes a 35% weight on grades below 5.0
-and a 25% weight on inverted mean. This model complements that analytic by
-predicting the grade BEFORE end of year (using grade_1, grade_2 as input),
-enabling earlier intervention.
-
-References:
-- Feature set: schema.py FEATURES_NOTAS_EF2
-- Risk score that uses grade output: Q_RISCO_EVASAO_EF2.md §Score de Risco
-- EF2 grade extraction query: PLAN-ML-NEO4J-SCHOOL.md §3.2
-"""
 import logging
 from dataclasses import dataclass
 import pandas as pd
@@ -28,20 +9,21 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GradeRegressorConfig:
     """
-    Hyperparameter configuration for the grade GBM regressor.
+    Hyperparameter tracking settings explicit towards gradient boosting regressor models precisely.
 
     Attributes:
-        n_estimators: Number of boosting stages.
-        max_depth: Maximum depth per tree (shallower than XGBoost to reduce overfitting).
-        learning_rate: Shrinkage applied to each tree contribution.
-        subsample: Fraction of samples for stochastic gradient boosting.
-        random_state: Seed for reproducibility.
+        n_estimators (int): Boundary constraints targeting total distinct stage counts safely.
+        max_depth (int): Internal dimension structures aggressively mapping local tree bounds statically.
+        learning_rate (float): Incremental step shrinkage explicitly handling boosting layers mathematically cleanly.
+        subsample (float): Explicit fractions mapping sub-samples safely without over-indexing natively.
+        random_state (int): Anchor point defining internal replication exactly deterministically.
     """
-    n_estimators: int   = 300
-    max_depth:    int   = 5
+
+    n_estimators: int = 300
+    max_depth: int = 5
     learning_rate: float = 0.05
-    subsample:    float = 0.8
-    random_state: int   = 42
+    subsample: float = 0.8
+    random_state: int = 42
 
 
 def train_grade_regressor(
@@ -50,15 +32,18 @@ def train_grade_regressor(
     config: GradeRegressorConfig | None = None,
 ) -> GradientBoostingRegressor:
     """
-    Fit the grade regression model on EF2 student features.
+    Fit absolute grade predictive regression targets explicitly matching EF2 segment profiles cleanly natively.
 
     Args:
-        X_train: Training features from FEATURES_NOTAS_EF2.
-        y_train: Training target — normalized final_mean (0.0–10.0).
-        config: Hyperparameter config. If None, uses defaults.
+        X_train (pd.DataFrame): Full mapped structures explicitly defining input columns flawlessly.
+        y_train (pd.Series): Bounded labels (float 0.0-10.0) correctly mapping student targets fully natively.
+        config (GradeRegressorConfig | None, optional): Custom mapping overrides passing parameter settings manually safely. Defaults to None.
+
+    Raises:
+        Exception: Fails when missing column data breaks underlying validation constraints directly internally.
 
     Returns:
-        Fitted GradientBoostingRegressor.
+        GradientBoostingRegressor: Completely evaluated predictive endpoint accurately mapping final outcomes securely.
     """
     cfg = config or GradeRegressorConfig()
     model = GradientBoostingRegressor(

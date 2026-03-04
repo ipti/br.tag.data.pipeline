@@ -1,22 +1,3 @@
-# src/ml/evaluation/explainability.py
-"""
-SHAP explainability for tree models.
-
-Two entry points:
-1. compute_shap_global(): Summary plot across the test set. Saved as PNG artifact in MLflow.
-   Used to validate that the model learns from the right features (attendance, grades)
-   rather than spurious correlates. Top-5 features must explain ≥ 65% of global impact.
-
-2. compute_shap_local(): Per-student SHAP decomposition. Called by the API's
-   /predict/dropout/{student_id} endpoint to return top-5 factors to the user.
-
-The 'factors' format matches the DropoutResponse schema in PLAN-ML-03-API-SERVING.md §2.
-
-References:
-- Global validation criterion: acceptance criteria table §12
-- Local output used by: PLAN-ML-03-API-SERVING.md routes/predict.py
-- SHAP interpretation for RAG: PLAN-ML-02-RAG-LLM.md §8 (context builder)
-"""
 import io
 import logging
 import numpy as np
@@ -26,7 +7,7 @@ import shap
 
 logger = logging.getLogger(__name__)
 
-_TOP5_SHARE_THRESHOLD = 0.65   # acceptance criterion
+_TOP5_SHARE_THRESHOLD = 0.65  # acceptance criterion
 
 
 def compute_shap_global(
@@ -38,35 +19,36 @@ def compute_shap_global(
     Compute global SHAP values and generate a summary plot.
 
     Uses a random sample of the test set for speed (TreeExplainer is O(N × depth)).
-    Saves the plot to a BytesIO buffer for MLflow artifact logging.
+    Saves the plot to a BytesIO buffer for MLflow artifact logging. This validates
+    that the model relies on semantically meaningful features.
 
     Args:
-        model: Fitted XGBoost or GBM model with TreeExplainer support.
-        X_test: Test feature DataFrame.
-        max_samples: Max rows to use for SHAP computation.
-
-    Returns:
-        Tuple of (shap_values_array, png_buffer).
-        shap_values_array shape: (n_samples, n_features).
-        png_buffer: In-memory PNG for logging as MLflow artifact.
+        model (Any): Fitted XGBoost or GBM model with TreeExplainer support.
+        X_test (pd.DataFrame): Test feature DataFrame containing the model inputs.
+        max_samples (int, optional): Max rows to use for SHAP computation to ensure fast runtime. Defaults to 2000.
 
     Raises:
-        Warning if top-5 features explain < 65% of global SHAP impact.
+        ValueError: If the model is not supported by TreeExplainer or SHAP fails during computation.
+        Exception: If SHAP value generation or plotting encounters a runtime issue.
+
+    Returns:
+        tuple[np.ndarray, io.BytesIO]: A tuple containing the shap_values_array of shape (n_samples, n_features) and a png_buffer In-memory PNG for logging as an MLflow artifact.
     """
     sample = X_test.sample(min(max_samples, len(X_test)), random_state=42)
-    explainer   = shap.TreeExplainer(model)
+    explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(sample)
 
     # Validate global explanation concentration
-    mean_abs      = np.abs(shap_values).mean(axis=0)
-    top5_idx      = mean_abs.argsort()[-5:][::-1]
-    top5_share    = mean_abs[top5_idx].sum() / mean_abs.sum()
+    mean_abs = np.abs(shap_values).mean(axis=0)
+    top5_idx = mean_abs.argsort()[-5:][::-1]
+    top5_share = mean_abs[top5_idx].sum() / mean_abs.sum()
 
     if top5_share < _TOP5_SHARE_THRESHOLD:
         logger.warning(
             "SHAP: top-5 features explain only %.0f%% of global impact (threshold: %.0f%%). "
             "Model may be relying on many weak signals — consider feature selection.",
-            top5_share * 100, _TOP5_SHARE_THRESHOLD * 100,
+            top5_share * 100,
+            _TOP5_SHARE_THRESHOLD * 100,
         )
     else:
         logger.info(
@@ -96,31 +78,30 @@ def compute_shap_local(
     Compute SHAP values for a single student and return top-5 factors.
 
     Called by the prediction API to explain individual predictions to school managers.
-    The output format matches the 'top_factors' field in DropoutResponse
-    (PLAN-ML-03-API-SERVING.md §2).
+    The output format strictly adheres to the 'top_factors' field defined in the DropoutResponse schema.
 
     Args:
-        model: Fitted tree model.
-        X_student: Single-row DataFrame with the student's feature values.
+        model (Any): Fitted tree model supported by SHAP TreeExplainer.
+        X_student (pd.DataFrame): Single-row DataFrame containing the specific student's feature values.
+
+    Raises:
+        ValueError: If the provided `X_student` DataFrame does not contain exactly a single row.
+        Exception: If the TreeExplainer fails to compute SHAP values.
 
     Returns:
-        Dict with:
-        - 'base_value': float — model's expected output (mean prediction)
-        - 'top_factors': list of 5 dicts [{feature, impact, direction}]
-                         sorted by abs(impact) descending
-        - 'all_shap_values': dict of {feature: shap_value} for all features
+        dict: A dictionary containing 'base_value' (the mean prediction output), 'top_factors' (list of top 5 impact dictionaries sorted by absolute impact), and 'all_shap_values' (detailed feature to impact mapping).
     """
     if len(X_student) != 1:
         raise ValueError(f"Expected single-row DataFrame, got {len(X_student)} rows.")
 
-    explainer   = shap.TreeExplainer(model)
+    explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(X_student)
-    values      = shap_values[0] if isinstance(shap_values, list) else shap_values[0]
+    values = shap_values[0] if isinstance(shap_values, list) else shap_values[0]
 
     feature_impact = [
         {
-            "feature":   feat,
-            "impact":    round(float(val), 4),
+            "feature": feat,
+            "impact": round(float(val), 4),
             "direction": "increases_risk" if val > 0 else "decreases_risk",
         }
         for feat, val in zip(X_student.columns, values)
@@ -128,7 +109,7 @@ def compute_shap_local(
     feature_impact.sort(key=lambda x: abs(x["impact"]), reverse=True)
 
     return {
-        "base_value":       float(explainer.expected_value),
-        "top_factors":      feature_impact[:5],
-        "all_shap_values":  {f["feature"]: f["impact"] for f in feature_impact},
+        "base_value": float(explainer.expected_value),
+        "top_factors": feature_impact[:5],
+        "all_shap_values": {f["feature"]: f["impact"] for f in feature_impact},
     }

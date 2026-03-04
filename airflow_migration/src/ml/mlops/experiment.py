@@ -1,22 +1,3 @@
-# src/ml/mlops/experiment.py
-"""
-Thin MLflow context manager for experiment tracking.
-
-The model training functions (dropout_classifier.py, grade_regressor.py) are
-completely unaware of MLflow. This module wraps them in an mlflow.start_run()
-context, providing a clean RunContext object to the entrypoints.
-
-Experiment names map to model types. Changing the experiment name here changes
-it everywhere — no scattered mlflow.set_experiment() calls in other files.
-
-Usage in training entrypoint:
-    with log_run("evasao", params=vars(config), tags={"segment": "EF1"}) as run:
-        model = train_dropout(X_tr, y_tr, X_val, y_val, config)
-        metrics = eval_classifier(y_test.values, predict_dropout(model, X_test)["evasao_prob"])
-        run.log_metrics(metrics.as_dict())
-        run.log_model(model, artifact_path="dropout_model")
-        run_id = run.run_id
-"""
 import io
 import logging
 import os
@@ -30,8 +11,8 @@ import mlflow.xgboost
 logger = logging.getLogger(__name__)
 
 EXPERIMENT_NAMES = {
-    "evasao":     "school-dropout-prediction",
-    "notas":      "grade-regression-ef2",
+    "evasao": "school-dropout-prediction",
+    "notas": "grade-regression-ef2",
     "clustering": "student-clustering",
 }
 
@@ -39,27 +20,59 @@ EXPERIMENT_NAMES = {
 @dataclass
 class RunContext:
     """
-    Handle to an active MLflow run.
+    Handle holding contextual bounds to an active MLflow run block.
 
-    Wraps mlflow logging calls so that entrypoints don't import mlflow directly.
-    All methods delegate to the active run context set by mlflow.start_run().
+    Abstracts MLflow logging execution endpoints so explicit entrypoints cleanly lack direct tight coupling with explicit API dependencies natively.
     """
+
     run_id: str
 
     def log_metrics(self, metrics: dict[str, float]) -> None:
-        """Log a dict of metric name → float value to the active run."""
+        """
+        Log multiple evaluation metrics neatly pointing dictionary structures natively into MLflow spaces.
+
+        Args:
+            metrics (dict[str, float]): Dictionary explicitly containing exact key names bounding against generated floating validation scores.
+
+        Raises:
+            Exception: If generic API limits block sending tracked numbers.
+
+        Returns:
+            None
+        """
         mlflow.log_metrics(metrics)
         logger.info("Metrics logged: %s", {k: round(v, 4) for k, v in metrics.items()})
 
     def log_params(self, params: dict) -> None:
-        """Log hyperparameters to the active run."""
+        """
+        Log designated execution hyperparameters dynamically into active tracking windows cleanly.
+
+        Args:
+            params (dict): Key-value pair objects indicating environment constraints bound by execution models.
+
+        Raises:
+            Exception: Thrown if generic tracking states are disrupted ungracefully.
+
+        Returns:
+            None
+        """
         mlflow.log_params({k: str(v) for k, v in params.items()})
 
     def log_model(self, model, artifact_path: str) -> None:
         """
-        Log a trained model to the active run.
+        Log a completed natively trained model entity securely directly onto tracking locations securely.
 
-        Detects XGBoost vs sklearn automatically by checking for get_booster().
+        Implicitly inspects objects searching for specific methods separating XGBoost wrappers directly from internal sklearn objects dynamically.
+
+        Args:
+            model (Any): Generic initialized variable capturing fitted structure boundaries explicitly targeting predictions.
+            artifact_path (str): Sub-path file prefix strings explicitly identifying model registry binding endpoints correctly.
+
+        Raises:
+            Exception: Fails when serialization breaks structural bounds on models unsuited for explicit pickling wrappers.
+
+        Returns:
+            None
         """
         if hasattr(model, "get_booster"):
             mlflow.xgboost.log_model(model, artifact_path)
@@ -68,7 +81,19 @@ class RunContext:
         logger.info("Model logged to artifact_path='%s'", artifact_path)
 
     def log_png_buffer(self, buf: io.BytesIO, filename: str) -> None:
-        """Log an in-memory PNG buffer as an MLflow artifact (e.g., SHAP plot)."""
+        """
+        Log loaded memory buffered PNG outputs cleanly tracking explicitly as MLflow mapped artifacts.
+
+        Args:
+            buf (io.BytesIO): Native standard IO buffer wrapping explicit PNG image bytes dynamically loaded purely in memory structures.
+            filename (str): Final tracked name mapping the artifact appropriately.
+
+        Raises:
+            Exception: Triggered explicitly when temporary file access patterns break out from standard IO limit windows natively.
+
+        Returns:
+            None
+        """
         with tempfile.NamedTemporaryFile(suffix=f"_{filename}", delete=False) as f:
             f.write(buf.read())
             tmp_path = f.name
@@ -76,8 +101,22 @@ class RunContext:
         os.unlink(tmp_path)
 
     def log_dataframe(self, df, filename: str) -> None:
-        """Log a DataFrame as a CSV artifact (e.g., feature importance, drift report summary)."""
-        with tempfile.NamedTemporaryFile(suffix=f"_{filename}", delete=False, mode="w") as f:
+        """
+        Log pandas dataframe payloads strictly serializing internal structure directly towards MLflow storage layers accurately.
+
+        Args:
+            df (pd.DataFrame): Data structure encapsulating reporting information dynamically (ex. drift report summaries).
+            filename (str): Name suffixing mapped endpoints correctly linking outputs appropriately.
+
+        Raises:
+            Exception: If generic CSV serialization logic boundaries fail interpreting unknown memory chunks properly.
+
+        Returns:
+            None
+        """
+        with tempfile.NamedTemporaryFile(
+            suffix=f"_{filename}", delete=False, mode="w"
+        ) as f:
             df.to_csv(f, index=False)
             tmp_path = f.name
         mlflow.log_artifact(tmp_path, artifact_path="data")
@@ -91,18 +130,18 @@ def log_run(
     tags: dict | None = None,
 ):
     """
-    Context manager for an MLflow run.
-
-    Sets the experiment, starts a run, logs params, yields RunContext,
-    then closes the run (including on exception).
+    Provide robust execution contexts bridging raw training logic perfectly onto tracking run sequences properly.
 
     Args:
-        model_type: Key in EXPERIMENT_NAMES dict ('evasao', 'notas', 'clustering').
-        params: Hyperparameter dict — logged at run start.
-        tags: Optional dict of string tags (e.g., {'segment': 'EF1'}).
+        model_type (str): Dictates explicit target bounds looking against defined logic dictionaries.
+        params (dict): Setup bounds carrying logic dynamically logging early on run hooks actively.
+        tags (dict | None, optional): Map defining internal tagging structures attaching correctly to execution instances. Defaults to None.
+
+    Raises:
+        Exception: Bubbles anything generating out of nested scopes up fully into global failure routines seamlessly.
 
     Yields:
-        RunContext object with logging methods.
+        RunContext: Constructed connection object holding specific log_* function blocks directly.
     """
     experiment_name = EXPERIMENT_NAMES.get(model_type, model_type)
     mlflow.set_tracking_uri(os.environ.get("MLFLOW_URI", "http://localhost:5001"))
@@ -111,7 +150,9 @@ def log_run(
     with mlflow.start_run(tags=tags or {}) as run:
         mlflow.log_params({k: str(v) for k, v in params.items()})
         run_id = run.info.run_id
-        logger.info("MLflow run started: experiment='%s' run_id=%s", experiment_name, run_id)
+        logger.info(
+            "MLflow run started: experiment='%s' run_id=%s", experiment_name, run_id
+        )
         yield RunContext(run_id=run_id)
 
     logger.info("MLflow run completed: run_id=%s", run_id)
