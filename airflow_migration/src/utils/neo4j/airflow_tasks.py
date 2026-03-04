@@ -4,6 +4,7 @@ from src.utils.connections.connection_manager import DatabaseConnectionManager
 from src.utils.neo4j.ingestor import Neo4jIngestor
 import src.utils.neo4j.queries as q
 
+
 def create_indexes(**kwargs):
     """Create all Neo4j indexes before data loading."""
     logger = logging.getLogger(__name__)
@@ -16,7 +17,14 @@ def create_indexes(**kwargs):
     finally:
         ingestor.close()
 
-def stream_to_neo4j(sql_query: str, cypher_query: str, batch_size: int = 5000, transformer: callable = None, **kwargs):
+
+def stream_to_neo4j(
+    sql_query: str,
+    cypher_query: str,
+    batch_size: int = 5000,
+    transformer: callable = None,
+    **kwargs,
+):
     """
     Generic function to stream from SQL Server Warehouse (dbo_tia) and load to Neo4j.
 
@@ -28,7 +36,7 @@ def stream_to_neo4j(sql_query: str, cypher_query: str, batch_size: int = 5000, t
     """
     logger = logging.getLogger(__name__)
 
-    env = kwargs.get('environment', 'prod')
+    env = kwargs.get("environment", "prod")
     logger.info(f"Connecting to SQL Server using environment: {env}")
     db_manager = DatabaseConnectionManager(environment=env)
     ingestor = Neo4jIngestor(batch_size=batch_size)

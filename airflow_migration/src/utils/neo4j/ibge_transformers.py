@@ -12,18 +12,18 @@ import re
 # Grouping preto + pardo into "negro" is done at query time, not at ingest,
 # to preserve full granularity.
 COR_TO_PREFIX: dict[str, str] = {
-    "branca":   "branco_",
-    "preta":    "preto_",
-    "parda":    "pardo_",
-    "amarela":  "amarelo_",
+    "branca": "branco_",
+    "preta": "preto_",
+    "parda": "pardo_",
+    "amarela": "amarelo_",
     "indígena": "indigena_",
-    "indigena": "indigena_",   # fallback without accent
-    "branco":   "branco_",
-    "negro":    "negro_",
+    "indigena": "indigena_",  # fallback without accent
+    "branco": "branco_",
+    "negro": "negro_",
 }
 
 SEXO_TO_PREFIX: dict[str, str] = {
-    "homem":  "homem_",
+    "homem": "homem_",
     "mulher": "mulher_",
 }
 
@@ -76,9 +76,9 @@ def transform_ideb_by_ciclo(row: dict) -> dict | None:
         ibge_id = int(float(row.get("ibge_id")))
     except (ValueError, TypeError):
         return None
-        
+
     return {
-        **row, 
+        **row,
         "ibge_id": ibge_id,
-        "ciclo_id": str(row.get("ciclo_id", "")).strip().upper()
+        "ciclo_id": str(row.get("ciclo_id", "")).strip().upper(),
     }

@@ -10,6 +10,7 @@ Strategy (3 Stages):
 
 All SQL queries read from the dbo_tia schema on SQL Server.
 """
+
 from datetime import datetime, timedelta
 import logging
 
@@ -23,12 +24,12 @@ import src.utils.neo4j.queries as q
 
 # Default arguments for the DAG
 default_args = {
-    'owner': 'airflow',
-    'depends_on_past': False,
-    'email_on_failure': False,
-    'email_on_retry': False,
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    "owner": "airflow",
+    "depends_on_past": False,
+    "email_on_failure": False,
+    "email_on_retry": False,
+    "retries": 1,
+    "retry_delay": timedelta(minutes=5),
 }
 
 
@@ -144,20 +145,20 @@ import src.utils.neo4j.transformers as t
 # ================================================================
 
 with DAG(
-    'neo4j_full_migration',
+    "neo4j_full_migration",
     default_args=default_args,
-    description='Migrates ALL 10 dbo_tia tables to Neo4j (nodes + relationships)',
+    description="Migrates ALL 10 dbo_tia tables to Neo4j (nodes + relationships)",
     schedule=None,
     start_date=datetime(2023, 1, 1),
     catchup=False,
-    tags=['neo4j', 'migration'],
+    tags=["neo4j", "migration"],
 ) as dag:
 
     # ----------------------------------------------------------
     # Stage 0: Create Indexes
     # ----------------------------------------------------------
     task_create_indexes = PythonOperator(
-        task_id='create_indexes',
+        task_id="create_indexes",
         python_callable=create_indexes,
     )
 
@@ -165,68 +166,77 @@ with DAG(
     # Stage 1: Dimension Nodes
     # ----------------------------------------------------------
     load_students = PythonOperator(
-        task_id='load_students',
+        task_id="load_students",
         python_callable=stream_to_neo4j,
-        op_kwargs={'sql_query': SQL_STUDENT, 'cypher_query': q.MERGE_STUDENT},
+        op_kwargs={"sql_query": SQL_STUDENT, "cypher_query": q.MERGE_STUDENT},
     )
 
     load_schools = PythonOperator(
-        task_id='load_schools',
+        task_id="load_schools",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_SCHOOL, 
-            'cypher_query': q.MERGE_SCHOOL,
-            'transformer': t.transform_school_node
+            "sql_query": SQL_SCHOOL,
+            "cypher_query": q.MERGE_SCHOOL,
+            "transformer": t.transform_school_node,
         },
     )
 
     load_classrooms = PythonOperator(
-        task_id='load_classrooms',
+        task_id="load_classrooms",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_CLASSROOM, 
-            'cypher_query': q.MERGE_CLASSROOM,
-            'transformer': t.transform_classroom_node
+            "sql_query": SQL_CLASSROOM,
+            "cypher_query": q.MERGE_CLASSROOM,
+            "transformer": t.transform_classroom_node,
         },
     )
 
     load_health = PythonOperator(
-        task_id='load_health',
+        task_id="load_health",
         python_callable=stream_to_neo4j,
-        op_kwargs={'sql_query': SQL_HEALTH, 'cypher_query': q.MERGE_HEALTH},
+        op_kwargs={"sql_query": SQL_HEALTH, "cypher_query": q.MERGE_HEALTH},
     )
 
     load_school_geograph = PythonOperator(
-        task_id='load_school_geograph',
+        task_id="load_school_geograph",
         python_callable=stream_to_neo4j,
-        op_kwargs={'sql_query': SQL_SCHOOL_GEOGRAPH, 'cypher_query': q.MERGE_SCHOOL_GEOGRAPH},
+        op_kwargs={
+            "sql_query": SQL_SCHOOL_GEOGRAPH,
+            "cypher_query": q.MERGE_SCHOOL_GEOGRAPH,
+        },
     )
 
     load_student_discipline = PythonOperator(
-        task_id='load_student_discipline',
+        task_id="load_student_discipline",
         python_callable=stream_to_neo4j,
-        op_kwargs={'sql_query': SQL_STUDENT_DISCIPLINE, 'cypher_query': q.MERGE_STUDENT_DISCIPLINE},
+        op_kwargs={
+            "sql_query": SQL_STUDENT_DISCIPLINE,
+            "cypher_query": q.MERGE_STUDENT_DISCIPLINE,
+        },
     )
 
     # ----------------------------------------------------------
     # Stage 2: Fact Nodes
     # ----------------------------------------------------------
     load_avaliation = PythonOperator(
-        task_id='load_avaliation',
+        task_id="load_avaliation",
         python_callable=stream_to_neo4j,
-        op_kwargs={'sql_query': SQL_AVALIATION, 'cypher_query': q.MERGE_AVALIATION},
+        op_kwargs={"sql_query": SQL_AVALIATION, "cypher_query": q.MERGE_AVALIATION},
     )
 
     load_class = PythonOperator(
-        task_id='load_class',
+        task_id="load_class",
         python_callable=stream_to_neo4j,
-        op_kwargs={'sql_query': SQL_CLASS, 'cypher_query': q.MERGE_CLASS},
+        op_kwargs={"sql_query": SQL_CLASS, "cypher_query": q.MERGE_CLASS},
     )
 
     load_student_class = PythonOperator(
-        task_id='load_student_class',
+        task_id="load_student_class",
         python_callable=stream_to_neo4j,
-        op_kwargs={'sql_query': SQL_STUDENT_CLASS, 'cypher_query': q.MERGE_STUDENT_CLASS},
+        op_kwargs={
+            "sql_query": SQL_STUDENT_CLASS,
+            "cypher_query": q.MERGE_STUDENT_CLASS,
+        },
     )
 
     # ----------------------------------------------------------
@@ -235,125 +245,125 @@ with DAG(
 
     # F_ENROLLMENT relationships (Student->Classroom, Student->School, Student->Health)
     link_enrollment = PythonOperator(
-        task_id='link_enrollment',
+        task_id="link_enrollment",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_ENROLLMENT,
-            'cypher_query': q.LINK_ENROLLMENT,
-            'transformer': t.transform_enrollment_student,
+            "sql_query": SQL_ENROLLMENT,
+            "cypher_query": q.LINK_ENROLLMENT,
+            "transformer": t.transform_enrollment_student,
         },
     )
 
     link_enrollment_school = PythonOperator(
-        task_id='link_enrollment_school',
+        task_id="link_enrollment_school",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_ENROLLMENT,
-            'cypher_query': q.LINK_ENROLLMENT_SCHOOL,
-            'transformer': t.transform_enrollment_school,
+            "sql_query": SQL_ENROLLMENT,
+            "cypher_query": q.LINK_ENROLLMENT_SCHOOL,
+            "transformer": t.transform_enrollment_school,
         },
     )
 
     link_enrollment_health = PythonOperator(
-        task_id='link_enrollment_health',
+        task_id="link_enrollment_health",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_ENROLLMENT,
-            'cypher_query': q.LINK_ENROLLMENT_HEALTH,
-            'transformer': t.transform_enrollment_health,
+            "sql_query": SQL_ENROLLMENT,
+            "cypher_query": q.LINK_ENROLLMENT_HEALTH,
+            "transformer": t.transform_enrollment_health,
         },
     )
 
     # D_CLASSROOM -> D_SCHOOL
     link_class_school = PythonOperator(
-        task_id='link_class_school',
+        task_id="link_class_school",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_CLASSROOM_SCHOOL,
-            'cypher_query': q.LINK_CLASS_SCHOOL,
-            'transformer': t.transform_classroom_school,
+            "sql_query": SQL_CLASSROOM_SCHOOL,
+            "cypher_query": q.LINK_CLASS_SCHOOL,
+            "transformer": t.transform_classroom_school,
         },
     )
 
     # D_SCHOOL -> D_SCHOOL_GEOGRAPH
     link_school_geograph = PythonOperator(
-        task_id='link_school_geograph',
+        task_id="link_school_geograph",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_SCHOOL_GEO_REL,
-            'cypher_query': q.LINK_SCHOOL_GEOGRAPH,
-            'transformer': t.transform_school_geograph_rel,
+            "sql_query": SQL_SCHOOL_GEO_REL,
+            "cypher_query": q.LINK_SCHOOL_GEOGRAPH,
+            "transformer": t.transform_school_geograph_rel,
         },
     )
 
     # D_STUDENT -> D_STUDENT_DISCIPLINE
     link_student_discipline = PythonOperator(
-        task_id='link_student_discipline',
+        task_id="link_student_discipline",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_DISCIPLINE_REL,
-            'cypher_query': q.LINK_STUDENT_DISCIPLINE,
+            "sql_query": SQL_DISCIPLINE_REL,
+            "cypher_query": q.LINK_STUDENT_DISCIPLINE,
         },
     )
 
     # F_AVALIATION -> Student + StudentDiscipline
     link_avaliation_student = PythonOperator(
-        task_id='link_avaliation_student',
+        task_id="link_avaliation_student",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_AVALIATION_REL,
-            'cypher_query': q.LINK_AVALIATION_STUDENT,
-            'transformer': t.transform_avaliation_student,
+            "sql_query": SQL_AVALIATION_REL,
+            "cypher_query": q.LINK_AVALIATION_STUDENT,
+            "transformer": t.transform_avaliation_student,
         },
     )
 
     link_avaliation_discipline = PythonOperator(
-        task_id='link_avaliation_discipline',
+        task_id="link_avaliation_discipline",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_AVALIATION_REL,
-            'cypher_query': q.LINK_AVALIATION_DISCIPLINE,
+            "sql_query": SQL_AVALIATION_REL,
+            "cypher_query": q.LINK_AVALIATION_DISCIPLINE,
         },
     )
 
     # F_CLASS -> Classroom + School
     link_class_classroom = PythonOperator(
-        task_id='link_class_classroom',
+        task_id="link_class_classroom",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_CLASS_REL,
-            'cypher_query': q.LINK_CLASS_CLASSROOM,
-            'transformer': t.transform_class_classroom,
+            "sql_query": SQL_CLASS_REL,
+            "cypher_query": q.LINK_CLASS_CLASSROOM,
+            "transformer": t.transform_class_classroom,
         },
     )
 
     link_class_at_school = PythonOperator(
-        task_id='link_class_at_school',
+        task_id="link_class_at_school",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_CLASS_REL,
-            'cypher_query': q.LINK_CLASS_AT_SCHOOL,
-            'transformer': t.transform_class_school,
+            "sql_query": SQL_CLASS_REL,
+            "cypher_query": q.LINK_CLASS_AT_SCHOOL,
+            "transformer": t.transform_class_school,
         },
     )
 
     # F_STUDENT_CLASS -> Student + Class
     link_student_class_student = PythonOperator(
-        task_id='link_student_class_student',
+        task_id="link_student_class_student",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_STUDENT_CLASS_REL,
-            'cypher_query': q.LINK_STUDENT_CLASS_STUDENT,
-            'transformer': t.transform_student_class_student,
+            "sql_query": SQL_STUDENT_CLASS_REL,
+            "cypher_query": q.LINK_STUDENT_CLASS_STUDENT,
+            "transformer": t.transform_student_class_student,
         },
     )
 
     link_student_class_class = PythonOperator(
-        task_id='link_student_class_class',
+        task_id="link_student_class_class",
         python_callable=stream_to_neo4j,
         op_kwargs={
-            'sql_query': SQL_STUDENT_CLASS_REL,
-            'cypher_query': q.LINK_STUDENT_CLASS_CLASS,
+            "sql_query": SQL_STUDENT_CLASS_REL,
+            "cypher_query": q.LINK_STUDENT_CLASS_CLASS,
         },
     )
 
@@ -362,8 +372,14 @@ with DAG(
     # ================================================================
 
     # Stage 0 -> Stage 1: Indexes first, then all dimension nodes in parallel
-    dimension_nodes = [load_students, load_schools, load_classrooms,
-                       load_health, load_school_geograph, load_student_discipline]
+    dimension_nodes = [
+        load_students,
+        load_schools,
+        load_classrooms,
+        load_health,
+        load_school_geograph,
+        load_student_discipline,
+    ]
 
     task_create_indexes >> dimension_nodes
 
@@ -375,13 +391,19 @@ with DAG(
 
     # Stage 2 -> Stage 3: All relationships depend on all nodes being loaded
     all_relationships = [
-        link_enrollment, link_enrollment_school, link_enrollment_health,
-        link_class_school, link_school_geograph, link_student_discipline,
-        link_avaliation_student, link_avaliation_discipline,
-        link_class_classroom, link_class_at_school,
-        link_student_class_student, link_student_class_class,
+        link_enrollment,
+        link_enrollment_school,
+        link_enrollment_health,
+        link_class_school,
+        link_school_geograph,
+        link_student_discipline,
+        link_avaliation_student,
+        link_avaliation_discipline,
+        link_class_classroom,
+        link_class_at_school,
+        link_student_class_student,
+        link_student_class_class,
     ]
 
     for fact_node in fact_nodes:
         fact_node >> all_relationships
-
