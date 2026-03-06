@@ -30,7 +30,15 @@ x-airflow-common:
     AIRFLOW__WEBSERVER__SESSION_CACHE_PREFIX: airflow_session_
     AIRFLOW__CORE__MAX_SERIALIZED_DAG_UPDATES_PER_DAG: 50
 
-    
+
+    # Azure Blob Storage — ML Pipeline
+    AZURE_STORAGE_ACCOUNT_NAME: ${AZURE_STORAGE_ACCOUNT_NAME}
+    AZURE_STORAGE_ACCOUNT_KEY: ${AZURE_STORAGE_ACCOUNT_KEY}
+    AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
+    ML_BLOB_CONTAINER: "machine-learning"
+    ML_BLOB_BASE_URL: "az://machine-learning"
+    MLFLOW_ARTIFACT_URI: "az://machine-learning/mlflow_artifacts"
+
     # MySQL connection variables
     MYSQL_HOST: ${MYSQL_HOST:-mysql}
     MYSQL_PORT: ${MYSQL_PORT:-3306}

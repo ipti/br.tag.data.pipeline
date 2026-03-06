@@ -1,6 +1,7 @@
 import gc
 import logging
 import os
+import shutil
 import tempfile
 from collections import defaultdict
 from pathlib import Path
@@ -645,7 +646,7 @@ class Neo4jExtractor:
             uri (str): Neo4j bolt URI, e.g. 'bolt://localhost:7687'
             user (str): Neo4j username
             password (str): Neo4j password
-            output_dir (Path | None, optional): Where Parquet outputs are written. Defaults to src/ml/data/raw/ relative to this file.
+            output_dir (Path | None, optional): Where Parquet outputs are written (local mode only).
 
         Raises:
             Exception: If initialization dependencies block driver startup.
@@ -653,14 +654,27 @@ class Neo4jExtractor:
         Returns:
             None
         """
+        from src.ml.features._azure_storage import is_configured, get_fs, CONTAINER
+
         self._driver: Driver = GraphDatabase.driver(uri, auth=(user, password))
-        if output_dir is None:
-            # __file__ = src/ml/features/neo4j_extractor.py
-            # parent.parent = src/ml/
-            output_dir = Path(__file__).parent.parent / "data" / "raw"
-        self._output_dir: Path = output_dir
-        self._output_dir.mkdir(parents=True, exist_ok=True)
-        logger.info("Neo4jExtractor output_dir: %s", self._output_dir.resolve())
+        self._azure: bool = is_configured()
+
+        if self._azure:
+            self._fs = get_fs()
+            self._container: str = CONTAINER
+            # Shards stay local in /tmp/ — only the merged Parquet goes to blob.
+            # This avoids N Azure write transactions (one per shard).
+            self._shards_dir: Path = Path(tempfile.mkdtemp(prefix="neo4j_shards_"))
+            self._output_dir: Path = self._shards_dir
+            logger.info("Neo4jExtractor → Azure Blob mode (container=%s)", self._container)
+        else:
+            self._fs = None
+            if output_dir is None:
+                output_dir = Path(__file__).parent.parent / "data" / "raw"
+            self._output_dir = output_dir
+            self._output_dir.mkdir(parents=True, exist_ok=True)
+            logger.info("Neo4jExtractor → local mode (output_dir=%s)", self._output_dir.resolve())
+
         self._uf_ibge: dict[str, dict] | None = None
         self._schools_by_uf: dict[str, list[str]] | None = None
 
@@ -685,9 +699,15 @@ class Neo4jExtractor:
             output_dir=output_dir,
         )
 
+    @property
+    def fs(self):
+        """Return the adlfs filesystem (None in local mode)."""
+        return self._fs
+
     def close(self) -> None:
         """
         Close the Neo4j driver and release the localized connection pool.
+        In Azure mode, also cleans up the temporary local shards directory.
 
         Args:
             None
@@ -699,6 +719,8 @@ class Neo4jExtractor:
             None
         """
         self._driver.close()
+        if self._azure and self._shards_dir.exists():
+            shutil.rmtree(self._shards_dir, ignore_errors=True)
 
     # ── Context pre-computation ───────────────────────────────────────────────
 
@@ -825,13 +847,25 @@ class Neo4jExtractor:
     # Rotating every 100 schools caps footer RAM at ~100 MB per shard.
     _SHARD_SIZE: int = 100
 
+    def _blob_path_for_step(self, step_label: str) -> str:
+        """Map a step_label to an adlfs-compatible blob path (container/key).
+
+        EF1_2025, EF2_2025 → raw/segment=EF1/year=2025/EF1_2025.parquet
+        EF2_grades, classrooms_EF1, school_features → raw/{step_label}.parquet
+        """
+        parts = step_label.split("_")
+        if len(parts) == 2 and parts[0] in ("EF1", "EF2") and parts[1].isdigit():
+            segment, year = parts[0], parts[1]
+            return f"{self._container}/raw/segment={segment}/year={year}/{step_label}.parquet"
+        return f"{self._container}/raw/{step_label}.parquet"
+
     def _stream_to_parquet(
         self,
         query: str,
         step_label: str,
         schema: pa.Schema,
         paginated: bool = False,
-    ) -> "Path":
+    ) -> str:
         """
         Stream query results progressively school-by-school into a composed Parquet storage file.
 
@@ -854,14 +888,19 @@ class Neo4jExtractor:
         uf_ibge = self._fetch_uf_context()
 
         # ── Output paths ────────────────────────────────────────────────────
-        out_dir = self._output_dir
-        shards_dir = out_dir / "shards" / step_label
+        if self._azure:
+            # Shards stay local; only the merged final file goes to blob.
+            shards_dir = self._shards_dir / step_label
+            blob_dest = self._blob_path_for_step(step_label)
+        else:
+            out_dir = self._output_dir
+            shards_dir = out_dir / "shards" / step_label
+            final_path = out_dir / f"{step_label}.parquet"
+
         shards_dir.mkdir(parents=True, exist_ok=True)
         # Wipe any leftover shards from a previous aborted run
         for f in shards_dir.iterdir():
             f.unlink()
-
-        final_path = out_dir / f"{step_label}.parquet"
 
         total_schools = sum(len(v) for v in schools_by_uf.values())
         success_chunks = 0
@@ -930,34 +969,52 @@ class Neo4jExtractor:
                 f"[{step_label}] No data written — 0 successful school chunks."
             )
 
-        # ── Merge shards into final file (one shard in RAM at a time) ────────
-        logger.info(
-            "[%s] Merging %d shards → %s", step_label, len(shard_files), final_path
-        )
-        with pq.ParquetWriter(str(final_path), schema, compression="snappy") as merger:
-            for shard_path in shard_files:
-                tbl = pq.read_table(str(shard_path), schema=schema)
-                merger.write_table(tbl)
-                del tbl
-                shard_path.unlink()  # free disk as we go
-                gc.collect()
+        # ── Merge shards → final destination (blob or local) ─────────────────
+        if self._azure:
+            dest_label = blob_dest
+            logger.info(
+                "[%s] Merging %d shards → blob:%s", step_label, len(shard_files), blob_dest
+            )
+            with pq.ParquetWriter(
+                blob_dest, schema, compression="snappy", filesystem=self._fs
+            ) as merger:
+                for shard_path in shard_files:
+                    tbl = pq.read_table(str(shard_path), schema=schema)
+                    merger.write_table(tbl)
+                    del tbl
+                    shard_path.unlink()
+                    gc.collect()
+            shards_dir.rmdir()
+            meta = pq.read_metadata(blob_dest, filesystem=self._fs)
+            output: str = blob_dest
+        else:
+            dest_label = str(final_path)
+            logger.info(
+                "[%s] Merging %d shards → %s", step_label, len(shard_files), final_path
+            )
+            with pq.ParquetWriter(str(final_path), schema, compression="snappy") as merger:
+                for shard_path in shard_files:
+                    tbl = pq.read_table(str(shard_path), schema=schema)
+                    merger.write_table(tbl)
+                    del tbl
+                    shard_path.unlink()
+                    gc.collect()
+            shards_dir.rmdir()
+            meta = pq.read_metadata(str(final_path))
+            output = str(final_path)
 
-        shards_dir.rmdir()  # now empty
-
-        # ── Row count from metadata only — zero RAM cost ──────────────────────
-        meta = pq.read_metadata(str(final_path))
         total_rows = meta.num_rows
         logger.info(
             "[%s] Done: %d rows, %d columns → %s (%d shards, %d/%d schools)",
             step_label,
             total_rows,
             len(schema),
-            final_path,
+            dest_label,
             shard_idx + 1,
             success_chunks,
             total_schools,
         )
-        return final_path
+        return output
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -965,7 +1022,7 @@ class Neo4jExtractor:
         self,
         segment: Literal["EF1", "EF2"],
         year: int | None = None,
-    ) -> Path:
+    ) -> str:
         """
         Extract the base feature set modeling student definitions within designated segments.
 
@@ -1008,7 +1065,7 @@ class Neo4jExtractor:
         self._log_ibge_coverage(path, segment)
         return path
 
-    def extract_ef2_grades(self) -> Path:
+    def extract_ef2_grades(self) -> str:
         """
         Extract EF2 subject-level grade dimension constraints mapped onto pivot configurations per student node.
 
@@ -1040,7 +1097,7 @@ class Neo4jExtractor:
         logger.info("Extracting EF2 grade pivot...")
         return self._stream_to_parquet(_QUERY_EF2_GRADES, "EF2_grades", schema)
 
-    def extract_school_features(self) -> Path:
+    def extract_school_features(self) -> str:
         """
         Execute general overarching query generating school-level localized aggregate dimensions mapping.
 
@@ -1081,7 +1138,7 @@ class Neo4jExtractor:
             _QUERY_SCHOOL_FEATURES, "school_features", schema
         )
 
-    def extract_classroom_features(self, segment: str = "EF1") -> Path:
+    def extract_classroom_features(self, segment: str = "EF1") -> str:
         """
         Extract specific classroom-level feature attributes forming dimension God Matrix nodes.
 
@@ -1180,7 +1237,7 @@ class Neo4jExtractor:
                 result = session.run(query, **kwargs)
                 return pd.DataFrame([r.data() for r in result])
 
-    def _log_ibge_coverage(self, parquet_path: Path, segment: str) -> None:
+    def _log_ibge_coverage(self, parquet_path: str, segment: str) -> None:
         """
         Log precise statistics about generated proxy coverage arrays mapping without heavy structure serialization limits.
 
@@ -1197,9 +1254,14 @@ class Neo4jExtractor:
             None
         """
         try:
-            col = pq.read_table(str(parquet_path), columns=["muni_freq_fonte"]).column(
-                "muni_freq_fonte"
-            )
+            if self._azure:
+                col = pq.read_table(
+                    parquet_path, columns=["muni_freq_fonte"], filesystem=self._fs
+                ).column("muni_freq_fonte")
+            else:
+                col = pq.read_table(
+                    parquet_path, columns=["muni_freq_fonte"]
+                ).column("muni_freq_fonte")
         except Exception:
             return  # column absent — schema mismatch, skip silently
 

@@ -10,11 +10,16 @@ logger = logging.getLogger(__name__)
 YEAR_CLOSE_AFTER_DAYS: int = 60
 
 _DEFAULT_CHECKPOINT_DIR = Path(__file__).parent.parent.parent / "data" / "checkpoints"
+_BLOB_WATERMARK_KEY = "checkpoints/watermark.json"
 
 
 class Watermark:
     """
     Manages active mutable extraction windows defining 'open' and 'closed' years safely.
+
+    Supports dual storage backends:
+    - Azure Blob Storage when AZURE_STORAGE_ACCOUNT_NAME is configured
+    - Local filesystem as fallback
     """
 
     def __init__(self, checkpoint_dir: Path | None = None) -> None:
@@ -22,7 +27,7 @@ class Watermark:
         Initialize the Watermark state.
 
         Args:
-            checkpoint_dir (Path | None, optional): Explicit target structural logic mapping bounds. Defaults to None.
+            checkpoint_dir (Path | None, optional): Local checkpoint directory (ignored in Azure mode).
 
         Raises:
             Exception: If directory creation encounters IO permission bounds.
@@ -30,28 +35,36 @@ class Watermark:
         Returns:
             None
         """
-        self._path = (checkpoint_dir or _DEFAULT_CHECKPOINT_DIR) / "watermark.json"
-        self._path.parent.mkdir(parents=True, exist_ok=True)
+        from src.ml.features._azure_storage import is_configured, get_fs, CONTAINER
+
+        self._azure: bool = is_configured()
+        if self._azure:
+            self._fs = get_fs()
+            self._blob_path = f"{CONTAINER}/{_BLOB_WATERMARK_KEY}"
+            logger.info("Watermark → Azure Blob mode (%s)", self._blob_path)
+        else:
+            self._path = (checkpoint_dir or _DEFAULT_CHECKPOINT_DIR) / "watermark.json"
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+
         self._state = self._load()
 
     def _load(self) -> dict:
-        """
-        Load internal serialization structural bounds directly from existing saved footprints.
+        """Load state from blob or local file. Returns initial state on first run."""
+        if self._azure:
+            try:
+                with self._fs.open(self._blob_path, "r") as f:
+                    state = json.load(f)
+                logger.info("Watermark loaded from blob: %s", state)
+                return state
+            except FileNotFoundError:
+                logger.info("No watermark found in blob — using initial state.")
+        else:
+            if self._path.exists():
+                with open(self._path) as f:
+                    state = json.load(f)
+                logger.info("Watermark loaded: %s", state)
+                return state
 
-        Args:
-            None
-
-        Raises:
-            Exception: Failure explicitly against json loading execution parameters.
-
-        Returns:
-            dict: Parsed base standard mapping defaults.
-        """
-        if self._path.exists():
-            with open(self._path) as f:
-                state = json.load(f)
-            logger.info("Watermark loaded: %s", state)
-            return state
         cal = date.today().year
         return {
             "last_run_date": None,
@@ -61,20 +74,13 @@ class Watermark:
         }
 
     def save(self) -> None:
-        """
-        Save active parsed serialization footprints correctly against designated state trackers.
-
-        Args:
-            None
-
-        Raises:
-            Exception: Overwrite exceptions triggering safely per standard Python open limits.
-
-        Returns:
-            None
-        """
-        with open(self._path, "w") as f:
-            json.dump(self._state, f, indent=2, default=str)
+        """Persist state to blob or local file."""
+        if self._azure:
+            with self._fs.open(self._blob_path, "w") as f:
+                json.dump(self._state, f, indent=2, default=str)
+        else:
+            with open(self._path, "w") as f:
+                json.dump(self._state, f, indent=2, default=str)
 
     @property
     def last_run_date(self) -> date | None:

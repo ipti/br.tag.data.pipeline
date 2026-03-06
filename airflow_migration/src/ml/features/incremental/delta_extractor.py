@@ -43,66 +43,88 @@ def _fingerprint_df(df: pd.DataFrame) -> pd.Series:
 
 
 def _load_existing_fingerprints(
-    raw_dir: Path, segment: str, year: int
+    raw_dir: Path | None, segment: str, year: int, fs=None
 ) -> dict[str, str]:
     """
-    Load mapping of student_id to fingerprint from existing year Parquet file.
+    Load mapping of student_id to fingerprint from existing year Parquet.
 
-    Reads only fingerprint columns without loading full datasets into RAM.
     Returns {} if no file exists (triggers full extraction for that year).
 
     Args:
-        raw_dir (Path): Base pathlib location tracking where generated Parquet outputs land.
-        segment (str): Grade grouping segment tracking.
-        year (int): Specific numeric active parsing year constraints.
-
-    Raises:
-        Exception: Failure parsing PyArrow schema.
+        raw_dir (Path | None): Local base directory (ignored in Azure mode).
+        segment (str): Grade segment (EF1/EF2).
+        year (int): Extraction year.
+        fs: adlfs filesystem instance (None → local mode).
 
     Returns:
-        dict[str, str]: Dictionary relating structural 'student_id' fields against cached MD5 hashes.
+        dict[str, str]: student_id → MD5 fingerprint.
     """
-    path = raw_dir / f"{segment}_{year}.parquet"
-    if not path.exists():
-        logger.info(
-            "No existing Parquet for %s year=%d — will do full extraction",
-            segment,
-            year,
-        )
-        return {}
-    needed = ["student_id"] + _FINGERPRINT_COLS
-    available = [c for c in needed if c in pq.read_schema(str(path)).names]
-    df = pq.read_table(str(path), columns=available).to_pandas()
+    if fs is not None:
+        from src.ml.features._azure_storage import CONTAINER
+        blob_key = f"{CONTAINER}/raw/segment={segment}/year={year}/{segment}_{year}.parquet"
+        if not fs.exists(blob_key):
+            logger.info(
+                "No existing blob for %s year=%d — will do full extraction", segment, year
+            )
+            return {}
+        needed = ["student_id"] + _FINGERPRINT_COLS
+        schema = pq.read_schema(blob_key, filesystem=fs)
+        available = [c for c in needed if c in schema.names]
+        df = pq.read_table(blob_key, columns=available, filesystem=fs).to_pandas()
+    else:
+        path = raw_dir / f"{segment}_{year}.parquet"  # type: ignore[operator]
+        if not path.exists():
+            logger.info(
+                "No existing Parquet for %s year=%d — will do full extraction", segment, year
+            )
+            return {}
+        needed = ["student_id"] + _FINGERPRINT_COLS
+        available = [c for c in needed if c in pq.read_schema(str(path)).names]
+        df = pq.read_table(str(path), columns=available).to_pandas()
+
     fps = _fingerprint_df(df)
     return dict(zip(df["student_id"], fps))
 
 
-def _load_existing_school_ids(raw_dir: Path, segment: str, year: int) -> set[str]:
+def _load_existing_school_ids(
+    raw_dir: Path | None, segment: str, year: int, fs=None
+) -> set[str]:
     """
-    Load existing school IDs out of stored base Parquet archives safely.
+    Load existing school IDs from stored Parquet.
 
     Args:
-        raw_dir (Path): Base directory tracking stored outputs.
-        segment (str): Grade configuration segment identifier.
-        year (int): Numerical year binding explicit scopes.
-
-    Raises:
-        Exception: Issues reading internal parquets utilizing PyArrow IO constraints.
+        raw_dir (Path | None): Local base directory (ignored in Azure mode).
+        segment (str): Grade segment.
+        year (int): Year.
+        fs: adlfs filesystem instance (None → local mode).
 
     Returns:
-        set[str]: Set holding loaded existing school string structural identities.
+        set[str]: Set of existing school IDs.
     """
-    path = raw_dir / f"{segment}_{year}.parquet"
-    if not path.exists():
-        return set()
-    return set(
-        pq.read_table(str(path), columns=["school_id"]).column("school_id").to_pylist()
-    )
+    if fs is not None:
+        from src.ml.features._azure_storage import CONTAINER
+        blob_key = f"{CONTAINER}/raw/segment={segment}/year={year}/{segment}_{year}.parquet"
+        if not fs.exists(blob_key):
+            return set()
+        return set(
+            pq.read_table(blob_key, columns=["school_id"], filesystem=fs)
+            .column("school_id")
+            .to_pylist()
+        )
+    else:
+        path = raw_dir / f"{segment}_{year}.parquet"  # type: ignore[operator]
+        if not path.exists():
+            return set()
+        return set(
+            pq.read_table(str(path), columns=["school_id"]).column("school_id").to_pylist()
+        )
 
 
 class DeltaExtractor:
     """
     Detects and extracts only new or changed students for open years.
+
+    Supports Azure Blob Storage when the injected extractor has _azure=True.
     """
 
     def __init__(
@@ -112,55 +134,67 @@ class DeltaExtractor:
         Initialize the DeltaExtractor.
 
         Args:
-            extractor: Live initialized extracting instance querying explicit graph logic loops.
-            segment (str, optional): Bounds defining extraction segment blocks. Defaults to "EF1".
-            raw_dir (Path | None, optional): Parquet storage directory constraint. Defaults to None.
-
-        Raises:
-            Exception: If directory creation fails due to filesystem permissions.
+            extractor: Live Neo4jExtractor instance.
+            segment (str, optional): EF1 or EF2. Defaults to "EF1".
+            raw_dir (Path | None, optional): Local Parquet dir (ignored in Azure mode).
 
         Returns:
             None
         """
         self._ext = extractor
         self._segment = segment
-        self._raw_dir = raw_dir or _DEFAULT_RAW_DIR
-        self._raw_dir.mkdir(parents=True, exist_ok=True)
+        self._azure: bool = getattr(extractor, "_azure", False)
+        self._fs = getattr(extractor, "fs", None)
+
+        if self._azure:
+            from src.ml.features._azure_storage import CONTAINER
+            self._container = CONTAINER
+        else:
+            self._raw_dir = raw_dir or _DEFAULT_RAW_DIR
+            self._raw_dir.mkdir(parents=True, exist_ok=True)
+            self._container = None
+
+    def _year_blob_key(self, year: int) -> str:
+        return (
+            f"{self._container}/raw/segment={self._segment}"
+            f"/year={year}/{self._segment}_{year}.parquet"
+        )
 
     def extract_delta(
         self, current_years: list[int], run_date: date
-    ) -> dict[int, Path | None]:
+    ) -> dict[int, str | Path | None]:
         """
         Compare extraction against existing Parquet stores, write delta, and upsert.
 
         Args:
-            current_years (list[int]): Years marked open internally inside specific temporal watermark logic loops.
-            run_date (date): Tracking active parsing runtime instances structurally.
-
-        Raises:
-            Exception: Failure points bubbling upwards directly matching batch PyArrow limits.
+            current_years (list[int]): Open years from the watermark.
+            run_date (date): Run date used in delta file naming.
 
         Returns:
-            dict[int, Path | None]: Dictionary relating modified explicit year logic to valid Path targets.
+            dict[int, str | Path | None]: year → delta path (blob str or local Path), or None.
         """
-        results: dict[int, Path | None] = {}
+        results: dict[int, str | Path | None] = {}
 
         for year in current_years:
             logger.info("[delta] year=%d segment=%s", year, self._segment)
 
+            raw_dir_arg = None if self._azure else self._raw_dir
             existing_fps = _load_existing_fingerprints(
-                self._raw_dir, self._segment, year
+                raw_dir_arg, self._segment, year, fs=self._fs
             )
             existing_schools = _load_existing_school_ids(
-                self._raw_dir, self._segment, year
+                raw_dir_arg, self._segment, year, fs=self._fs
             )
 
-            # Full Neo4j extraction for this year (uses paginated school-by-school)
             raw_path = self._ext.extract_students_base(self._segment, year=year)
 
-            delta_batches: list[pd.DataFrame] = []
-            pf = pq.ParquetFile(str(raw_path))
+            # Open the raw Parquet (blob or local)
+            if self._azure:
+                pf = pq.ParquetFile(raw_path, filesystem=self._fs)
+            else:
+                pf = pq.ParquetFile(str(raw_path))
 
+            delta_batches: list[pd.DataFrame] = []
             for batch in pf.iter_batches(batch_size=200_000):
                 df = batch.to_pandas()
                 new_mask = ~df["student_id"].isin(existing_fps)
@@ -180,7 +214,6 @@ class DeltaExtractor:
 
             delta_df = pd.concat(delta_batches, ignore_index=True)
 
-            # Observability: log new schools
             new_schools = set(delta_df["school_id"].unique()) - existing_schools
             if new_schools:
                 logger.info(
@@ -196,12 +229,21 @@ class DeltaExtractor:
                 "[delta] year=%d: %d new, %d changed students", year, n_new, n_changed
             )
 
-            delta_path = (
-                self._raw_dir
-                / f"{self._segment}_{year}_delta_{run_date.isoformat()}.parquet"
-            )
-            delta_df.to_parquet(str(delta_path), index=False, compression="snappy")
-            results[year] = delta_path
+            if self._azure:
+                delta_key = (
+                    f"{self._container}/raw/segment={self._segment}/year={year}"
+                    f"/{self._segment}_{year}_delta_{run_date.isoformat()}.parquet"
+                )
+                delta_tbl = pa.Table.from_pandas(delta_df, preserve_index=False)
+                pq.write_table(delta_tbl, delta_key, filesystem=self._fs, compression="snappy")
+                results[year] = delta_key
+            else:
+                delta_path = (
+                    self._raw_dir
+                    / f"{self._segment}_{year}_delta_{run_date.isoformat()}.parquet"
+                )
+                delta_df.to_parquet(str(delta_path), index=False, compression="snappy")
+                results[year] = delta_path
 
             self._upsert_into_year(year, delta_df)
 
@@ -209,55 +251,95 @@ class DeltaExtractor:
 
     def _upsert_into_year(self, year: int, delta_df: pd.DataFrame) -> None:
         """
-        Upsert delta rows cleanly directly straight back within structural year Parquets.
+        Upsert delta rows back into the year Parquet (blob or local).
 
-        Reads existing files iteratively safely bypassing limits.
+        Azure: write to a tmp blob key, delete original, server-side copy.
+        Local: write to a .tmp.parquet, then atomic replace.
 
         Args:
-            year (int): Numeric identifier targeting specific storage block bounds.
-            delta_df (pd.DataFrame): Dataframe tracking only new or actively changed states inherently.
-
-        Raises:
-            Exception: Thrown against blocked file replacements via temporary writing operations.
-
-        Returns:
-            None
+            year (int): Year to upsert into.
+            delta_df (pd.DataFrame): New/changed rows.
         """
-        year_path = self._raw_dir / f"{self._segment}_{year}.parquet"
-        tmp_path = year_path.with_suffix(".tmp.parquet")
         delta_ids = set(delta_df["student_id"].tolist())
         delta_tbl = pa.Table.from_pandas(delta_df, preserve_index=False)
 
-        if not year_path.exists():
-            pq.write_table(delta_tbl, str(year_path), compression="snappy")
-            logger.info("[upsert] Created %s (%d rows)", year_path.name, len(delta_df))
-            return
+        if self._azure:
+            year_key = self._year_blob_key(year)
+            tmp_key = year_key.replace(".parquet", "_tmp.parquet")
 
-        writer: pq.ParquetWriter | None = None
-        pf = pq.ParquetFile(str(year_path))
-        try:
-            for batch in pf.iter_batches(batch_size=200_000):
-                df = batch.to_pandas()
-                df = df[~df["student_id"].isin(delta_ids)]
-                if df.empty:
-                    continue
-                tbl = pa.Table.from_pandas(df, preserve_index=False)
+            if not self._fs.exists(year_key):
+                pq.write_table(
+                    delta_tbl, year_key, filesystem=self._fs, compression="snappy"
+                )
+                logger.info("[upsert] Created blob %s (%d rows)", year_key, len(delta_df))
+                return
+
+            writer: pq.ParquetWriter | None = None
+            pf = pq.ParquetFile(year_key, filesystem=self._fs)
+            try:
+                for batch in pf.iter_batches(batch_size=200_000):
+                    df = batch.to_pandas()
+                    df = df[~df["student_id"].isin(delta_ids)]
+                    if df.empty:
+                        continue
+                    tbl = pa.Table.from_pandas(df, preserve_index=False)
+                    if writer is None:
+                        writer = pq.ParquetWriter(
+                            tmp_key, tbl.schema, filesystem=self._fs, compression="snappy"
+                        )
+                    writer.write_table(tbl)
+
                 if writer is None:
                     writer = pq.ParquetWriter(
-                        str(tmp_path), tbl.schema, compression="snappy"
+                        tmp_key, delta_tbl.schema, filesystem=self._fs, compression="snappy"
                     )
-                writer.write_table(tbl)
+                writer.write_table(delta_tbl)
+            finally:
+                if writer:
+                    writer.close()
 
-            if writer is None:
-                writer = pq.ParquetWriter(
-                    str(tmp_path), delta_tbl.schema, compression="snappy"
-                )
-            writer.write_table(delta_tbl)
-        finally:
-            if writer:
-                writer.close()
+            # Server-side copy — O(1) on Azure (no data transfer)
+            self._fs.rm(year_key)
+            self._fs.copy(tmp_key, year_key)
+            self._fs.rm(tmp_key)
+            logger.info(
+                "[upsert] Updated blob %s (+%d rows upserted)", year_key, len(delta_df)
+            )
 
-        tmp_path.replace(year_path)
-        logger.info(
-            "[upsert] Updated %s (+%d rows upserted)", year_path.name, len(delta_df)
-        )
+        else:
+            year_path = self._raw_dir / f"{self._segment}_{year}.parquet"
+            tmp_path = year_path.with_suffix(".tmp.parquet")
+
+            if not year_path.exists():
+                pq.write_table(delta_tbl, str(year_path), compression="snappy")
+                logger.info("[upsert] Created %s (%d rows)", year_path.name, len(delta_df))
+                return
+
+            writer = None
+            pf = pq.ParquetFile(str(year_path))
+            try:
+                for batch in pf.iter_batches(batch_size=200_000):
+                    df = batch.to_pandas()
+                    df = df[~df["student_id"].isin(delta_ids)]
+                    if df.empty:
+                        continue
+                    tbl = pa.Table.from_pandas(df, preserve_index=False)
+                    if writer is None:
+                        writer = pq.ParquetWriter(
+                            str(tmp_path), tbl.schema, compression="snappy"
+                        )
+                    writer.write_table(tbl)
+
+                if writer is None:
+                    writer = pq.ParquetWriter(
+                        str(tmp_path), delta_tbl.schema, compression="snappy"
+                    )
+                writer.write_table(delta_tbl)
+            finally:
+                if writer:
+                    writer.close()
+
+            tmp_path.replace(year_path)
+            logger.info(
+                "[upsert] Updated %s (+%d rows upserted)", year_path.name, len(delta_df)
+            )
