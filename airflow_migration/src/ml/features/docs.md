@@ -7,6 +7,7 @@ This directory contains the core feature engineering operations, defining schema
 - `neo4j_extractor.py`: Defines Cypher queries and extracts feature data from Neo4j in a clean isolation pattern.
 - `schema.py`: Dictates feature set contracts and schemas utilized throughout the ML system.
 - `school_aggregator.py`: Provides school-level aggregations from extracted student-level records.
+- `_azure_storage.py`: Helper module providing thin wrappers for Azure Blob Storage configuration and path management. Exposes `is_configured()`, `get_fs()`, `fs_path()`, `raw_blob_key()`, and `feature_blob_key()` for use across the feature pipeline, Neo4j extraction, and watermark tracking.
 
 ## feature_pipeline.py
 Feature engineering pipeline mapping raw DataFrames to encoded feature matrices. This is strictly separated from `neo4j_extractor.py` to allow unit testing without requiring an active Neo4j connection.
@@ -23,7 +24,12 @@ Feature engineering pipeline mapping raw DataFrames to encoded feature matrices.
 - Performance anti-patterns: neo4_schema_and_tips.md §6
 
 ## neo4j_extractor.py
-Neo4j feature extraction layer. Defines all raw Cypher queries, keeping the Neo4j Python driver strictly contained. Each public extraction method returns a natively typed Pandas DataFrame suitable for consumption by `feature_pipeline.py`.
+Neo4j feature extraction layer. Defines all raw Cypher queries, keeping the Neo4j Python driver strictly contained. Public extraction methods now return `str` (either a blob path or local filesystem path string) instead of `Path`.
+
+**Dual Storage Mode:**
+The module supports conditional Azure Blob Storage writes via the `AZURE_STORAGE_ACCOUNT_NAME` environment variable:
+- **When configured (Azure mode):** Merged Parquet files are written directly to Azure Blob Storage under container `machine-learning` at paths like `raw/segment={EF1|EF2}/year={YYYY}/{step_label}.parquet`. Temporary shard chunks remain in the local `/tmp/` directory to minimize Azure transaction costs. The `fs` property exposes the adlfs filesystem to callers. The `close()` method cleans up the temporary shard directory.
+- **When not configured (local mode):** Original behavior unchanged — all files stored on local filesystem.
 
 **Query Design Considerations:**
 Uses a `collect → isolate → aggregate` performance pattern. Optional MATCHes are separated inside individual `CALL` blocks (one for attendance, one for grades, etc.), circumventing N×M×K cartesian performance blowups.

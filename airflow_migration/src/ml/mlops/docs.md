@@ -19,6 +19,8 @@ The model training functions (e.g., dropout_classifier.py, grade_regressor.py) a
 
 Experiment names map to model types. Changing the experiment name here changes it everywhere — no scattered `mlflow.set_experiment()` calls in other files.
 
+The `log_run()` function reads `MLFLOW_ARTIFACT_URI` from the environment before calling `mlflow.set_experiment()`. When set (e.g., `az://machine-learning/mlflow_artifacts`), the value is propagated via `os.environ` to redirect all artifact storage to Azure Blob Storage. MLflow detects the `az://` prefix and automatically uses `adlfs` for storage (requires `adlfs` installed and Azure environment variables configured). When the environment variable is absent, artifact storage behaves unchanged (local storage).
+
 Usage in training entrypoint:
 ```python
 with log_run("evasao", params=vars(config), tags={"segment": "EF1"}) as run:
