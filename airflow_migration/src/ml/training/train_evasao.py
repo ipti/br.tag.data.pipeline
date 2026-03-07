@@ -26,6 +26,7 @@ def run(test_year: int) -> None:
     Returns:
         None
     """
+    from pathlib import Path
     import pandas as pd
     from mlflow.tracking import MlflowClient
     from ..features.neo4j_extractor import Neo4jExtractor
@@ -64,7 +65,6 @@ def run(test_year: int) -> None:
         pattern = f"{CONTAINER}/raw/segment=EF1/year=*/EF1_*.parquet"
         files = sorted(fs.glob(pattern))
     else:
-        from pathlib import Path
         raw_dir = Path(__file__).parent.parent / "data" / "raw"
         files = sorted(glob.glob(f"{raw_dir}/EF1_*.parquet"))
 

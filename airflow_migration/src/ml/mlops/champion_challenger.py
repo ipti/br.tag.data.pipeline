@@ -59,11 +59,12 @@ def get_champion_metrics(model_name: str, client: MlflowClient) -> dict | None:
         dict | None: Dictionary relating strings to metric float values, or None if the Production tier is explicitly empty.
     """
     try:
-        versions = client.get_latest_versions(model_name, stages=["Production"])
-        if not versions:
-            logger.info("No Production model found for '%s' — first run.", model_name)
+        try:
+            champ_mv = client.get_model_version_by_alias(model_name, "champion")
+        except mlflow.exceptions.RestException:
+            logger.info("No champion model alias found for '%s' — first run.", model_name)
             return None
-        run = client.get_run(versions[0].run_id)
+        run = client.get_run(champ_mv.run_id)
         return dict(run.data.metrics)
     except Exception as exc:
         logger.warning(
@@ -180,21 +181,19 @@ def promote_if_better(
             )
             return False
 
-    # Register and promote to Production
+    # Register and promote to champion alias
     model_uri = f"runs:/{challenger_run_id}/{cfg.artifact_path}"
-    mlflow.register_model(model_uri, cfg.registry_name)
+    mv = mlflow.register_model(model_uri, cfg.registry_name)
 
-    latest = client.get_latest_versions(cfg.registry_name, stages=["None"])
-    client.transition_model_version_stage(
+    client.set_registered_model_alias(
         name=cfg.registry_name,
-        version=latest[0].version,
-        stage="Production",
-        archive_existing_versions=True,
+        alias="champion",
+        version=mv.version,
     )
     logger.info(
         "Challenger promoted to Production: '%s' version=%s | %s=%.4f",
         cfg.registry_name,
-        latest[0].version,
+        mv.version,
         cfg.primary_metric,
         challenger_val,
     )
