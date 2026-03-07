@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 import numpy as np
 import pandas as pd
@@ -8,6 +9,42 @@ import shap
 logger = logging.getLogger(__name__)
 
 _TOP5_SHARE_THRESHOLD = 0.65  # acceptance criterion
+
+
+def _patch_shap_xgboost_loader():
+    """
+    Monkey-patch SHAP to handle XGBoost 2.x UBJSON base_score array formatting natively.
+
+    XGBoost 2.x serialization stores base_score in UBJSON arrays like `[5E-1]`.
+    SHAP explicitly decodes the UBJSON buffers during TreeExplainer initialization and 
+    immediately calls `float(learner_model_param['base_score'])`, triggering a ValueError.
+    Patching the decoder ensures we flatten the array before SHAP accesses the dictionary.
+    """
+    try:
+        import shap
+        import shap.explainers._tree
+        
+        # Prevent double patching
+        if hasattr(shap.explainers._tree, "_patched_decode"):
+            return
+            
+        _orig_decode = shap.explainers._tree.decode_ubjson_buffer
+
+        def _patched_decode(*args, **kwargs):
+            res = _orig_decode(*args, **kwargs)
+            try:
+                import json
+                bs = res["learner"]["learner_model_param"]["base_score"]
+                if isinstance(bs, str) and bs.startswith("["):
+                    res["learner"]["learner_model_param"]["base_score"] = str(float(json.loads(bs)[0]))
+            except Exception:
+                pass
+            return res
+
+        shap.explainers._tree.decode_ubjson_buffer = _patched_decode
+        shap.explainers._tree._patched_decode = True
+    except ImportError:
+        pass
 
 
 def compute_shap_global(
@@ -35,8 +72,13 @@ def compute_shap_global(
         tuple[np.ndarray, io.BytesIO]: A tuple containing the shap_values_array of shape (n_samples, n_features) and a png_buffer In-memory PNG for logging as an MLflow artifact.
     """
     sample = X_test.sample(min(max_samples, len(X_test)), random_state=42)
+    _patch_shap_xgboost_loader()
+    
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(sample)
+    # For binary XGBoost, TreeExplainer returns a list [class0_array, class1_array].
+    if isinstance(shap_values, list):
+        shap_values = shap_values[1]
 
     # Validate global explanation concentration
     mean_abs = np.abs(shap_values).mean(axis=0)
@@ -94,9 +136,19 @@ def compute_shap_local(
     if len(X_student) != 1:
         raise ValueError(f"Expected single-row DataFrame, got {len(X_student)} rows.")
 
+    _patch_shap_xgboost_loader()
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(X_student)
-    values = shap_values[0] if isinstance(shap_values, list) else shap_values[0]
+    # For binary XGBoost, TreeExplainer returns a list [class0_array, class1_array].
+    if isinstance(shap_values, list):
+        values = shap_values[1][0]  # class-1, single row
+    else:
+        values = shap_values[0]     # regression, single row
+    base_value = float(
+        explainer.expected_value[1]
+        if isinstance(explainer.expected_value, (list, np.ndarray))
+        else explainer.expected_value
+    )
 
     feature_impact = [
         {
@@ -109,7 +161,7 @@ def compute_shap_local(
     feature_impact.sort(key=lambda x: abs(x["impact"]), reverse=True)
 
     return {
-        "base_value": float(explainer.expected_value),
+        "base_value": base_value,
         "top_factors": feature_impact[:5],
         "all_shap_values": {f["feature"]: f["impact"] for f in feature_impact},
     }
