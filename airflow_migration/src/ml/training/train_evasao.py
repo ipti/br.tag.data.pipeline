@@ -35,7 +35,7 @@ def run(test_year: int) -> None:
         fill_grade_sentinel,
     )
     from ..features.schema import (
-        FEATURES_EVASAO_EF1,
+        FEATURES_EVASAO_EF1_ENRICHED,
         TARGET_DROPOUT,
         ID_COLS,
         GRADE_EF1_FEATURES,
@@ -52,32 +52,119 @@ def run(test_year: int) -> None:
 
     # ── 1. Extract ────────────────────────────────────────────────────────────
     logger.info("=== Dropout training pipeline: test_year=%d ===", test_year)
-    extractor = Neo4jExtractor.from_env()
-    df_raw = extractor.extract_ef1()  # all years
-    extractor.close()
+    from ..features._azure_storage import is_configured, get_fs, CONTAINER
+    import glob
 
-    # ── 2. Encode ─────────────────────────────────────────────────────────────
-    df = encode_categoricals(df_raw)
-    df = fill_grade_sentinel(df, GRADE_EF1_FEATURES)  # null grades → -1
+    fs = get_fs() if is_configured() else None
+
+    storage_mode = f"Azure ({os.environ.get('AZURE_STORAGE_ACCOUNT_NAME')})" if fs else "local"
+    logger.info("[1/9] storage=%-35s | test_year=%d", storage_mode, test_year)
+
+    if fs:
+        pattern = f"{CONTAINER}/raw/segment=EF1/year=*/EF1_*.parquet"
+        files = sorted(fs.glob(pattern))
+    else:
+        from pathlib import Path
+        raw_dir = Path(__file__).parent.parent / "data" / "raw"
+        files = sorted(glob.glob(f"{raw_dir}/EF1_*.parquet"))
+
+    # Exclude delta and temporary files, we only want the full base year parquets
+    files = [f for f in files if "_delta_" not in str(f) and "_tmp" not in str(f)]
+
+    if not files:
+        raise RuntimeError("No EF1 raw base files found. Run feature engineering DAG first.")
+
+    import pyarrow.parquet as pq
+    import tempfile
+    
+    logger.info("[1/9] loading %d EF1 base parquet files (chunked streaming)...", len(files))
+    
+    data_dir = Path(__file__).parent.parent / "data"
+    tmp_dir = data_dir / "tmp"
+    os.makedirs(tmp_dir, exist_ok=True)
+    
+    sample_base = pq.read_schema(files[-1], filesystem=fs) if fs else pq.read_schema(files[-1])
+    available_base = set(sample_base.names)
+    needed_cols = [c for c in FEATURES_EVASAO_EF1_ENRICHED if c in available_base] + ["student_id"]
+    if TARGET_DROPOUT in available_base and TARGET_DROPOUT not in needed_cols:
+        needed_cols.append(TARGET_DROPOUT)
+        
+    cr_cols = [c for c in FEATURES_EVASAO_EF1_ENRICHED if c.startswith("cr_")]
+    missing_cr = [c for c in cr_cols if c not in available_base]
+    if missing_cr:
+        logger.warning(
+            "[enriched] %d classroom-context columns missing from EF1 data "
+            "(will be treated as null by fill_grade_sentinel): %s",
+            len(missing_cr),
+            missing_cr,
+        )
+
+    merged_paths = []
+    n_base = 0
+
+    for i, f in enumerate(files, 1):
+        year_str = f.split("_")[-1].replace(".parquet", "")
+        logger.info("  [%d/%d] processing batches from %s...", i, len(files), f.split("/")[-1] if "/" in str(f) else f)
+        
+        pf = pq.ParquetFile(fs.open(f) if fs else f)
+        batch_idx = 0
+        for batch in pf.iter_batches(batch_size=300_000, columns=needed_cols):
+            df_chunk = batch.to_pandas()
+            n_base += len(df_chunk)
+            
+            # ── 2. Encode ─────────────────────────────────────────────────────────────
+            df_chunk = encode_categoricals(df_chunk)
+            df_chunk = fill_grade_sentinel(df_chunk, GRADE_EF1_FEATURES)  # null grades → -1
+            
+            for col in df_chunk.columns:
+                if df_chunk[col].dtype == 'object':
+                    df_chunk[col] = df_chunk[col].astype('category')
+                elif df_chunk[col].dtype == 'float64':
+                    df_chunk[col] = df_chunk[col].astype('float32')
+            
+            # Retain only instances valid for classification
+            df_chunk.dropna(subset=[TARGET_DROPOUT], inplace=True)
+            
+            if len(df_chunk) > 0:
+                out_path = os.path.join(tmp_dir, f"evasao_chunk_{year_str}_{batch_idx}.parquet")
+                df_chunk.to_parquet(out_path, index=False)
+                merged_paths.append(out_path)
+            
+            del df_chunk
+            batch_idx += 1
+            import gc; gc.collect()
+
+    logger.info("  -> Loading %d aggregated categorical disk arrays...", len(merged_paths))
+    if not merged_paths:
+        raise ValueError(f"Feature split produced empty dataset across {len(files)} files.")
+        
+    df = pd.concat([pd.read_parquet(p) for p in merged_paths], ignore_index=True)
+    logger.info("[2/9] formatting loaded → %d rows × %d cols", len(df), len(df.columns))
 
     # ── 3. Temporal split ─────────────────────────────────────────────────────
+    logger.info("[3/9] temporal split: train=<test_year, test=%d...", test_year)
     X_train, y_train, X_test, y_test = temporal_split(
         df,
         target_col=TARGET_DROPOUT,
         test_year=test_year,
-        feature_cols=FEATURES_EVASAO_EF1,
+        feature_cols=FEATURES_EVASAO_EF1_ENRICHED,
     )
 
     # ── 4. Validation split from train (last 15% of train rows) ───────────────
     split_idx = int(len(X_train) * 0.85)
     X_tr, X_val = X_train.iloc[:split_idx], X_train.iloc[split_idx:]
     y_tr, y_val = y_train.iloc[:split_idx], y_train.iloc[split_idx:]
+    logger.info("[4/9] validation split: 85%% train / 15%% val")
+    logger.info("       train=%d rows | val=%d rows | test=%d rows", len(X_tr), len(X_val), len(X_test))
 
     # ── 5. Train ──────────────────────────────────────────────────────────────
     config = DropoutConfig()
+    logger.info("[5/9] training XGBoost (n_estimators=%d, max_depth=%d, early_stop=%d)...",
+                config.n_estimators, config.max_depth, config.early_stopping_rounds)
     model = train_dropout(X_tr, y_tr, X_val, y_val, config)
 
     # ── 6. Evaluate ───────────────────────────────────────────────────────────
+    logger.info("[6/9] evaluating on test set (%d rows)...", len(X_test))
     preds = predict_dropout(model, X_test)
     metrics = eval_classifier(y_test.values, preds["evasao_prob"])
 
@@ -93,9 +180,11 @@ def run(test_year: int) -> None:
         logger.info("All acceptance criteria met: %s", metrics.as_dict())
 
     # ── 7. SHAP ───────────────────────────────────────────────────────────────
+    logger.info("[7/9] computing SHAP values (up to 2000 samples — may take ~30s)...")
     _, shap_buf = compute_shap_global(model, X_test)
 
     # ── 8. Log to MLflow ──────────────────────────────────────────────────────
+    logger.info("[8/9] logging run to MLflow...")
     params = vars(config) | {
         "test_year": test_year,
         "n_train": len(X_train),
@@ -110,6 +199,7 @@ def run(test_year: int) -> None:
         run_id = run_ctx.run_id
 
     # ── 9. Champion/Challenger ────────────────────────────────────────────────
+    logger.info("[9/9] champion/challenger evaluation...")
     promoted = promote_if_better(
         model_type=MODEL_TYPE,
         challenger_run_id=run_id,
