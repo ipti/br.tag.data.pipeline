@@ -33,6 +33,7 @@ def run(test_year: int) -> None:
         encode_categoricals,
         temporal_split,
         fill_grade_sentinel,
+        fill_missing_values,
     )
     from ..features.schema import (
         FEATURES_NOTAS_EF2,
@@ -216,6 +217,7 @@ def run(test_year: int) -> None:
             TARGET_GRADE,
         )
     df = df_clean
+    df = fill_missing_values(df)
 
     # ── 4. Temporal split ─────────────────────────────────────────────────────
     logger.info("[4/9] temporal split: train=<test_year, test=%d...", test_year)

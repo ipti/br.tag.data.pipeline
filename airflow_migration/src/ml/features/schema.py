@@ -99,9 +99,9 @@ MUNICIPAL_FEATURES = [
     "muni_internet_branco",  # m.atl_branco_internet_fund → % fund. schools with internet for White students
     "muni_delta_freq",  # calculated: taxa_ausencia*100 - (100 - muni_freq_liq_fund)
     # Source flags (not model features — for monitoring and debugging only)
-    "muni_freq_fonte",  # 'Municipal' | 'Media_UF_Proxy' — which source was used
-    "muni_atraso_fonte",  # same pattern for atraso field
-    "muni_analf_fonte",  # same pattern for analf field
+    # "muni_freq_fonte",  # 'Municipal' | 'Media_UF_Proxy' — which source was used
+    # "muni_atraso_fonte",  # same pattern for atraso field
+    # "muni_analf_fonte",  # same pattern for analf field
 ]
 
 # ── State QEdu context ────────────────────────────────────────────────────────

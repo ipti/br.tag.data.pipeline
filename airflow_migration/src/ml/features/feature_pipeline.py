@@ -17,6 +17,9 @@ from .schema import (
     TARGET_GRADE,
     TARGET_REPROVACAO,
     ID_COLS,
+    MUNICIPAL_FEATURES,
+    STATE_QEDU_FEATURES,
+    STATE_PNAD_FEATURES,
 )
 
 logger = logging.getLogger(__name__)
@@ -137,6 +140,57 @@ def fill_grade_sentinel(
 
     for col in available_cols:
         df[col] = df[col].fillna(sentinel)
+
+    return df
+
+
+def fill_missing_values(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Fill remaining NaN values with semantically correct strategies per feature group.
+
+    Must be called AFTER fill_grade_sentinel() (which handles grade columns with -1 sentinel)
+    and AFTER encode_categoricals() (which handles demographic encodings).
+
+    Strategies:
+    - Attendance (taxa_ausencia, falta_critica, total_faltas_abs): -1 sentinel.
+      Null means the school does not use an electronic attendance journal (tem_diario=0).
+      It is NOT zero absences — it is absence of data. -1 is consistent with grade sentinel.
+    - Health booleans (has_malnutrition, etc.): 0.
+      Null means the Health node is absent in Neo4j, i.e., no condition was registered.
+    - Municipal + State socioeconomic indicators: column median.
+      These are regional statistics (IBGE/INEP) with no meaningful "unknown" value.
+      Median of the training sample is a reasonable proxy for missing regions.
+
+    Args:
+        df (pd.DataFrame): DataFrame post encode_categoricals and fill_grade_sentinel.
+
+    Returns:
+        pd.DataFrame: DataFrame modified in-place.
+    """
+    # Attendance sentinel: -1 signals "school has no electronic journal" (not zero absences)
+    att_cols = [c for c in ["taxa_ausencia", "falta_critica", "total_faltas_abs"] if c in df.columns]
+    if att_cols:
+        n_null = df[att_cols].isna().sum().sum()
+        df[att_cols] = df[att_cols].fillna(-1.0)
+        logger.info("fill_missing_values: attendance sentinel -1 applied to %d NaN cells", n_null)
+
+    # Health booleans: 0 = no Health node = no condition registered
+    health_bool_cols = [c for c in [
+        "has_malnutrition", "has_diabetes", "has_hypertension",
+        "has_obesity", "has_celiac", "has_anemia",
+    ] if c in df.columns]
+    if health_bool_cols:
+        n_null = df[health_bool_cols].isna().sum().sum()
+        df[health_bool_cols] = df[health_bool_cols].fillna(0)
+        logger.info("fill_missing_values: health booleans filled 0 for %d NaN cells", n_null)
+
+    # Municipal + State socioeconomic indicators: median imputation
+    socio_cols = [c for c in (MUNICIPAL_FEATURES + STATE_QEDU_FEATURES + STATE_PNAD_FEATURES)
+                  if c in df.columns]
+    if socio_cols:
+        n_null = df[socio_cols].isna().sum().sum()
+        df[socio_cols] = df[socio_cols].fillna(df[socio_cols].median())
+        logger.info("fill_missing_values: socioeconomic median fill for %d NaN cells", n_null)
 
     return df
 
