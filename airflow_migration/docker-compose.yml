@@ -159,7 +159,10 @@ services:
   mlflow:
     <<: *airflow-common
     container_name: mlflow
-    command: mlflow server --host 0.0.0.0 --port 5001
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - mlflow server --host 0.0.0.0 --port 5001
     ports:
       - "5001:5001"
     healthcheck:

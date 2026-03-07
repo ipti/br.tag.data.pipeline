@@ -16,20 +16,40 @@ from airflow.providers.standard.operators.python import PythonOperator
 _DEFAULT_ARGS = {"owner": "ml-team", "retries": 1, "retry_delay": timedelta(minutes=10)}
 
 
+def _apply_storage_mode(ctx: dict) -> None:
+    mode = ctx.get("params", {}).get("storage_mode", "local")
+    if mode == "local":
+        import os
+        os.environ.pop("AZURE_STORAGE_ACCOUNT_NAME", None)
+
+
 def validate_features_task(**ctx):
     """Check that EF1 Parquet has expected columns and non-null targets."""
+    _apply_storage_mode(ctx)
     import pandas as pd, os
     from src.ml.features.schema import TARGET_DROPOUT, NEVER_NULL_AFTER_IMPUTE
+    from src.ml.features._azure_storage import is_configured, get_fs, CONTAINER
+    import glob
+
+    fs = get_fs() if is_configured() else None
 
     # Use most recent Parquet
-    parquet_dir = "/data/features"
-    files = sorted(f for f in os.listdir(parquet_dir) if f.startswith("ef1_"))
+    if fs:
+        pattern = f"{CONTAINER}/features/segment=EF1/year=*/run=*/delta.parquet"
+        files = sorted(fs.glob(pattern))
+    else:
+        parquet_dir = "/opt/airflow/src/ml/data/features"
+        files = sorted(glob.glob(f"{parquet_dir}/ef1_*_delta_*.parquet"))
+
     if not files:
         raise RuntimeError(
             "No EF1 Parquet files found. Run feature engineering DAG first."
         )
 
-    df = pd.read_parquet(f"{parquet_dir}/{files[-1]}")
+    if fs:
+        df = pd.read_parquet(files[-1], filesystem=fs)
+    else:
+        df = pd.read_parquet(files[-1])
     # Check target is not all-zero (would indicate extraction filter issue)
     pos_rate = df[TARGET_DROPOUT].mean()
     if pos_rate < 0.005:
@@ -48,6 +68,11 @@ def validate_features_task(**ctx):
 
 def train_evasao_task(**ctx):
     """Run dropout model training entrypoint as subprocess."""
+    _apply_storage_mode(ctx)
+    
+    # Pass storage mode to subprocess via env var if needed, 
+    # but _apply_storage_mode already unsets AZURE_STORAGE_ACCOUNT_NAME from os.environ
+    # which is inherited by subprocess.run
     test_year = ctx["params"].get("test_year", datetime.now().year)
     result = subprocess.run(
         [
@@ -67,6 +92,7 @@ def train_evasao_task(**ctx):
 
 def train_notas_task(**ctx):
     """Run grade model training entrypoint as subprocess."""
+    _apply_storage_mode(ctx)
     test_year = ctx["params"].get("test_year", datetime.now().year)
     result = subprocess.run(
         [
@@ -90,7 +116,7 @@ with DAG(
     schedule="0 4 * * 1",
     start_date=datetime(2026, 1, 1),
     catchup=False,
-    params={"test_year": datetime.now().year},
+    params={"test_year": datetime.now().year, "storage_mode": "local"},
     tags=["ml", "retrain"],
 ) as dag:
     t_validate = PythonOperator(

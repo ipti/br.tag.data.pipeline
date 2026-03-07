@@ -66,6 +66,15 @@ MIN_DELTA_ROWS = 500
 
 # ── Storage helpers ───────────────────────────────────────────────────────────
 
+def _apply_storage_mode(ctx: dict) -> None:
+    """Forces local storage if the user selects 'local' in DAG params."""
+    mode = ctx.get("params", {}).get("storage_mode", "local")
+    if mode == "local":
+        import os
+        os.environ.pop("AZURE_STORAGE_ACCOUNT_NAME", None)
+        logger.info("[storage] param 'storage_mode' is local. Forcing local fallback by unsetting Azure vars.")
+    else:
+        logger.info("[storage] param 'storage_mode' is %s. Preserving environment vars.", mode)
 
 def _get_azure_fs():
     """Return adlfs filesystem or None if not configured."""
@@ -162,6 +171,8 @@ def _get_local_raw_dir() -> Path:
 
 def extract_ef1_delta_task(**ctx):
     """Delta-only EF1 extraction for open years. Skips closed years entirely."""
+    _apply_storage_mode(ctx)
+
     from src.ml.features.neo4j_extractor import Neo4jExtractor
     from src.ml.features.incremental.delta_extractor import DeltaExtractor
     from src.ml.features.incremental.watermark import Watermark
@@ -225,6 +236,7 @@ def extract_ef2_task(**ctx):
     EF2 grades (discipline pivot) always re-extracted for open years —
     pivots are aggregates that change whenever any grade changes.
     """
+    _apply_storage_mode(ctx)
     import pandas as pd
 
     from src.ml.features.neo4j_extractor import Neo4jExtractor
@@ -329,7 +341,7 @@ def extract_ef2_task(**ctx):
         from src.ml.features._azure_storage import CONTAINER
         dst_grades = f"{CONTAINER}/features/segment=EF2_grades/run={run_nodash}/grades.parquet"
         logger.info("[ef2] grades  blob → %s", dst_grades)
-        _encode_parquet_inplace(grades_path, dst_grades, fs=fs)
+        fs.put(str(grades_path), dst_grades)
     else:
         dst_grades = str(_FEATURES_DIR / f"ef2_grades_{run_nodash}.parquet")
         logger.info("[ef2] grades  local → %s", dst_grades)
@@ -346,6 +358,7 @@ def extract_ef2_task(**ctx):
 
 def extract_classrooms_task(**ctx):
     """Full re-extraction for open years. Aggregate rows — not incremental."""
+    _apply_storage_mode(ctx)
     import pandas as pd
 
     from src.ml.features.neo4j_extractor import Neo4jExtractor
@@ -416,6 +429,7 @@ def extract_classrooms_task(**ctx):
 
 def fine_tune_task(**ctx):
     """Fine-tune on EF1 delta. Full re-train on Mondays."""
+    _apply_storage_mode(ctx)
     import pandas as pd
 
     ti = ctx["ti"]
@@ -466,6 +480,7 @@ with DAG(
     schedule="0 3 * * *",
     start_date=datetime(2026, 1, 1),
     catchup=False,
+    params={"storage_mode": "local"},
     tags=["ml", "features", "incremental"],
 ) as dag:
 
