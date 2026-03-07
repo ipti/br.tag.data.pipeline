@@ -144,7 +144,7 @@ def log_run(
         RunContext: Constructed connection object holding specific log_* function blocks directly.
     """
     experiment_name = EXPERIMENT_NAMES.get(model_type, model_type)
-    mlflow.set_tracking_uri(os.environ.get("MLFLOW_URI", "http://localhost:5001"))
+    mlflow.set_tracking_uri(os.environ.get("MLFLOW_URI", "http://host.docker.internal:5001"))
     # Redirect artifacts to Azure Blob when configured — MLflow detects az:// prefix
     # and uses adlfs automatically (requires adlfs installed + Azure env vars set).
     artifact_uri = os.environ.get("MLFLOW_ARTIFACT_URI")
