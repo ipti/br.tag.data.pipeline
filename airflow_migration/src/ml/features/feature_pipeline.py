@@ -30,7 +30,7 @@ def encode_categoricals(df: pd.DataFrame) -> pd.DataFrame:
     Apply label encoding to raw categorical columns based on schema dictionaries.
 
     Converts the '_raw' suffix columns produced by neo4j_extractor.py
-    into numeric encoded columns.
+    into numeric encoded columns in-place.
     Unknown values default to the 'unknown' category (e.g. 5 for ethnicity).
 
     Also computes derived features that require multiple columns:
@@ -38,27 +38,19 @@ def encode_categoricals(df: pd.DataFrame) -> pd.DataFrame:
     - muni_delta_freq: student's absence rate minus municipal benchmark
 
     Args:
-        df (pd.DataFrame): Raw DataFrame from Neo4jExtractor containing _raw suffix columns.
-
-    Raises:
-        KeyError: If a required _raw column is missing from the input DataFrame.
-        Exception: If unexpected types prevent proper mapping or calculations.
+        df (pd.DataFrame): Raw DataFrame from Neo4jExtractor containing _raw suffix columns. Modifies directly.
 
     Returns:
-        pd.DataFrame: A new DataFrame with encoded columns added (original _raw columns are kept for debugging).
+        pd.DataFrame: The same DataFrame modified in-place to avoid peak memory allocations.
     """
-    out = df.copy()
-
-    out["ethnicity_enc"] = (
-        out["ethnicity_raw"].map(ETHNICITY_ENCODING).fillna(5).astype(int)
-    )
-    out["stage_enc"] = out["stage_raw"].map(STAGE_ENCODING).fillna(1).astype(int)
-    out["grade_level_enc"] = (
-        out["grade_level_raw"].map(GRADE_LEVEL_ENCODING).fillna(1).astype(int)
-    )
-    out["residence_zone_enc"] = (
-        out["residence_zone_raw"].map(RESIDENCE_ENCODING).fillna(2).astype(int)
-    )
+    if "ethnicity_raw" in df.columns:
+        df["ethnicity_enc"] = df["ethnicity_raw"].map(ETHNICITY_ENCODING).fillna(5).astype(int)
+    if "stage_raw" in df.columns:
+        df["stage_enc"] = df["stage_raw"].map(STAGE_ENCODING).fillna(1).astype(int)
+    if "grade_level_raw" in df.columns:
+        df["grade_level_enc"] = df["grade_level_raw"].map(GRADE_LEVEL_ENCODING).fillna(1).astype(int)
+    if "residence_zone_raw" in df.columns:
+        df["residence_zone_enc"] = df["residence_zone_raw"].map(RESIDENCE_ENCODING).fillna(2).astype(int)
 
     # Derived health aggregate — sum of boolean conditions
     health_bool_cols = [
@@ -69,19 +61,21 @@ def encode_categoricals(df: pd.DataFrame) -> pd.DataFrame:
         "has_celiac",
         "has_anemia",
     ]
-    out["n_health_conditions"] = out[health_bool_cols].fillna(0).astype(int).sum(axis=1)
+    # Check which health columns actually exist
+    existing_health = [c for c in health_bool_cols if c in df.columns]
+    if existing_health:
+        df["n_health_conditions"] = df[existing_health].fillna(0).astype(int).sum(axis=1)
 
-    # Delta vs municipal benchmark (computed from already-filled IBGE and attendance)
-    # Both inputs are already filled in Cypher, so this rarely produces NaN
-    if "taxa_ausencia" in out.columns and "muni_freq_liq_fund" in out.columns:
-        out["muni_delta_freq"] = np.where(
-            out["taxa_ausencia"].notna() & out["muni_freq_liq_fund"].notna(),
-            out["taxa_ausencia"] * 100 - (100.0 - out["muni_freq_liq_fund"]),
+    # Delta vs municipal benchmark
+    if "taxa_ausencia" in df.columns and "muni_freq_liq_fund" in df.columns:
+        df["muni_delta_freq"] = np.where(
+            df["taxa_ausencia"].notna() & df["muni_freq_liq_fund"].notna(),
+            df["taxa_ausencia"] * 100 - (100.0 - df["muni_freq_liq_fund"]),
             np.nan,
         )
 
-    _validate_never_null(out)
-    return out
+    _validate_never_null(df)
+    return df
 
 
 def build_imputer_pipeline(feature_cols: list[str]) -> Pipeline:
@@ -119,37 +113,32 @@ def fill_grade_sentinel(
     Also masks students with ONLY zero grades as null before applying the sentinel (if not 'REPROVADO').
 
     Args:
-        df (pd.DataFrame): DataFrame containing expected grade columns.
+        df (pd.DataFrame): DataFrame containing expected grade columns. In-place modification.
         grade_cols (list[str]): List of grade column names to fill.
         sentinel (float, optional): The numerical value to fill nulls with. Defaults to -1.0.
 
-    Raises:
-        KeyError: If an expected check like 'aluno_reprovado_flag' relies on missing DataFrame columns without appropriate handling.
-        Exception: If computation fails.
-
     Returns:
-        pd.DataFrame: DataFrame with all specified null grade values successfully replaced by the sentinel.
+        pd.DataFrame: DataFrame modified in-place to avoid deepcopy memory overheads.
     """
-    out = df.copy()
-    available_cols = [c for c in grade_cols if c in out.columns]
+    available_cols = [c for c in grade_cols if c in df.columns]
 
     if available_cols:
-        grade_data = out[available_cols]
+        grade_data = df[available_cols]
         # Mask students whose max and min grade is exactly 0.0 (all non-null grades are 0)
         max_grades = grade_data.max(axis=1)
         min_grades = grade_data.min(axis=1)
         all_zeros_mask = (max_grades == 0.0) & (min_grades == 0.0)
 
         # Only mask as NaN if the student's status is NOT explicitly "REPROVADO"
-        if "aluno_reprovado_flag" in out.columns:
-            all_zeros_mask = all_zeros_mask & (out["aluno_reprovado_flag"] == 0)
+        if "aluno_reprovado_flag" in df.columns:
+            all_zeros_mask = all_zeros_mask & (df["aluno_reprovado_flag"] == 0)
 
-        out.loc[all_zeros_mask, available_cols] = np.nan
+        df.loc[all_zeros_mask, available_cols] = np.nan
 
     for col in available_cols:
-        out[col] = out[col].fillna(sentinel)
+        df[col] = df[col].fillna(sentinel)
 
-    return out
+    return df
 
 
 def temporal_split(
@@ -186,15 +175,25 @@ def temporal_split(
             f"Available years: {sorted(df['ano_letivo'].unique())}"
         )
     if test_mask.sum() == 0:
-        raise ValueError(
-            f"Temporal split produced empty test set (test_year={test_year}). "
-            f"Available years: {sorted(df['ano_letivo'].unique())}"
-        )
+        max_year = df["ano_letivo"].max()
+        if test_year > max_year:
+            logger.warning(
+                "Requested test_year=%d not found in data. Falling back to maximum available year=%d",
+                test_year,
+                max_year,
+            )
+            test_year = max_year
+            train_mask = df["ano_letivo"] < test_year
+            test_mask = df["ano_letivo"] == test_year
+            if train_mask.sum() == 0 or test_mask.sum() == 0:
+                raise ValueError("Fallback still produced an empty set.")
+        else:
+            raise ValueError(
+                f"Temporal split produced empty test set (test_year={test_year}). "
+                f"Available years: {sorted(df['ano_letivo'].unique())}"
+            )
 
-    train = df[train_mask]
-    test = df[test_mask]
-
-    # Validate feature columns exist
+    # Validate feature columns exist before masking
     missing = set(feature_cols) - set(df.columns)
     if missing:
         logger.warning(
@@ -204,18 +203,18 @@ def temporal_split(
 
     logger.info(
         "Temporal split: train=%d rows (%s) | test=%d rows (year=%d)",
-        len(train),
-        f"years {df[train_mask]['ano_letivo'].min()}–{df[train_mask]['ano_letivo'].max()}",
-        len(test),
+        train_mask.sum(),
+        f"years {df.loc[train_mask, 'ano_letivo'].min()}–{df.loc[train_mask, 'ano_letivo'].max()}",
+        test_mask.sum(),
         test_year,
     )
 
-    return (
-        train[feature_cols],
-        train[target_col],
-        test[feature_cols],
-        test[target_col],
-    )
+    X_train = df.loc[train_mask, feature_cols]
+    y_train = df.loc[train_mask, target_col]
+    X_test = df.loc[test_mask, feature_cols]
+    y_test = df.loc[test_mask, target_col]
+
+    return X_train, y_train, X_test, y_test
 
 
 def _validate_never_null(df: pd.DataFrame) -> None:
