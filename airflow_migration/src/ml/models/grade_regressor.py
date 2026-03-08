@@ -2,6 +2,8 @@ import logging
 from dataclasses import dataclass
 import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ def train_grade_regressor(
     X_train: pd.DataFrame,
     y_train: pd.Series,
     config: GradeRegressorConfig | None = None,
-) -> GradientBoostingRegressor:
+) -> Pipeline:
     """
     Fit absolute grade predictive regression targets explicitly matching EF2 segment profiles cleanly natively.
 
@@ -43,16 +45,19 @@ def train_grade_regressor(
         Exception: Fails when missing column data breaks underlying validation constraints directly internally.
 
     Returns:
-        GradientBoostingRegressor: Completely evaluated predictive endpoint accurately mapping final outcomes securely.
+        Pipeline: Completely evaluated predictive endpoint accurately mapping final outcomes securely.
     """
     cfg = config or GradeRegressorConfig()
-    model = GradientBoostingRegressor(
-        n_estimators=cfg.n_estimators,
-        max_depth=cfg.max_depth,
-        learning_rate=cfg.learning_rate,
-        subsample=cfg.subsample,
-        random_state=cfg.random_state,
-    )
+    model = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("regressor", GradientBoostingRegressor(
+            n_estimators=cfg.n_estimators,
+            max_depth=cfg.max_depth,
+            learning_rate=cfg.learning_rate,
+            subsample=cfg.subsample,
+            random_state=cfg.random_state,
+        )),
+    ])
     model.fit(X_train, y_train)
     logger.info("Grade regressor trained on %d samples", len(X_train))
     return model

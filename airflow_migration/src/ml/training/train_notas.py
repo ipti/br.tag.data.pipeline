@@ -52,6 +52,7 @@ def run(test_year: int) -> None:
     from ..features._azure_storage import is_configured, get_fs, CONTAINER
     import glob
     from pathlib import Path
+    import os
 
     fs = get_fs() if is_configured() else None
 
@@ -218,6 +219,12 @@ def run(test_year: int) -> None:
         )
     df = df_clean
     df = fill_missing_values(df)
+
+    # Protect Scikit-Learn GradientBoostingRegressor from Docker OOM (Exit 137)
+    if len(df) > 500000:
+        df = df.sample(n=500000, random_state=42)
+        logger.info("Downsampled overall EF2 dataset to prevent OOM → %d total rows", len(df))
+    import gc; gc.collect()
 
     # ── 4. Temporal split ─────────────────────────────────────────────────────
     logger.info("[4/9] temporal split: train=<test_year, test=%d...", test_year)

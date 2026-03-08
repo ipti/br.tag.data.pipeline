@@ -141,6 +141,16 @@ def run(test_year: int) -> None:
     df = pd.concat([pd.read_parquet(p) for p in merged_paths], ignore_index=True)
     logger.info("[2/9] formatting loaded → %d rows × %d cols", len(df), len(df.columns))
 
+    # Prevent Docker OOM (Exit 137) during XGBoost mapping by downsampling majority negative class
+    df_pos = df[df[TARGET_DROPOUT] == 1]
+    df_neg = df[df[TARGET_DROPOUT] == 0]
+    if len(df_neg) > 1000000:
+        df_neg = df_neg.sample(n=1000000, random_state=42)
+        df = pd.concat([df_pos, df_neg], ignore_index=True).sample(frac=1, random_state=42)
+        logger.info("Downsampled negatives to prevent OOM → %d total rows", len(df))
+    del df_pos, df_neg
+    import gc; gc.collect()
+
     # ── 3. Temporal split ─────────────────────────────────────────────────────
     logger.info("[3/9] temporal split: train=<test_year, test=%d...", test_year)
     X_train, y_train, X_test, y_test = temporal_split(

@@ -74,7 +74,11 @@ def compute_shap_global(
     sample = X_test.sample(min(max_samples, len(X_test)), random_state=42)
     _patch_shap_xgboost_loader()
     
-    explainer = shap.TreeExplainer(model)
+    # SHAP TreeExplainer cannot natively parse sklearn Pipelines. Unwrap if necessary.
+    import sklearn.pipeline
+    estimator = model.steps[-1][1] if isinstance(model, sklearn.pipeline.Pipeline) else model
+    
+    explainer = shap.TreeExplainer(estimator)
     shap_values = explainer.shap_values(sample)
     # For binary XGBoost, TreeExplainer returns a list [class0_array, class1_array].
     if isinstance(shap_values, list):
