@@ -7,13 +7,15 @@ logger = logging.getLogger(__name__)
 _WRITE_STUDENT = """
 UNWIND $rows AS row
 MATCH (stu:Student {id: row.student_id})
-SET stu.embedding = row.embedding
+SET stu.embedding = row.embedding,
+    stu.embedding_hash = row.embedding_hash
 """
 
 _WRITE_SCHOOL = """
 UNWIND $rows AS row
 MATCH (sch:School {id: row.school_id})
-SET sch.embedding = row.embedding
+SET sch.embedding = row.embedding,
+    sch.embedding_hash = row.embedding_hash
 """
 
 
@@ -23,6 +25,7 @@ def write_embeddings(
     embeddings: np.ndarray,
     entity: str = "student",
     batch_size: int = 500,
+    hashes: list[str] | None = None,
 ) -> None:
     """
     Escreve embeddings em lote no Neo4j.
@@ -33,6 +36,7 @@ def write_embeddings(
         embeddings: ndarray shape (N, 384).
         entity: 'student' ou 'school'.
         batch_size: Tamanho do batch — 500 é o limite seguro para evitar OOM no Neo4j.
+        hashes: Lista opcional de hashes de texto para controle de atualização incremental.
 
     Raises:
         ValueError: se entity não for 'student' nem 'school'.
@@ -47,10 +51,15 @@ def write_embeddings(
     with driver.session() as session:
         for start in range(0, total, batch_size):
             end  = min(start + batch_size, total)
-            rows = [
-                {id_key: ids[i], "embedding": embeddings[i].tolist()}
-                for i in range(start, end)
-            ]
+            rows = []
+            for i in range(start, end):
+                row_dict = {id_key: ids[i], "embedding": embeddings[i].tolist()}
+                if hashes:
+                    row_dict["embedding_hash"] = hashes[i]
+                else:
+                    row_dict["embedding_hash"] = None
+                rows.append(row_dict)
+
             session.run(query, rows=rows)
             logger.info("Embeddings escritos: %d/%d (%s)", end, total, entity)
 
