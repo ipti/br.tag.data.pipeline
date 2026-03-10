@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING
 
 # Suppress verbose per-request HTTP logs from the Azure SDK (request headers,
 # response headers, etc.). Only warnings and errors will surface.
-logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
+    logging.WARNING
+)
 logging.getLogger("azure.storage").setLevel(logging.WARNING)
 
 if TYPE_CHECKING:
@@ -52,4 +54,6 @@ def raw_blob_key(segment: str, year: int, filename: str) -> str:
 
 def feature_blob_key(segment: str, year: int, run_date_nodash: str, kind: str) -> str:
     """Partitioned features path: features/segment=.../year=.../run=.../{kind}.parquet"""
-    return f"features/segment={segment}/year={year}/run={run_date_nodash}/{kind}.parquet"
+    return (
+        f"features/segment={segment}/year={year}/run={run_date_nodash}/{kind}.parquet"
+    )

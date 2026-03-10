@@ -47,13 +47,19 @@ def encode_categoricals(df: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: The same DataFrame modified in-place to avoid peak memory allocations.
     """
     if "ethnicity_raw" in df.columns:
-        df["ethnicity_enc"] = df["ethnicity_raw"].map(ETHNICITY_ENCODING).fillna(5).astype(int)
+        df["ethnicity_enc"] = (
+            df["ethnicity_raw"].map(ETHNICITY_ENCODING).fillna(5).astype(int)
+        )
     if "stage_raw" in df.columns:
         df["stage_enc"] = df["stage_raw"].map(STAGE_ENCODING).fillna(1).astype(int)
     if "grade_level_raw" in df.columns:
-        df["grade_level_enc"] = df["grade_level_raw"].map(GRADE_LEVEL_ENCODING).fillna(1).astype(int)
+        df["grade_level_enc"] = (
+            df["grade_level_raw"].map(GRADE_LEVEL_ENCODING).fillna(1).astype(int)
+        )
     if "residence_zone_raw" in df.columns:
-        df["residence_zone_enc"] = df["residence_zone_raw"].map(RESIDENCE_ENCODING).fillna(2).astype(int)
+        df["residence_zone_enc"] = (
+            df["residence_zone_raw"].map(RESIDENCE_ENCODING).fillna(2).astype(int)
+        )
 
     # Derived health aggregate — sum of boolean conditions
     health_bool_cols = [
@@ -67,7 +73,9 @@ def encode_categoricals(df: pd.DataFrame) -> pd.DataFrame:
     # Check which health columns actually exist
     existing_health = [c for c in health_bool_cols if c in df.columns]
     if existing_health:
-        df["n_health_conditions"] = df[existing_health].fillna(0).astype(int).sum(axis=1)
+        df["n_health_conditions"] = (
+            df[existing_health].fillna(0).astype(int).sum(axis=1)
+        )
 
     # Delta vs municipal benchmark
     if "taxa_ausencia" in df.columns and "muni_freq_liq_fund" in df.columns:
@@ -168,29 +176,51 @@ def fill_missing_values(df: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: DataFrame modified in-place.
     """
     # Attendance sentinel: -1 signals "school has no electronic journal" (not zero absences)
-    att_cols = [c for c in ["taxa_ausencia", "falta_critica", "total_faltas_abs"] if c in df.columns]
+    att_cols = [
+        c
+        for c in ["taxa_ausencia", "falta_critica", "total_faltas_abs"]
+        if c in df.columns
+    ]
     if att_cols:
         n_null = df[att_cols].isna().sum().sum()
         df[att_cols] = df[att_cols].fillna(-1.0)
-        logger.info("fill_missing_values: attendance sentinel -1 applied to %d NaN cells", n_null)
+        logger.info(
+            "fill_missing_values: attendance sentinel -1 applied to %d NaN cells",
+            n_null,
+        )
 
     # Health booleans: 0 = no Health node = no condition registered
-    health_bool_cols = [c for c in [
-        "has_malnutrition", "has_diabetes", "has_hypertension",
-        "has_obesity", "has_celiac", "has_anemia",
-    ] if c in df.columns]
+    health_bool_cols = [
+        c
+        for c in [
+            "has_malnutrition",
+            "has_diabetes",
+            "has_hypertension",
+            "has_obesity",
+            "has_celiac",
+            "has_anemia",
+        ]
+        if c in df.columns
+    ]
     if health_bool_cols:
         n_null = df[health_bool_cols].isna().sum().sum()
         df[health_bool_cols] = df[health_bool_cols].fillna(0)
-        logger.info("fill_missing_values: health booleans filled 0 for %d NaN cells", n_null)
+        logger.info(
+            "fill_missing_values: health booleans filled 0 for %d NaN cells", n_null
+        )
 
     # Municipal + State socioeconomic indicators: median imputation
-    socio_cols = [c for c in (MUNICIPAL_FEATURES + STATE_QEDU_FEATURES + STATE_PNAD_FEATURES)
-                  if c in df.columns]
+    socio_cols = [
+        c
+        for c in (MUNICIPAL_FEATURES + STATE_QEDU_FEATURES + STATE_PNAD_FEATURES)
+        if c in df.columns
+    ]
     if socio_cols:
         n_null = df[socio_cols].isna().sum().sum()
         df[socio_cols] = df[socio_cols].fillna(df[socio_cols].median())
-        logger.info("fill_missing_values: socioeconomic median fill for %d NaN cells", n_null)
+        logger.info(
+            "fill_missing_values: socioeconomic median fill for %d NaN cells", n_null
+        )
 
     return df
 

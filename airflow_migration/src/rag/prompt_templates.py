@@ -1,3 +1,14 @@
+"""
+LLM prompt templates for granularity-specific educational analysis.
+
+This module provides five specialized system prompts (one per granularity level)
+and a generic fallback template for educational data analysis. Each template
+guides the LLM to produce consistent, actionable output with structured sections
+(situation, risks, context, interventions, confidence) and explicit data sourcing.
+All templates emphasize direct language, conditional reasoning on available data,
+and prevention-focused recommendations aligned with Brazilian educational policy.
+"""
+
 STUDENT_ANALYSIS = """\
 Você é um analista pedagógico especializado em prevenção de evasão escolar no Brasil.
 Analise os dados do aluno abaixo e produza uma resposta objetiva para o gestor.

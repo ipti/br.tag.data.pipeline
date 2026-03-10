@@ -62,7 +62,9 @@ def get_champion_metrics(model_name: str, client: MlflowClient) -> dict | None:
         try:
             champ_mv = client.get_model_version_by_alias(model_name, "champion")
         except mlflow.exceptions.RestException:
-            logger.info("No champion model alias found for '%s' — first run.", model_name)
+            logger.info(
+                "No champion model alias found for '%s' — first run.", model_name
+            )
             return None
         run = client.get_run(champ_mv.run_id)
         return dict(run.data.metrics)

@@ -16,27 +16,30 @@ def _patch_shap_xgboost_loader():
     Monkey-patch SHAP to handle XGBoost 2.x UBJSON base_score array formatting natively.
 
     XGBoost 2.x serialization stores base_score in UBJSON arrays like `[5E-1]`.
-    SHAP explicitly decodes the UBJSON buffers during TreeExplainer initialization and 
+    SHAP explicitly decodes the UBJSON buffers during TreeExplainer initialization and
     immediately calls `float(learner_model_param['base_score'])`, triggering a ValueError.
     Patching the decoder ensures we flatten the array before SHAP accesses the dictionary.
     """
     try:
         import shap
         import shap.explainers._tree
-        
+
         # Prevent double patching
         if hasattr(shap.explainers._tree, "_patched_decode"):
             return
-            
+
         _orig_decode = shap.explainers._tree.decode_ubjson_buffer
 
         def _patched_decode(*args, **kwargs):
             res = _orig_decode(*args, **kwargs)
             try:
                 import json
+
                 bs = res["learner"]["learner_model_param"]["base_score"]
                 if isinstance(bs, str) and bs.startswith("["):
-                    res["learner"]["learner_model_param"]["base_score"] = str(float(json.loads(bs)[0]))
+                    res["learner"]["learner_model_param"]["base_score"] = str(
+                        float(json.loads(bs)[0])
+                    )
             except Exception:
                 pass
             return res
@@ -73,11 +76,14 @@ def compute_shap_global(
     """
     sample = X_test.sample(min(max_samples, len(X_test)), random_state=42)
     _patch_shap_xgboost_loader()
-    
+
     # SHAP TreeExplainer cannot natively parse sklearn Pipelines. Unwrap if necessary.
     import sklearn.pipeline
-    estimator = model.steps[-1][1] if isinstance(model, sklearn.pipeline.Pipeline) else model
-    
+
+    estimator = (
+        model.steps[-1][1] if isinstance(model, sklearn.pipeline.Pipeline) else model
+    )
+
     explainer = shap.TreeExplainer(estimator)
     shap_values = explainer.shap_values(sample)
     # For binary XGBoost, TreeExplainer returns a list [class0_array, class1_array].
@@ -147,7 +153,7 @@ def compute_shap_local(
     if isinstance(shap_values, list):
         values = shap_values[1][0]  # class-1, single row
     else:
-        values = shap_values[0]     # regression, single row
+        values = shap_values[0]  # regression, single row
     base_value = float(
         explainer.expected_value[1]
         if isinstance(explainer.expected_value, (list, np.ndarray))

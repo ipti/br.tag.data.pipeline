@@ -8,6 +8,7 @@ Pipeline: extract → validate → train → evaluate → compare → promote.
 Retrain is triggered either on schedule or when the drift DAG sets
 the retrain flag (/data/drift/retrain_needed.flag file exists).
 """
+
 from datetime import datetime, timedelta
 import subprocess, sys
 from airflow import DAG
@@ -20,6 +21,7 @@ def _apply_storage_mode(ctx: dict) -> None:
     mode = ctx.get("params", {}).get("storage_mode", "local")
     if mode == "local":
         import os
+
         os.environ.pop("AZURE_STORAGE_ACCOUNT_NAME", None)
 
 
@@ -69,8 +71,8 @@ def validate_features_task(**ctx):
 def train_evasao_task(**ctx):
     """Run dropout model training entrypoint as subprocess."""
     _apply_storage_mode(ctx)
-    
-    # Pass storage mode to subprocess via env var if needed, 
+
+    # Pass storage mode to subprocess via env var if needed,
     # but _apply_storage_mode already unsets AZURE_STORAGE_ACCOUNT_NAME from os.environ
     # which is inherited by subprocess.run
     test_year = ctx["params"].get("test_year", datetime.now().year)

@@ -35,7 +35,6 @@ default_args = {
 
 from src.utils.neo4j.airflow_tasks import create_indexes, stream_to_neo4j
 
-
 # ================================================================
 # SQL QUERIES – Reading from dbo_tia schema on SQL Server
 # ================================================================

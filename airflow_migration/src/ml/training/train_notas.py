@@ -56,7 +56,9 @@ def run(test_year: int) -> None:
 
     fs = get_fs() if is_configured() else None
 
-    storage_mode = f"Azure ({os.environ.get('AZURE_STORAGE_ACCOUNT_NAME')})" if fs else "local"
+    storage_mode = (
+        f"Azure ({os.environ.get('AZURE_STORAGE_ACCOUNT_NAME')})" if fs else "local"
+    )
     logger.info("[1/9] storage=%-35s | test_year=%d", storage_mode, test_year)
 
     # Load Base Data
@@ -68,16 +70,25 @@ def run(test_year: int) -> None:
         base_files = sorted(glob.glob(f"{raw_dir}/EF2_*.parquet"))
 
     # Exclude delta, temporary, and grades files, we only want the full base year parquets
-    base_files = [f for f in base_files if "_delta_" not in str(f) and "_tmp" not in str(f) and "grades" not in str(f)]
+    base_files = [
+        f
+        for f in base_files
+        if "_delta_" not in str(f) and "_tmp" not in str(f) and "grades" not in str(f)
+    ]
 
     if not base_files:
-        raise RuntimeError("No EF2 raw base files found. Run feature engineering DAG first.")
+        raise RuntimeError(
+            "No EF2 raw base files found. Run feature engineering DAG first."
+        )
 
     # Load exactly what is needed to avoid OOM in Docker Airflow workers
     import pyarrow.parquet as pq
 
-    logger.info("[1/9] loading %d EF2 base parquet files and merging incrementally...", len(base_files))
-    
+    logger.info(
+        "[1/9] loading %d EF2 base parquet files and merging incrementally...",
+        len(base_files),
+    )
+
     # Load Grades Data early to use in chunked merge
     if fs:
         grades_pattern = f"{CONTAINER}/features/ef2_grades_*.parquet"
@@ -86,26 +97,51 @@ def run(test_year: int) -> None:
         features_dir = Path(__file__).parent.parent / "data" / "features"
         logger.info("Looking for grades in: %s/ef2_grades_*.parquet", features_dir)
         grades_files = sorted(glob.glob(f"{features_dir}/ef2_grades_*.parquet"))
-        
+
     if not grades_files:
-        raise RuntimeError("No EF2 grades files found. Run feature engineering DAG first.")
-        
+        raise RuntimeError(
+            "No EF2 grades files found. Run feature engineering DAG first."
+        )
+
     latest_grades_path = grades_files[-1]
     logger.info("      %s", latest_grades_path)
-    
-    sample_grades = pq.read_schema(latest_grades_path, filesystem=fs) if fs else pq.read_schema(latest_grades_path)
+
+    sample_grades = (
+        pq.read_schema(latest_grades_path, filesystem=fs)
+        if fs
+        else pq.read_schema(latest_grades_path)
+    )
     grades_cols = set(sample_grades.names)
-    needed_grades_cols = [c for c in GRADE_EF2_FEATURES + [TARGET_GRADE, "nota_media_geral", "student_id"] if c in grades_cols]
-    
+    needed_grades_cols = [
+        c
+        for c in GRADE_EF2_FEATURES + [TARGET_GRADE, "nota_media_geral", "student_id"]
+        if c in grades_cols
+    ]
+
     logger.info("[1/9] loading grades chunk -> features")
-    df_grades = pd.read_parquet(latest_grades_path, filesystem=fs, columns=list(set(needed_grades_cols))) if fs else pd.read_parquet(latest_grades_path, columns=list(set(needed_grades_cols)))
-    
-    sample_base = pq.read_schema(base_files[-1], filesystem=fs) if fs else pq.read_schema(base_files[-1])
+    df_grades = (
+        pd.read_parquet(
+            latest_grades_path, filesystem=fs, columns=list(set(needed_grades_cols))
+        )
+        if fs
+        else pd.read_parquet(latest_grades_path, columns=list(set(needed_grades_cols)))
+    )
+
+    sample_base = (
+        pq.read_schema(base_files[-1], filesystem=fs)
+        if fs
+        else pq.read_schema(base_files[-1])
+    )
     available_base = set(sample_base.names)
-    needed_base_cols = [c for c in FEATURES_NOTAS_EF2 if c in available_base] + ["student_id"]
+    needed_base_cols = [c for c in FEATURES_NOTAS_EF2 if c in available_base] + [
+        "student_id"
+    ]
     if TARGET_GRADE in available_base and TARGET_GRADE not in needed_base_cols:
         needed_base_cols.append(TARGET_GRADE)
-    if "nota_media_geral" in available_base and "nota_media_geral" not in needed_base_cols:
+    if (
+        "nota_media_geral" in available_base
+        and "nota_media_geral" not in needed_base_cols
+    ):
         needed_base_cols.append("nota_media_geral")
 
     from ..features.feature_pipeline import encode_categoricals, fill_grade_sentinel
@@ -116,90 +152,140 @@ def run(test_year: int) -> None:
     data_dir = Path(__file__).parent.parent / "data"
     tmp_dir = data_dir / "tmp"
     os.makedirs(tmp_dir, exist_ok=True)
-    
+
     merged_paths = []
     n_base = 0
 
     # Load Grades Data explicitly early for map joins
     logger.info("  -> Loading Grades Chunk [%s]", latest_grades_path.split("/")[-1])
-    sample_grades = pq.read_schema(latest_grades_path, filesystem=fs) if fs else pq.read_schema(latest_grades_path)
+    sample_grades = (
+        pq.read_schema(latest_grades_path, filesystem=fs)
+        if fs
+        else pq.read_schema(latest_grades_path)
+    )
     grades_cols = set(sample_grades.names)
-    needed_grades_cols = [c for c in GRADE_EF2_FEATURES + [TARGET_GRADE, "nota_media_geral", "student_id"] if c in grades_cols]
-    df_grades = pd.read_parquet(latest_grades_path, filesystem=fs, columns=list(set(needed_grades_cols))) if fs else pd.read_parquet(latest_grades_path, columns=list(set(needed_grades_cols)))
-    
+    needed_grades_cols = [
+        c
+        for c in GRADE_EF2_FEATURES + [TARGET_GRADE, "nota_media_geral", "student_id"]
+        if c in grades_cols
+    ]
+    df_grades = (
+        pd.read_parquet(
+            latest_grades_path, filesystem=fs, columns=list(set(needed_grades_cols))
+        )
+        if fs
+        else pd.read_parquet(latest_grades_path, columns=list(set(needed_grades_cols)))
+    )
+
     # Deduplicate perfectly duplicating records generating memory explosions on Cartesian .merge() loops downstream mapping per student exactly once!
     df_grades.drop_duplicates(subset=["student_id"], inplace=True)
 
-    sample_base = pq.read_schema(base_files[-1], filesystem=fs) if fs else pq.read_schema(base_files[-1])
+    sample_base = (
+        pq.read_schema(base_files[-1], filesystem=fs)
+        if fs
+        else pq.read_schema(base_files[-1])
+    )
     available_base = set(sample_base.names)
-    
-    grades_overlaps = set(GRADE_EF2_FEATURES + [TARGET_GRADE, "nota_media_geral", "student_id"])
-    needed_base_cols = [c for c in FEATURES_NOTAS_EF2 if c in available_base and c not in grades_overlaps] + ["student_id"]
+
+    grades_overlaps = set(
+        GRADE_EF2_FEATURES + [TARGET_GRADE, "nota_media_geral", "student_id"]
+    )
+    needed_base_cols = [
+        c
+        for c in FEATURES_NOTAS_EF2
+        if c in available_base and c not in grades_overlaps
+    ] + ["student_id"]
     # We purposefully EXCLUDE target_grade / nota_media_geral from base, as they arrive via merge from `df_grades`.
 
     for i, f in enumerate(base_files, 1):
         year_str = f.split("_")[-1].replace(".parquet", "")
-        logger.info("  [%d/%d] processing batches from %s...", i, len(base_files), f.split("/")[-1] if "/" in str(f) else f)
-        
+        logger.info(
+            "  [%d/%d] processing batches from %s...",
+            i,
+            len(base_files),
+            f.split("/")[-1] if "/" in str(f) else f,
+        )
+
         pf = pq.ParquetFile(fs.open(f) if fs else f)
-        
+
         batch_idx = 0
         for batch in pf.iter_batches(batch_size=250_000, columns=needed_base_cols):
             df_chunk = batch.to_pandas()
             n_base += len(df_chunk)
-            
+
             # Immediate inner join on student grades drops ~95% of rows usually
             df_chunk = df_chunk.merge(df_grades, on="student_id", how="inner")
-            
+
             if len(df_chunk) == 0:
                 del df_chunk
-                import gc; gc.collect()
+                import gc
+
+                gc.collect()
                 continue
-            
+
             # Limit dimensions
             df_chunk = encode_categoricals(df_chunk)
             df_chunk = fill_grade_sentinel(df_chunk, GRADE_EF2_FEATURES)
 
             for col in df_chunk.columns:
-                if df_chunk[col].dtype == 'object':
-                    df_chunk[col] = df_chunk[col].astype('category')
-                elif df_chunk[col].dtype == 'float64':
-                    df_chunk[col] = df_chunk[col].astype('float32')
+                if df_chunk[col].dtype == "object":
+                    df_chunk[col] = df_chunk[col].astype("category")
+                elif df_chunk[col].dtype == "float64":
+                    df_chunk[col] = df_chunk[col].astype("float32")
 
             # Convert proxy column to target column if it's missing (as TARGET_GRADE is not in df_base and df_grades is an aggregation)
-            if "nota_media_geral" in df_chunk.columns and TARGET_GRADE not in df_chunk.columns:
-                df_chunk.rename(columns={"nota_media_geral": TARGET_GRADE}, inplace=True)
+            if (
+                "nota_media_geral" in df_chunk.columns
+                and TARGET_GRADE not in df_chunk.columns
+            ):
+                df_chunk.rename(
+                    columns={"nota_media_geral": TARGET_GRADE}, inplace=True
+                )
 
             # Drop rows where target is null (can't regress without a grade)
             df_chunk.dropna(subset=[TARGET_GRADE], inplace=True)
-            
+
             if len(df_chunk) > 0:
-                out_path = os.path.join(tmp_dir, f"chunk_{year_str}_{batch_idx}.parquet")
+                out_path = os.path.join(
+                    tmp_dir, f"chunk_{year_str}_{batch_idx}.parquet"
+                )
                 df_chunk.to_parquet(out_path, index=False)
                 merged_paths.append(out_path)
-            
+
             del df_chunk
             batch_idx += 1
-            import gc; gc.collect()
-            
-    del df_grades
-    import gc; gc.collect()
+            import gc
 
-    logger.info("  -> Loading %d aggregated conceptual iter-batch disk arrays...", len(merged_paths))
-    
+            gc.collect()
+
+    del df_grades
+    import gc
+
+    gc.collect()
+
+    logger.info(
+        "  -> Loading %d aggregated conceptual iter-batch disk arrays...",
+        len(merged_paths),
+    )
+
     if not merged_paths:
-        raise ValueError(f"Temporal split produced empty dataset. No grades match any base records across {len(base_files)} years.")
-        
+        raise ValueError(
+            f"Temporal split produced empty dataset. No grades match any base records across {len(base_files)} years."
+        )
+
     df = pd.concat([pd.read_parquet(p) for p in merged_paths], ignore_index=True)
-    
-    n_grades = 0 # Not calculated explicitly to save array footprint tracking
-    
+
+    n_grades = 0  # Not calculated explicitly to save array footprint tracking
+
     logger.info(
         "EF2 merge (via incremental IO limits): %d base rows → %d merged",
         n_base,
         len(df),
     )
-    logger.info("       %.1f%% of base students have grade records", 100 * len(df) / max(n_base, 1))
+    logger.info(
+        "       %.1f%% of base students have grade records",
+        100 * len(df) / max(n_base, 1),
+    )
     if len(df) < 1000:
         logger.warning(
             "Merged EF2 dataset has only %d rows. ",
@@ -223,8 +309,12 @@ def run(test_year: int) -> None:
     # Protect Scikit-Learn GradientBoostingRegressor from Docker OOM (Exit 137)
     if len(df) > 500000:
         df = df.sample(n=500000, random_state=42)
-        logger.info("Downsampled overall EF2 dataset to prevent OOM → %d total rows", len(df))
-    import gc; gc.collect()
+        logger.info(
+            "Downsampled overall EF2 dataset to prevent OOM → %d total rows", len(df)
+        )
+    import gc
+
+    gc.collect()
 
     # ── 4. Temporal split ─────────────────────────────────────────────────────
     logger.info("[4/9] temporal split: train=<test_year, test=%d...", test_year)
@@ -237,9 +327,17 @@ def run(test_year: int) -> None:
 
     # ── 5. Train ──────────────────────────────────────────────────────────────
     config = GradeRegressorConfig()
-    logger.info("[5/9] training GradientBoosting (n_estimators=%d, max_depth=%d)...",
-                config.n_estimators, config.max_depth)
-    logger.info("       train=%d rows | test=%d rows | features=%d", len(X_train), len(X_test), X_train.shape[1])
+    logger.info(
+        "[5/9] training GradientBoosting (n_estimators=%d, max_depth=%d)...",
+        config.n_estimators,
+        config.max_depth,
+    )
+    logger.info(
+        "       train=%d rows | test=%d rows | features=%d",
+        len(X_train),
+        len(X_test),
+        X_train.shape[1],
+    )
     model = train_grade_regressor(X_train, y_train, config)
 
     # ── 6. Evaluate ───────────────────────────────────────────────────────────
@@ -262,7 +360,9 @@ def run(test_year: int) -> None:
         logger.info("All acceptance criteria met: %s", metrics.as_dict())
 
     # ── 7. SHAP ───────────────────────────────────────────────────────────────
-    logger.info("[7/9] computing SHAP values (up to 2000 samples — may take ~60s for GBM)...")
+    logger.info(
+        "[7/9] computing SHAP values (up to 2000 samples — may take ~60s for GBM)..."
+    )
     _, shap_buf = compute_shap_global(model, X_test)
 
     # ── 8. Log to MLflow ──────────────────────────────────────────────────────

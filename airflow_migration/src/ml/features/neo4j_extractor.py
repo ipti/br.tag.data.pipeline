@@ -666,14 +666,19 @@ class Neo4jExtractor:
             # This avoids N Azure write transactions (one per shard).
             self._shards_dir: Path = Path(tempfile.mkdtemp(prefix="neo4j_shards_"))
             self._output_dir: Path = self._shards_dir
-            logger.info("Neo4jExtractor → Azure Blob mode (container=%s)", self._container)
+            logger.info(
+                "Neo4jExtractor → Azure Blob mode (container=%s)", self._container
+            )
         else:
             self._fs = None
             if output_dir is None:
                 output_dir = Path(__file__).parent.parent / "data" / "raw"
             self._output_dir = output_dir
             self._output_dir.mkdir(parents=True, exist_ok=True)
-            logger.info("Neo4jExtractor → local mode (output_dir=%s)", self._output_dir.resolve())
+            logger.info(
+                "Neo4jExtractor → local mode (output_dir=%s)",
+                self._output_dir.resolve(),
+            )
 
         self._uf_ibge: dict[str, dict] | None = None
         self._schools_by_uf: dict[str, list[str]] | None = None
@@ -973,7 +978,10 @@ class Neo4jExtractor:
         if self._azure:
             dest_label = blob_dest
             logger.info(
-                "[%s] Merging %d shards → blob:%s", step_label, len(shard_files), blob_dest
+                "[%s] Merging %d shards → blob:%s",
+                step_label,
+                len(shard_files),
+                blob_dest,
             )
             with pq.ParquetWriter(
                 blob_dest, schema, compression="snappy", filesystem=self._fs
@@ -992,7 +1000,9 @@ class Neo4jExtractor:
             logger.info(
                 "[%s] Merging %d shards → %s", step_label, len(shard_files), final_path
             )
-            with pq.ParquetWriter(str(final_path), schema, compression="snappy") as merger:
+            with pq.ParquetWriter(
+                str(final_path), schema, compression="snappy"
+            ) as merger:
                 for shard_path in shard_files:
                     tbl = pq.read_table(str(shard_path), schema=schema)
                     merger.write_table(tbl)
@@ -1259,9 +1269,9 @@ class Neo4jExtractor:
                     parquet_path, columns=["muni_freq_fonte"], filesystem=self._fs
                 ).column("muni_freq_fonte")
             else:
-                col = pq.read_table(
-                    parquet_path, columns=["muni_freq_fonte"]
-                ).column("muni_freq_fonte")
+                col = pq.read_table(parquet_path, columns=["muni_freq_fonte"]).column(
+                    "muni_freq_fonte"
+                )
         except Exception:
             return  # column absent — schema mismatch, skip silently
 

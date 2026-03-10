@@ -7,6 +7,20 @@ _MAX_CHARS = 16_000
 
 
 def _truncate(text: str) -> str:
+    """
+    Truncate context string to maximum token budget with warning log.
+
+    Enforces a 16,000-character limit to stay within typical LLM context windows.
+    If truncation occurs, appends a visual indicator to alert the LLM that
+    context was incomplete.
+
+    Args:
+        text (str): Raw context string, potentially unbounded.
+
+    Returns:
+        str: Context truncated to at most 16,000 characters with truncation indicator
+            appended if original exceeded the limit.
+    """
     if len(text) > _MAX_CHARS:
         logger.warning("Contexto truncado de %d para %d chars", len(text), _MAX_CHARS)
         return text[:_MAX_CHARS] + "\n[contexto truncado por limite de tokens]"
@@ -19,15 +33,26 @@ def build_student_context(
     include_ibge: bool = True,
 ) -> str:
     """
-    Serializa contexto de aluno para o prompt.
+    Serialize student profile context into prompt-ready formatted text.
+
+    Transforms a student profile dictionary into a multi-section narrative suitable
+    for LLM analysis. Sections include demographics, attendance, grades (with within-year
+    trajectory), health conditions, school/municipality/state context, classroom assignment,
+    and similar student profiles for benchmarking. Critical thresholds (absence >25%,
+    grades <5.0, risk levels) are highlighted with visual warnings. All numeric values are
+    formatted for readability, and missing data is explicitly noted.
 
     Args:
-        student_ctx: Saída de Retriever.get_student_context().
-        similar: Saída de Retriever.find_similar_students().
-        include_ibge: Se False, omite seção IBGE (reduz tokens).
+        student_ctx (dict[str, Any]): Student context dictionary from `Retriever.get_student_context()`.
+            Expected keys: 'perfil', 'frequencia', 'notas', 'saude', 'turma', 'escola_ibge'.
+        similar (list[dict]): Similar student records from `Retriever.find_similar_students()`,
+            each with 'similarity', 'cluster', 'desfecho', 'escola' keys.
+        include_ibge (bool, optional): If False, omits IBGE/regional context section to save tokens.
+            Defaults to True.
 
     Returns:
-        String ≤ 16.000 chars.
+        str: Multi-section formatted context (guaranteed ≤16,000 characters after truncation).
+            Sections: [PERFIL] [FREQUÊNCIA] [NOTAS] [SAÚDE] [CONTEXTO IBGE] [TURMA] [ALUNOS SIMILARES].
     """
     parts: list[str] = []
 
@@ -51,7 +76,9 @@ def build_student_context(
             f"({f.get('total_faltas', 0)} faltas / {f.get('total_dias', 200)} dias){alerta}"
         )
 
-    notas = [n for n in (student_ctx.get("notas") or []) if n.get("nota_final") is not None]
+    notas = [
+        n for n in (student_ctx.get("notas") or []) if n.get("nota_final") is not None
+    ]
     if not notas:
         parts.append("[NOTAS] sem notas cadastradas no sistema")
     else:
@@ -60,14 +87,27 @@ def build_student_context(
             traj = ""
             if n.get("nota_g1") is not None and n.get("nota_final") is not None:
                 delta = n["nota_final"] - n["nota_g1"]
-                traj  = f" (Δ1ºbim: {'+' if delta >= 0 else ''}{delta:.1f})"
+                traj = f" (Δ1ºbim: {'+' if delta >= 0 else ''}{delta:.1f})"
             alerta = " ⚠️" if n.get("nota_final", 10) < 5 else ""
-            nota_lines.append(f"  {n['disciplina']}: {n['nota_final']:.1f}{traj}{alerta}")
+            nota_lines.append(
+                f"  {n['disciplina']}: {n['nota_final']:.1f}{traj}{alerta}"
+            )
         parts.append("[NOTAS]\n" + "\n".join(nota_lines))
 
     s = student_ctx.get("saude", {})
     if s.get("tem_registro"):
-        conds = [k for k in ["malnutrition","diabetes","obesity","hypertension","celiac","anemia"] if s.get(k)]
+        conds = [
+            k
+            for k in [
+                "malnutrition",
+                "diabetes",
+                "obesity",
+                "hypertension",
+                "celiac",
+                "anemia",
+            ]
+            if s.get(k)
+        ]
         parts.append(f"[SAÚDE] condições: {', '.join(conds) or 'nenhuma registrada'}")
     else:
         parts.append("[SAÚDE] sem registro de saúde para este aluno")
@@ -80,7 +120,9 @@ def build_student_context(
                 f"escola={ei.get('nome','?')}, município={ei.get('municipio','?')}, UF={ei.get('uf','?')}"
             ]
             if ei.get("muni_freq_liq"):
-                ibge_parts.append(f"IBGE_freq_liq_muni={ei['muni_freq_liq']:.1f}% [{fonte}]")
+                ibge_parts.append(
+                    f"IBGE_freq_liq_muni={ei['muni_freq_liq']:.1f}% [{fonte}]"
+                )
             if ei.get("muni_analf_adulto"):
                 ibge_parts.append(f"analf_adulto_muni={ei['muni_analf_adulto']:.1f}%")
             if ei.get("est_ideb_af"):
@@ -91,7 +133,9 @@ def build_student_context(
 
     t = student_ctx.get("turma", {})
     if t.get("nome"):
-        parts.append(f"[TURMA] {t.get('nome','?')} | {t.get('grade_level','?')} | ano={t.get('ano_letivo','?')}")
+        parts.append(
+            f"[TURMA] {t.get('nome','?')} | {t.get('grade_level','?')} | ano={t.get('ano_letivo','?')}"
+        )
 
     if similar:
         sim_lines = [
@@ -99,16 +143,35 @@ def build_student_context(
             f"escola={s.get('escola','?')}, desfecho={s.get('desfecho','?')}"
             for s in similar[:5]
         ]
-        parts.append("[ALUNOS SIMILARES — o que aconteceu com perfis parecidos]\n" + "\n".join(sim_lines))
+        parts.append(
+            "[ALUNOS SIMILARES — o que aconteceu com perfis parecidos]\n"
+            + "\n".join(sim_lines)
+        )
 
     return _truncate("\n".join(parts))
 
 
 def build_classroom_context(classroom_ctx: dict[str, Any]) -> str:
     """
-    Serializa contexto de turma para o prompt.
+    Serialize classroom aggregate context into prompt-ready formatted text.
 
-    Inclui Q15 features + Q8 composite risk + IBGE com fonte.
+    Transforms a classroom context dictionary (aggregated student metrics) into
+    a multi-section narrative for pedagogical analysis. Sections include class size
+    and demographic composition, attendance aggregates with risk flags, performance
+    metrics with statistical dispersion, and the Q8 composite risk signal (0–1 scale).
+    Critical thresholds are highlighted (low diary coverage, high absence, low grades,
+    high risk). IBGE municipal and QEDU state benchmarks enable regional comparison.
+
+    Args:
+        classroom_ctx (dict[str, Any]): Classroom context dictionary from
+            `Retriever.get_classroom_context()`. Expected keys: classroom_name, grade_level,
+            stage, n_alunos, n_bolsistas, n_pcd, n_rural, n_risco_saude, taxa_ausencia_pct,
+            pct_com_falta, tem_diario, media_nota, dispersao_nota, cv_nota_pct, pct_abaixo5,
+            tem_notas, soma_sinais_risco, muni_freq_liq, fonte_freq_ibge, est_ideb_af, est_abandono.
+
+    Returns:
+        str: Multi-section formatted context (guaranteed ≤16,000 characters after truncation).
+            Sections: [TURMA] [COMPOSIÇÃO] [FREQUÊNCIA] [NOTAS] [RISCO COMPOSTO Q8] [IBGE].
     """
     if not classroom_ctx:
         return "[TURMA] dados não encontrados"
@@ -119,7 +182,9 @@ def build_classroom_context(classroom_ctx: dict[str, Any]) -> str:
     alerta_risco = ""
     risco = c.get("soma_sinais_risco")
     if risco is not None:
-        nivel = "CRÍTICO ⚠️" if risco > 0.6 else "ALERTA" if risco > 0.35 else "MODERADO"
+        nivel = (
+            "CRÍTICO ⚠️" if risco > 0.6 else "ALERTA" if risco > 0.35 else "MODERADO"
+        )
         alerta_risco = f" → risco composto={risco:.2f} ({nivel})"
 
     parts = [
@@ -145,7 +210,32 @@ def build_school_context(
     similar_schools: list[dict] | None = None,
 ) -> str:
     """
-    Serializa contexto de escola em 4 dimensões + IBGE + escolas similares.
+    Serialize school-wide analytics context into prompt-ready formatted text.
+
+    Transforms a school context dictionary into a multi-section narrative organized
+    across four key analytical dimensions:
+    1. **Presence**: Absence rate vs. IBGE municipal benchmark, critical absence count, diary coverage
+    2. **Performance**: Mean grade, dispersion, coefficient of variation, % below threshold
+    3. **Equity**: Bolsa Família enrollment %, performance gap by income, PCD/rural student counts
+    4. **Health**: Students with health records, counts by condition (malnutrition, diabetes, obesity)
+    Also includes IBGE municipal socioeconomic context and QEDU state benchmarks (IDEB, dropout,
+    grade misalignment, proficiency rates). Similar schools from embedding search are appended
+    for comparative reference.
+
+    Args:
+        school_ctx (dict[str, Any]): School context dictionary from `Retriever.get_school_context()`.
+            Expected keys: school_name, municipio, uf, n_alunos, n_turmas, taxa_ausencia_pct,
+            n_falta_critica, tem_diario, media_nota, dispersao_nota, pct_abaixo5, tem_notas,
+            pct_bolsa_familia, media_nota_bf, media_nota_nobf, gap_bf, n_pcd, n_rural,
+            n_com_saude, n_desnutridos, n_diabetes, n_obesidade, muni_freq_liq, muni_analf,
+            muni_atraso, muni_expectativa, fonte_freq_ibge, est_ideb_af, est_abandono, est_reprovacao,
+            est_distorcao_af, est_lp_adequado, est_mat_adequado.
+        similar_schools (list[dict], optional): Similar school records from
+            `Retriever.find_similar_schools()`. Defaults to None.
+
+    Returns:
+        str: Multi-section formatted context (guaranteed ≤16,000 characters after truncation).
+            Sections: [ESCOLA] [ESCOPO] [PRESENÇA] [DESEMPENHO] [EQUIDADE] [SAÚDE] [IBGE] [BENCHMARKS ESTADO] [ESCOLAS SIMILARES].
     """
     if not school_ctx:
         return "[ESCOLA] não encontrada"
@@ -212,15 +302,38 @@ def build_school_context(
             f"({sc.get('municipio','?')}-{sc.get('uf','?')}), nível={sc.get('nivel_saude','?')}"
             for sc in similar_schools[:3]
         ]
-        parts.append("[ESCOLAS SIMILARES — referência comparativa]\n" + "\n".join(sim_lines))
+        parts.append(
+            "[ESCOLAS SIMILARES — referência comparativa]\n" + "\n".join(sim_lines)
+        )
 
     return _truncate("\n".join(parts))
 
 
 def build_municipality_context(municipio_ctx: dict[str, Any]) -> str:
     """
-    Serializa contexto de município: ranking escolas + IBGE + benchmarks.
-    Ordena escolas por taxa de ausência desc para destacar as mais críticas.
+    Serialize municipality-wide context with school rankings and equity analysis.
+
+    Transforms a municipality context dictionary into a multi-section narrative for
+    educational secretariat analysis. Includes municipality overview with school and
+    student counts, digital coverage (schools without electronic diaries), school
+    performance rankings (sorted by absence rate to highlight most-at-risk),
+    IBGE municipal socioeconomic indicators (enrollment rates, literacy, life expectancy,
+    racial participation metrics), and state QEDU benchmarks with racial equity breakdowns
+    (literacy and school delay gaps by race).
+
+    Args:
+        municipio_ctx (dict[str, Any]): Municipality context dictionary from
+            `Retriever.get_municipality_context()`. Expected keys: municipio, uf, n_escolas,
+            total_alunos, media_ausencia_muni, media_nota_muni, escolas (list),
+            muni_freq_liq, muni_atraso_2anos, muni_analf, muni_expectativa, fonte_freq_ibge,
+            muni_negro_pub, muni_negro_internet, est_ideb_af, est_abandono, est_reprovacao,
+            est_distorcao_af, est_pct_fora_escola, est_analf_negro, est_analf_branco,
+            est_atraso_negro, est_atraso_branco.
+
+    Returns:
+        str: Multi-section formatted context (guaranteed ≤16,000 characters after truncation).
+            Sections: [MUNICÍPIO] [ESCOPO] [COBERTURA DIGITAL] [RESUMO MUNICÍPIO] [TOP ESCOLAS — MAIOR AUSÊNCIA]
+            [IBGE MUNICIPAL] [EQUIDADE RACIAL MUNI] [BENCHMARKS ESTADO] [PNAD RACIAL ESTADO].
     """
     if not municipio_ctx:
         return "[MUNICÍPIO] não encontrado"
@@ -228,7 +341,8 @@ def build_municipality_context(municipio_ctx: dict[str, Any]) -> str:
     m = municipio_ctx
     escolas = sorted(
         [e for e in (m.get("escolas") or []) if e.get("taxa_ausencia") is not None],
-        key=lambda e: e.get("taxa_ausencia", 0), reverse=True,
+        key=lambda e: e.get("taxa_ausencia", 0),
+        reverse=True,
     )
     sem_diario = [e for e in (m.get("escolas") or []) if not e.get("tem_diario", True)]
 
@@ -238,8 +352,12 @@ def build_municipality_context(municipio_ctx: dict[str, Any]) -> str:
     ]
 
     if sem_diario:
-        nomes = ", ".join(e.get("school_name", e.get("school_id", "?")) for e in sem_diario[:5])
-        parts.append(f"[COBERTURA DIGITAL] {len(sem_diario)} escola(s) sem diário eletrônico: {nomes}")
+        nomes = ", ".join(
+            e.get("school_name", e.get("school_id", "?")) for e in sem_diario[:5]
+        )
+        parts.append(
+            f"[COBERTURA DIGITAL] {len(sem_diario)} escola(s) sem diário eletrônico: {nomes}"
+        )
 
     parts.append(
         f"[RESUMO MUNICÍPIO] ausência_média={m.get('media_ausencia_muni','?')}%, "
@@ -287,36 +405,58 @@ def build_municipality_context(municipio_ctx: dict[str, Any]) -> str:
 
 def build_state_context(state_ctx: dict[str, Any]) -> str:
     """
-    Serializa contexto de estado: QEdu + PNAD racial + PNAD gênero + municípios.
+    Serialize state-level quality and equity indicators into prompt-ready formatted text.
+
+    Transforms a state context dictionary into a comprehensive multi-section narrative
+    for state education policy analysis. Includes state overview (IDEB across all school
+    levels, flux rates, grade misalignment %), educational achievement data (proficiency
+    percentages in reading and math), racial equity analysis (literacy, school delay, and
+    human development index gaps by race), gender equity analysis (literacy and years of
+    study gaps), and vulnerable municipality rankings (by adult illiteracy and school delay).
+
+    Args:
+        state_ctx (dict[str, Any]): State context dictionary from `Retriever.get_state_context()`.
+            Expected keys: uf, nome_estado, n_municipios, total_matriculas, ideb_ai, ideb_af,
+            ideb_em, fluxo_ai, fluxo_af, distorcao_ai, distorcao_af, abandono, reprovacao,
+            pct_fora_escola, lp_adequado_ai, mat_adequado_ai, lp_adequado_af, mat_adequado_af,
+            lp_insuf_af, mat_insuf_af, analf_negro, analf_branco, atraso_negro, atraso_branco,
+            freq_fund_negro, freq_fund_branco, med18_negro, med18_branco, idhm_e_negro,
+            idhm_e_branco, analf_homem, analf_mulher, anosest_homem, anosest_mulher,
+            freq_fund_homem, freq_fund_mulher, municipios (list).
+
+    Returns:
+        str: Multi-section formatted context (guaranteed ≤16,000 characters after truncation).
+            Sections: [ESTADO] [ESCOPO] [IDEB] [FLUXO] [DISTORÇÃO] [ABANDONO/REPROVAÇÃO] [PROFICIÊNCIA]
+            [PNAD RACIAL] [PNAD GÊNERO] [MUNICÍPIOS COM MAIOR FRAGILIDADE].
     """
     if not state_ctx:
         return "[ESTADO] não encontrado"
 
     s = state_ctx
 
-    municipios = [m for m in (s.get("municipios") or []) if m.get("muni_analf") is not None]
-    municipios_sorted = sorted(municipios, key=lambda m: m.get("muni_analf", 0), reverse=True)
+    municipios = [
+        m for m in (s.get("municipios") or []) if m.get("muni_analf") is not None
+    ]
+    municipios_sorted = sorted(
+        municipios, key=lambda m: m.get("muni_analf", 0), reverse=True
+    )
 
     parts = [
         f"[ESTADO] {s.get('nome_estado','?')} — UF {s.get('uf','?')}",
         f"[ESCOPO] {s.get('n_municipios','?')} municípios | {s.get('total_matriculas','?')} matrículas",
-
         f"[IDEB] AI={s.get('ideb_ai','?')}, AF={s.get('ideb_af','?')}, EM={s.get('ideb_em','?')}",
         f"[FLUXO] fluxo_AI={s.get('fluxo_ai','?')}, fluxo_AF={s.get('fluxo_af','?')}",
         f"[DISTORÇÃO] EF_AI={s.get('distorcao_ai','?')}%, EF_AF={s.get('distorcao_af','?')}%",
         f"[ABANDONO/REPROVAÇÃO] abandono={s.get('abandono','?')}%, reprovação={s.get('reprovacao','?')}%, "
         f"fora_escola={s.get('pct_fora_escola','?')}%",
-
         f"[PROFICIÊNCIA] LP_adequado_AI={s.get('lp_adequado_ai','?')}%, Mat_adequado_AI={s.get('mat_adequado_ai','?')}%, "
         f"LP_adequado_AF={s.get('lp_adequado_af','?')}%, Mat_adequado_AF={s.get('mat_adequado_af','?')}%, "
         f"LP_insuf_AF={s.get('lp_insuf_af','?')}%, Mat_insuf_AF={s.get('mat_insuf_af','?')}%",
-
         f"[PNAD RACIAL] analf_negro={s.get('analf_negro','?')}% vs analf_branco={s.get('analf_branco','?')}% | "
         f"atraso_negro={s.get('atraso_negro','?')}% vs atraso_branco={s.get('atraso_branco','?')}% | "
         f"IDHM_e_negro={s.get('idhm_e_negro','?')} vs IDHM_e_branco={s.get('idhm_e_branco','?')} | "
         f"freq_fund_negro={s.get('freq_fund_negro','?')}% vs freq_fund_branco={s.get('freq_fund_branco','?')}% | "
         f"médio_completo(18–20)_negro={s.get('med18_negro','?')}% vs branco={s.get('med18_branco','?')}%",
-
         f"[PNAD GÊNERO] analf_homem={s.get('analf_homem','?')}% vs analf_mulher={s.get('analf_mulher','?')}% | "
         f"anos_estudo_homem={s.get('anosest_homem','?')} vs mulher={s.get('anosest_mulher','?')} | "
         f"freq_fund_homem={s.get('freq_fund_homem','?')}% vs mulher={s.get('freq_fund_mulher','?')}%",
@@ -328,6 +468,9 @@ def build_state_context(state_ctx: dict[str, Any]) -> str:
             f"atraso={m.get('muni_atraso','?')}%, expectativa={m.get('muni_expectativa','?')} anos"
             for m in municipios_sorted[:5]
         ]
-        parts.append("[MUNICÍPIOS COM MAIOR FRAGILIDADE (top 5 por analfabetismo adulto)]\n" + "\n".join(muni_lines))
+        parts.append(
+            "[MUNICÍPIOS COM MAIOR FRAGILIDADE (top 5 por analfabetismo adulto)]\n"
+            + "\n".join(muni_lines)
+        )
 
     return _truncate("\n".join(parts))

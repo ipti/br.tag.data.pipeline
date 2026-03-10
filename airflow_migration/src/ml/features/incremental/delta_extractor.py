@@ -61,10 +61,15 @@ def _load_existing_fingerprints(
     """
     if fs is not None:
         from src.ml.features._azure_storage import CONTAINER
-        blob_key = f"{CONTAINER}/raw/segment={segment}/year={year}/{segment}_{year}.parquet"
+
+        blob_key = (
+            f"{CONTAINER}/raw/segment={segment}/year={year}/{segment}_{year}.parquet"
+        )
         if not fs.exists(blob_key):
             logger.info(
-                "No existing blob for %s year=%d — will do full extraction", segment, year
+                "No existing blob for %s year=%d — will do full extraction",
+                segment,
+                year,
             )
             return {}
         needed = ["student_id"] + _FINGERPRINT_COLS
@@ -75,7 +80,9 @@ def _load_existing_fingerprints(
         path = raw_dir / f"{segment}_{year}.parquet"  # type: ignore[operator]
         if not path.exists():
             logger.info(
-                "No existing Parquet for %s year=%d — will do full extraction", segment, year
+                "No existing Parquet for %s year=%d — will do full extraction",
+                segment,
+                year,
             )
             return {}
         needed = ["student_id"] + _FINGERPRINT_COLS
@@ -103,7 +110,10 @@ def _load_existing_school_ids(
     """
     if fs is not None:
         from src.ml.features._azure_storage import CONTAINER
-        blob_key = f"{CONTAINER}/raw/segment={segment}/year={year}/{segment}_{year}.parquet"
+
+        blob_key = (
+            f"{CONTAINER}/raw/segment={segment}/year={year}/{segment}_{year}.parquet"
+        )
         if not fs.exists(blob_key):
             return set()
         return set(
@@ -116,7 +126,9 @@ def _load_existing_school_ids(
         if not path.exists():
             return set()
         return set(
-            pq.read_table(str(path), columns=["school_id"]).column("school_id").to_pylist()
+            pq.read_table(str(path), columns=["school_id"])
+            .column("school_id")
+            .to_pylist()
         )
 
 
@@ -148,6 +160,7 @@ class DeltaExtractor:
 
         if self._azure:
             from src.ml.features._azure_storage import CONTAINER
+
             self._container = CONTAINER
         else:
             self._raw_dir = raw_dir or _DEFAULT_RAW_DIR
@@ -235,7 +248,9 @@ class DeltaExtractor:
                     f"/{self._segment}_{year}_delta_{run_date.isoformat()}.parquet"
                 )
                 delta_tbl = pa.Table.from_pandas(delta_df, preserve_index=False)
-                pq.write_table(delta_tbl, delta_key, filesystem=self._fs, compression="snappy")
+                pq.write_table(
+                    delta_tbl, delta_key, filesystem=self._fs, compression="snappy"
+                )
                 results[year] = delta_key
             else:
                 delta_path = (
@@ -271,7 +286,9 @@ class DeltaExtractor:
                 pq.write_table(
                     delta_tbl, year_key, filesystem=self._fs, compression="snappy"
                 )
-                logger.info("[upsert] Created blob %s (%d rows)", year_key, len(delta_df))
+                logger.info(
+                    "[upsert] Created blob %s (%d rows)", year_key, len(delta_df)
+                )
                 return
 
             writer: pq.ParquetWriter | None = None
@@ -285,13 +302,19 @@ class DeltaExtractor:
                     tbl = pa.Table.from_pandas(df, preserve_index=False)
                     if writer is None:
                         writer = pq.ParquetWriter(
-                            tmp_key, tbl.schema, filesystem=self._fs, compression="snappy"
+                            tmp_key,
+                            tbl.schema,
+                            filesystem=self._fs,
+                            compression="snappy",
                         )
                     writer.write_table(tbl)
 
                 if writer is None:
                     writer = pq.ParquetWriter(
-                        tmp_key, delta_tbl.schema, filesystem=self._fs, compression="snappy"
+                        tmp_key,
+                        delta_tbl.schema,
+                        filesystem=self._fs,
+                        compression="snappy",
                     )
                 writer.write_table(delta_tbl)
             finally:
@@ -312,7 +335,9 @@ class DeltaExtractor:
 
             if not year_path.exists():
                 pq.write_table(delta_tbl, str(year_path), compression="snappy")
-                logger.info("[upsert] Created %s (%d rows)", year_path.name, len(delta_df))
+                logger.info(
+                    "[upsert] Created %s (%d rows)", year_path.name, len(delta_df)
+                )
                 return
 
             writer = None

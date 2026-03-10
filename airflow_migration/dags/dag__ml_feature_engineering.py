@@ -26,6 +26,7 @@ Classrooms:
   Not incremental — aggregate rows change with every new enrollment.
   Full re-extraction for open years only (fast: thousands of rows).
 """
+
 import logging
 import shutil
 from datetime import datetime, timedelta, date
@@ -66,23 +67,33 @@ MIN_DELTA_ROWS = 500
 
 # ── Storage helpers ───────────────────────────────────────────────────────────
 
+
 def _apply_storage_mode(ctx: dict) -> None:
     """Forces local storage if the user selects 'local' in DAG params."""
     mode = ctx.get("params", {}).get("storage_mode", "local")
     if mode == "local":
         import os
+
         os.environ.pop("AZURE_STORAGE_ACCOUNT_NAME", None)
-        logger.info("[storage] param 'storage_mode' is local. Forcing local fallback by unsetting Azure vars.")
+        logger.info(
+            "[storage] param 'storage_mode' is local. Forcing local fallback by unsetting Azure vars."
+        )
     else:
-        logger.info("[storage] param 'storage_mode' is %s. Preserving environment vars.", mode)
+        logger.info(
+            "[storage] param 'storage_mode' is %s. Preserving environment vars.", mode
+        )
+
 
 def _get_azure_fs():
     """Return adlfs filesystem or None if not configured."""
     from src.ml.features._azure_storage import is_configured, get_fs
     import os
+
     if is_configured():
         account = os.environ.get("AZURE_STORAGE_ACCOUNT_NAME", "?")
-        logger.info("[storage] mode=Azure  account=%s  container=machine-learning", account)
+        logger.info(
+            "[storage] mode=Azure  account=%s  container=machine-learning", account
+        )
         return get_fs()
     logger.info("[storage] mode=local  fallback=%s", _FEATURES_DIR)
     return None
@@ -91,26 +102,29 @@ def _get_azure_fs():
 def _feature_blob_key(segment: str, year: int, run_nodash: str, kind: str) -> str:
     """adlfs-compatible features key: container/features/segment=.../..."""
     from src.ml.features._azure_storage import CONTAINER
+
     return f"{CONTAINER}/features/segment={segment}/year={year}/run={run_nodash}/{kind}.parquet"
 
 
 def _raw_blob_key(segment: str, year: int) -> str:
     """adlfs-compatible raw key for a given segment+year."""
     from src.ml.features._azure_storage import CONTAINER
+
     return f"{CONTAINER}/raw/segment={segment}/year={year}/{segment}_{year}.parquet"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _encode_parquet_inplace(
-    src: str | Path, dst: str | Path, fs=None
-) -> None:
+def _encode_parquet_inplace(src: str | Path, dst: str | Path, fs=None) -> None:
     """Read src in batches, encode categoricals + fill sentinels, write dst.
 
     Works with both local paths (Path) and blob paths (str + fs).
     """
-    from src.ml.features.feature_pipeline import encode_categoricals, fill_grade_sentinel
+    from src.ml.features.feature_pipeline import (
+        encode_categoricals,
+        fill_grade_sentinel,
+    )
     from src.ml.features.schema import GRADE_EF1_FEATURES
 
     src_str, dst_str = str(src), str(dst)
@@ -118,7 +132,12 @@ def _encode_parquet_inplace(
     write_dst = dst_str.replace(".parquet", "_tmp.parquet") if same else dst_str
 
     mode = "blob" if fs else "local"
-    logger.info("[encode] %s  src=%s  →  dst=%s", mode, src_str.split("/")[-1], dst_str.split("/")[-1])
+    logger.info(
+        "[encode] %s  src=%s  →  dst=%s",
+        mode,
+        src_str.split("/")[-1],
+        dst_str.split("/")[-1],
+    )
 
     if fs is None:
         Path(write_dst).parent.mkdir(parents=True, exist_ok=True)
@@ -133,7 +152,8 @@ def _encode_parquet_inplace(
             tbl = pa.Table.from_pandas(df, preserve_index=False)
             if writer is None:
                 writer = pq.ParquetWriter(
-                    write_dst, tbl.schema,
+                    write_dst,
+                    tbl.schema,
                     compression="snappy",
                     **({"filesystem": fs} if fs else {}),
                 )
@@ -163,6 +183,7 @@ def _ef2_is_bootstrapped(current_years: list[int], fs=None) -> bool:
 def _get_local_raw_dir() -> Path:
     """Resolve src/ml/data/raw/ relative to neo4j_extractor.py."""
     from src.ml.features import neo4j_extractor as _mod
+
     return Path(_mod.__file__).parent.parent / "data" / "raw"
 
 
@@ -206,7 +227,12 @@ def extract_ef1_delta_task(**ctx):
             _FEATURES_DIR.mkdir(parents=True, exist_ok=True)
             dst = str(_FEATURES_DIR / f"ef1_{year}_delta_{run_nodash}.parquet")
 
-        logger.info("[ef1_delta] year=%d  src=%s  →  feature dst=%s", year, str(delta_path).split("/")[-1], dst)
+        logger.info(
+            "[ef1_delta] year=%d  src=%s  →  feature dst=%s",
+            year,
+            str(delta_path).split("/")[-1],
+            dst,
+        )
         _encode_parquet_inplace(delta_path, dst, fs=fs)
         encoded_paths[str(year)] = dst
 
@@ -218,7 +244,11 @@ def extract_ef1_delta_task(**ctx):
     years_with_delta = [int(y) for y, p in results.items() if p is not None]
     wm.mark_run(run_date, years_with_delta)
 
-    logger.info("[ef1_delta] done  years_with_delta=%s  total_rows=%d", years_with_delta, total_rows)
+    logger.info(
+        "[ef1_delta] done  years_with_delta=%s  total_rows=%d",
+        years_with_delta,
+        total_rows,
+    )
     ctx["ti"].xcom_push(key="ef1_delta_paths", value=encoded_paths)
     ctx["ti"].xcom_push(key="ef1_delta_rows", value=total_rows)
     return encoded_paths
@@ -268,7 +298,8 @@ def extract_ef2_task(**ctx):
             year_writers: dict[int, pq.ParquetWriter] = {}
             src_pf = (
                 pq.ParquetFile(raw_path, filesystem=fs)
-                if fs else pq.ParquetFile(str(raw_path))
+                if fs
+                else pq.ParquetFile(str(raw_path))
             )
             try:
                 for batch in src_pf.iter_batches(batch_size=_ENCODE_BATCH):
@@ -282,24 +313,33 @@ def extract_ef2_task(**ctx):
                             yr_dest = str(raw_dir / f"EF2_{year}.parquet")
                         if year not in year_writers:
                             year_writers[year] = pq.ParquetWriter(
-                                yr_dest, tbl.schema, compression="snappy",
+                                yr_dest,
+                                tbl.schema,
+                                compression="snappy",
                                 **({"filesystem": fs} if fs else {}),
                             )
-                            logger.info("[ef2] bootstrap  writing EF2_%d → %s", year, yr_dest)
+                            logger.info(
+                                "[ef2] bootstrap  writing EF2_%d → %s", year, yr_dest
+                            )
                         year_writers[year].write_table(tbl)
                         del tbl
             finally:
                 for w in year_writers.values():
                     w.close()
 
-            logger.info("[ef2] bootstrap complete: %d year files written", len(year_writers))
+            logger.info(
+                "[ef2] bootstrap complete: %d year files written", len(year_writers)
+            )
 
             encoded_base: dict[str, str] = {}
             for year in wm.current_years:
                 if fs is not None:
                     yr_src = _raw_blob_key("EF2", year)
                     if not fs.exists(yr_src):
-                        logger.info("[ef2] bootstrap  year=%d not found in blob, skipping encode", year)
+                        logger.info(
+                            "[ef2] bootstrap  year=%d not found in blob, skipping encode",
+                            year,
+                        )
                         continue
                     dst = _feature_blob_key("EF2", year, run_nodash, "delta")
                 else:
@@ -339,7 +379,10 @@ def extract_ef2_task(**ctx):
 
     if fs is not None:
         from src.ml.features._azure_storage import CONTAINER
-        dst_grades = f"{CONTAINER}/features/segment=EF2_grades/run={run_nodash}/grades.parquet"
+
+        dst_grades = (
+            f"{CONTAINER}/features/segment=EF2_grades/run={run_nodash}/grades.parquet"
+        )
         logger.info("[ef2] grades  blob → %s", dst_grades)
         fs.put(str(grades_path), dst_grades)
     else:
@@ -382,13 +425,13 @@ def extract_classrooms_task(**ctx):
 
     written: dict[str, str] = {}
     src_pf = (
-        pq.ParquetFile(raw_path, filesystem=fs)
-        if fs else pq.ParquetFile(str(raw_path))
+        pq.ParquetFile(raw_path, filesystem=fs) if fs else pq.ParquetFile(str(raw_path))
     )
 
     for year in wm.current_years:
         if fs is not None:
             from src.ml.features._azure_storage import CONTAINER
+
             dst = f"{CONTAINER}/features/segment=classrooms/year={year}/run={run_nodash}/classrooms.parquet"
         else:
             dst = str(_FEATURES_DIR / f"classrooms_ef1_{year}_{run_nodash}.parquet")
@@ -404,7 +447,9 @@ def extract_classrooms_task(**ctx):
                 tbl = pa.Table.from_pandas(df, preserve_index=False)
                 if writer is None:
                     writer = pq.ParquetWriter(
-                        dst, tbl.schema, compression="snappy",
+                        dst,
+                        tbl.schema,
+                        compression="snappy",
                         **({"filesystem": fs} if fs else {}),
                     )
                 writer.write_table(tbl)
@@ -417,7 +462,9 @@ def extract_classrooms_task(**ctx):
         if exists:
             written[str(year)] = dst
         else:
-            logger.warning("[classrooms] year=%d  no rows found — file not written", year)
+            logger.warning(
+                "[classrooms] year=%d  no rows found — file not written", year
+            )
 
     logger.info("[classrooms] done  written_years=%s", list(written.keys()))
     ctx["ti"].xcom_push(key="classrooms_paths", value=written)
@@ -441,20 +488,31 @@ def fine_tune_task(**ctx):
 
     logger.info(
         "[fine_tune] run_date=%s  delta_rows=%d  is_monday=%s  has_delta=%s",
-        run_date, delta_rows or 0, is_monday, has_delta,
+        run_date,
+        delta_rows or 0,
+        is_monday,
+        has_delta,
     )
 
     if not has_delta and not is_monday:
-        logger.info("[fine_tune] skipped — delta=%d rows < %d threshold, not Monday.", delta_rows or 0, MIN_DELTA_ROWS)
+        logger.info(
+            "[fine_tune] skipped — delta=%d rows < %d threshold, not Monday.",
+            delta_rows or 0,
+            MIN_DELTA_ROWS,
+        )
         return {"skipped": True, "reason": "insufficient_delta"}
 
     if is_monday:
-        logger.info("[fine_tune] Monday — full re-train across all years (placeholder).")
+        logger.info(
+            "[fine_tune] Monday — full re-train across all years (placeholder)."
+        )
         # TODO: implement full re-train
         return {"status": "full_retrain_placeholder"}
 
     fs = _get_azure_fs()
-    logger.info("[fine_tune] loading delta features from %d paths", len(delta_paths or {}))
+    logger.info(
+        "[fine_tune] loading delta features from %d paths", len(delta_paths or {})
+    )
     dfs = [
         batch.to_pandas()
         for path in (delta_paths or {}).values()
@@ -467,7 +525,9 @@ def fine_tune_task(**ctx):
         return {"skipped": True, "reason": "empty_delta"}
 
     df_delta = pd.concat(dfs, ignore_index=True)
-    logger.info("[fine_tune] fine-tuning on %d delta rows (placeholder).", len(df_delta))
+    logger.info(
+        "[fine_tune] fine-tuning on %d delta rows (placeholder).", len(df_delta)
+    )
     # TODO: xgb.train(..., xgb_model=existing_model)
     return {"delta_rows": len(df_delta), "status": "fine_tune_placeholder"}
 
