@@ -1,29 +1,6 @@
-# Neo4j Schema Reference — Dados Educacionais
-**Versão:** 1.0 — Validado contra dados reais (D_CLASSROOM_202602252356, nós State/Municipality confirmados)
-**Propósito:** Referência definitiva de schema, nuances de dados, padrões de query e boas práticas de agregação.
+# Neo4j Schema — Dados Educacionais
 
----
-
-## Índice
-
-1. [Visão Geral do Grafo](#1-visão-geral-do-grafo)
-2. [Nós e Propriedades](#2-nós-e-propriedades)
-   - [Classroom](#21-classroom)
-   - [Student](#22-student)
-   - [Health](#23-health)
-   - [StudentDiscipline](#24-studentdiscipline)
-   - [StudentClass](#25-studentclass)
-   - [School](#26-school)
-   - [SchoolGeograph](#27-schoolgeograph)
-   - [Municipality](#28-municipality)
-   - [State](#29-state)
-3. [Relacionamentos](#3-relacionamentos)
-4. [Dados Ausentes — Cobertura Real](#4-dados-ausentes--cobertura-real)
-5. [Filtros Canônicos por Segmento](#5-filtros-canônicos-por-segmento)
-6. [Padrões de Agregação — Performance](#6-padrões-de-agregação--performance)
-7. [Nuances Críticas de Dados](#7-nuances-críticas-de-dados)
-8. [Propriedades que NÃO Existem](#8-propriedades-que-não-existem)
-9. [Templates de Query Completos](#9-templates-de-query-completos)
+Referência definitiva de schema Neo4j para análises educacionais, incluindo nós, propriedades, relacionamentos, filtros por segmento, padrões de agregação, nuances críticas de dados e templates de query completos.
 
 ---
 
@@ -38,6 +15,7 @@ State
                       ├─[:ENROLLED_IN]──────────────── Classroom
                       ├─[:HAS_HEALTH]────────────────── Health           (OPCIONAL)
                       ├─[:HAS_DISCIPLINE]────────────── StudentDiscipline (OPCIONAL)
+                      ├─[:HAS_GRADES]───────────────── Grades            (Embedding layer)
                       └──────────────── StudentClass ─[:ATTENDED]────────(OPCIONAL)
 ```
 
@@ -130,8 +108,12 @@ grade_level='MATUTINO'    stage='NO 8* ANO'     ← turno no lugar da série
 | `deficiency` | **string** | **Não é boolean.** Valores: `'Não Possui'` ou `'Possui: Deficiência Intelectual'`, `'Possui: Deficiência Visual'`, etc. Verificar com `STARTS WITH 'Possui'`. |
 | `bolsa_familia` | boolean | `true`/`false`. Usar `coalesce(stu.bolsa_familia, false)`. |
 | `residence_zone` | string | Zona rural/urbana. Pode ser nulo — usar `coalesce(stu.residence_zone, 'Não Informado')`. |
+| `embedding` | float[384] | Vetor denso 384-dimensional (L2-normalizado), gerado pela embedding layer (MiniLM). Codifica: gênero, etnia, zona, Bolsa Família, deficiência, frequência, notas, saúde, contexto IBGE e cluster de risco. |
+| `embedding_hash` | string | Hash MD5 da representação textual — usado para detecção incremental de mudanças. |
+| `risk_cluster` | integer | Cluster (0–7) do KMeans de risco. Agrupamento de alunos com perfis similares de vulnerabilidade. |
+| `risk_score` | float | Taxa de evasão histórica do cluster (0–100). **Não é score individual**, é a taxa de dropout do grupo. |
 
-**Filtros corretos:**
+#### Filtros corretos:
 
 ```cypher
 // PCD
@@ -294,6 +276,10 @@ END AS taxa_ausencia_display
 | `name` | string | Nome da escola |
 | `id` | string | Identificador único |
 | `situation` | string | Situação (ativa, inativa, etc.) |
+| `embedding` | float[384] | Vetor denso 384-dimensional (L2-normalizado), gerado pela embedding layer. Codifica: localização geográfica, saúde escolar, taxa de ausência média, média de notas, % Bolsa Família, % PCD, referências IBGE, IDEB estadual, abandono estadual, qualidade dos dados. |
+| `embedding_hash` | string | Hash MD5 da representação textual da escola. |
+| `score_saude` | float | Score agregado de saúde (0–100), calculado a partir da saúde dos alunos. |
+| `nivel_saude` | string | Nível de saúde categorizado (ex: "Moderado", "Crítico", "Adequado"). |
 
 ---
 
@@ -449,6 +435,27 @@ END AS est_distorcao_serie
 
 ---
 
+### 2.10 Grades
+
+**RAG/Embedding Layer — Separado do StudentDiscipline**
+
+Nó dedicado para a camada de embedding, contendo apenas as propriedades necessárias para geração de embeddings de estudantes. Cada aluno tem um nó `Grades` por disciplina.
+
+**Relacionamento:** `(stu:Student)-[:HAS_GRADES]->(g:Grades)`
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `subject` | string | Nome da disciplina/matéria. Vazio (`""`) para nota global EF1. |
+| `grade_g1` | float | Nota do primeiro semestre/bimestre. |
+| `final_grade` | float | Nota final. |
+
+**Diferença crítica de StudentDiscipline:**
+- `StudentDiscipline` contém notas detalhadas com bimestres (G1, G2, G3, G4), nomes e contexto operacional
+- `Grades` é uma simplificação para embeddings: apenas disciplina, G1 e nota final
+- Ambos podem coexistir no grafo; `Grades` é a fonte para vetorização
+
+---
+
 ## 3. Relacionamentos
 
 ```
@@ -456,6 +463,7 @@ END AS est_distorcao_serie
 (Student)     -[:ENROLLED_IN]->          (Classroom)
 (Student)     -[:HAS_HEALTH]->           (Health)              OPCIONAL
 (Student)     -[:HAS_DISCIPLINE]->       (StudentDiscipline)   OPCIONAL
+(Student)     -[:HAS_GRADES]->           (Grades)              Embedding layer
 (StudentClass)-[:ATTENDED]->             (Student)             OPCIONAL — direção inversa
 (School)      -[:HAS_GEOGRAPHY]->        (SchoolGeograph)
 (SchoolGeograph)-[:LOCATED_IN_MUNICIPALITY]-> (Municipality)
@@ -517,6 +525,10 @@ Aluno sem nó `Health` = dado não registrado no sistema de saúde escolar, não
 ### 4.4 IBGE Municipal (Municipality)
 
 Muitos municípios pequenos têm campos nulos no Atlas IBGE. Proporção estimada de nulos varia por campo: `atl_freq_liq_fund` tem cobertura relativamente boa, mas campos de equidade racial e lab info podem ter 30–50% de nulos em regiões menos estudadas. **Sempre use fallback de média estadual.**
+
+### 4.5 Embeddings (Student e School)
+
+Cobertura: 96.0% dos estudantes (54.290 / 56.560) e 98.8% das escolas têm embeddings gerados. Estudantes/escolas sem embedding não têm Parquet data em qualquer ano — são dados criados via outras rotas de migração.
 
 ---
 
@@ -834,6 +846,12 @@ st.branco_pnad_t_analf25m
 st.negro_pnad_t_analf25m
 ```
 
+### 7.9 Embeddings — incrementalidade e cobertura
+
+Embeddings são regenerados incrementalmente: um hash MD5 de cada texto de estudante/escola é comparado com o hash armazenado. Se forem iguais, o embedding é pulado. Isso permite que o pipeline roda mensalmente sem recompilação de todos os 54k+ vetores.
+
+A cobertura atual é 96% de alunos e 98.8% de escolas. Os 4% restantes não têm Parquet data em qualquer ano letivo — não devem aparecer em análises baseadas em features extraídas dos Parquets.
+
 ---
 
 ## 8. Propriedades que NÃO Existem
@@ -884,7 +902,7 @@ cr.nivel                               ← não existe
 
 ---
 
-## 9. Templates de Query Completos
+## 9. Templates de Query
 
 ### 9.1 Template base — Escola com IBGE carregado
 
@@ -1078,5 +1096,112 @@ RETURN
 
 ---
 
-*Schema validado contra dados reais — D_CLASSROOM_202602252356 (10.219 turmas), nós State e Municipality verificados via queries diretas. Última atualização: 2026-02.*
-ENDPLAN
+## 10. Vector Search Indexes (RAG)
+
+### 10.1 Índices criados
+
+Dois índices de busca vetorial foram criados no Neo4j para suportar busca por similaridade entre estudantes e escolas:
+
+```cypher
+-- Student index
+CREATE VECTOR INDEX student_embedding IF NOT EXISTS
+FOR (s:Student) ON s.embedding
+OPTIONS {indexConfig: {`vector.dimensions`: 384, `vector.similarity_function`: 'cosine'}};
+
+-- School index
+CREATE VECTOR INDEX school_embedding IF NOT EXISTS
+FOR (s:School) ON s.embedding
+OPTIONS {indexConfig: {`vector.dimensions`: 384, `vector.similarity_function`: 'cosine'}};
+```
+
+**Status atual:**
+- Índice de estudantes: ONLINE, 96% de cobertura (54.290 / 56.560 estudantes)
+- Índice de escolas: ONLINE, 98.8% de cobertura
+
+---
+
+### 10.2 Query de busca por similaridade
+
+```cypher
+-- Find top-5 similar students (excluding self)
+CALL db.index.vector.queryNodes('student_embedding', 6, $embedding)
+YIELD node, score
+WHERE node.id <> $student_id
+RETURN node.id AS id,
+       node.risk_cluster AS cluster,
+       node.risk_score AS risk_score,
+       score
+LIMIT 5
+```
+
+**Interpretação de scores:**
+- Score de `1.0` = perfil idêntico (muito raro)
+- Score > `0.80` = similaridade forte (alunos com perfil educacional/social similar)
+- Score > `0.70` = similaridade moderada
+- Score < `0.70` = dissimilaridade
+
+**Caso de uso:** Dado um aluno João com `risk_score=21.1` (risco médio-alto de evasão), encontrar 5 estudantes com perfil similar que tiveram sucesso académico → informar ao LLM que intervenções usadas nesses alunos similares podem ser eficazes.
+
+---
+
+### 10.3 Embedding de estudante — Conteúdo codificado
+
+O texto narrativo de cada aluno (~100–200 palavras) é convertido em um vetor 384-dimensional e armazenado em `Student.embedding`:
+
+```
+"Aluno: gênero feminino, etnia Parda, zona rural, bolsa família sim, deficiência não.
+Frequência: 12% de faltas. Nota: sem nota registrada.
+Saúde: anemia, malnutrition.
+Contexto: UF SE, IBGE freq_liq_muni 0.91, IDEB estadual 4.1, abandono estadual 4.20%.
+Cluster de risco: 3."
+```
+
+**Campos codificados:**
+
+| Feature | Valor exemplo | Significado semântico |
+|---|---|---|
+| `gender_bin` | feminino / masculino | Grupo demográfico |
+| `ethnicity_raw` | Parda, Branca, Preta | Contexto de vulnerabilidade racial |
+| `residence_zone_enc` | rural / urbana | Acesso a infraestrutura |
+| `bolsa_familia` | sim / não | Vulnerabilidade socioeconômica |
+| `has_deficiency` | sim / não | Flag de necessidades especiais |
+| `taxa_ausencia` | 12% de faltas | Sinal de engajamento/risco |
+| `tem_diario` | sem diário eletrônico | Qualidade de cobertura de dados |
+| `nota_final_norm` | 5.8 / sem nota registrada | Desempenho académico |
+| Health flags | anemia, malnutrition | Barreiras de saúde individuais |
+| `uf` + IBGE context | UF SE, freq_liq 0.91 | Contexto regional/estrutural |
+| `est_ideb_af` + dropout | 4.1, 4.20% | Benchmark de estado |
+| `risk_cluster` | 3 | Resultado do clustering ML |
+
+Todos os embeddings são **L2-normalizados** (magnitude = 1), permitindo similaridade coseno via produto escalar.
+
+---
+
+### 10.4 Embedding de escola — Conteúdo codificado
+
+O texto narrativo de cada escola (~80–120 palavras) é convertido em um vetor 384-dimensional e armazenado em `School.embedding`:
+
+```
+"Escola: UF SE, município Boquim, saúde Moderado (score 62.3),
+ausência 8.4%, nota média 6.1, Bolsa Família 54%, PCD 3.2%,
+IBGE freq_liq 0.91, IDEB EF-AF 4.1, abandono estadual 4.20%,
+qualidade dos dados: completo."
+```
+
+**Campos codificados:**
+
+| Feature | Descrição |
+|---|---|
+| `uf` + `municipio` | Localização geográfica |
+| `nivel_saude` + `score_saude` | Score agregado de saúde escolar (0–100, 4 dimensões) |
+| `taxa_ausencia_pct` | Taxa média de ausência de todos os alunos |
+| `media_nota_escola` | Nota média de todos os alunos |
+| `pct_bolsa_familia` | % de alunos recebendo Bolsa Família |
+| `pct_pcd` | % de alunos com deficiência |
+| `muni_freq_liq_fund` | Benchmark IBGE de matrícula líquida |
+| `est_ideb_af` + `est_taxa_abandono` | Benchmarks estaduais QEdu |
+| `data_quality` | Flag de completude (tem notas + dados de frequência) |
+
+---
+
+*Schema validado contra dados reais — D_CLASSROOM_202602252356 (10.219 turmas), nós State e Municipality verificados via queries diretas. Cobertura de embeddings: 96% estudantes, 98.8% escolas. Última atualização: 2026-03.*
