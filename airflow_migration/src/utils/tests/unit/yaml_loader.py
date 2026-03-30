@@ -17,8 +17,7 @@ def mock_config_dir(tmp_path: Path) -> Path:
     tables_dir = tmp_path / "tables"
     tables_dir.mkdir()
 
-    (tmp_path / "workflow.yml").write_text(
-        """
+    (tmp_path / "workflow.yml").write_text("""
 workflow_name: "test_workflow"
 max_parallel_tasks: 5
 triggers:
@@ -41,39 +40,32 @@ stages:
         trigger: "daily"
         depends_on:
           - "stg_users"
-    """
-    )
+    """)
 
-    (tmp_path / "databases_mysql.yml").write_text(
-        """
+    (tmp_path / "databases_mysql.yml").write_text("""
 databases_dev:
   - "dev_db_1"
   - "dev_db_2"
 databases_prod:
   - "prod_db_1"
-    """
-    )
+    """)
 
-    (tables_dir / "stg_users.yml").write_text(
-        """
+    (tables_dir / "stg_users.yml").write_text("""
 table_name: "stg_users"
 description: "Staging de usuários"
 sql_path: "models/staging/stg_users.sql"
 source_name: "airflow_mysql"
 target_schema: "stg"
-    """
-    )
+    """)
     (tables_dir / "stg_users.sql").touch()
 
-    (tables_dir / "fct_orders.yml").write_text(
-        """
+    (tables_dir / "fct_orders.yml").write_text("""
 table_name: "fct_orders"
 description: "Fato de pedidos"
 sql_path: "models/marts/fct_orders.sql"
 source_name: "{SOURCE_NAME}"
 target_schema: "{TARGET_SCHEMA}"
-    """
-    )
+    """)
     (tables_dir / "fct_orders.sql").touch()
 
     return tmp_path

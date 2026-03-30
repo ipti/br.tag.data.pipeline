@@ -365,6 +365,7 @@ class DocumentationBuilder:
             self.source_dir / "tabelas" / "outros",
             self.source_dir / "guias",
             self.source_dir / "relacionamentos",
+            self.source_dir / "dados_externos",
             self.build_dir,
         ]
         for directory in directories:
@@ -423,7 +424,7 @@ myst_enable_extensions = ["colon_fence", "deflist", "tasklist"]
    :glob:
 
    tabelas/dimensoes/*
-
+ 
 .. toctree::
    :maxdepth: 3
    :caption: Tabelas Fato
@@ -437,6 +438,14 @@ myst_enable_extensions = ["colon_fence", "deflist", "tasklist"]
    :glob:
 
    tabelas/outros/*
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Dados Externos
+
+   dados_externos/censo_escolar
+   dados_externos/pnad
+   dados_externos/qedu
 
 .. toctree::
    :maxdepth: 2
@@ -807,6 +816,704 @@ erDiagram
         output_file.write_text(content, encoding="utf-8")
 
 
+class ExternalDataDocGenerator:
+    """
+    Generates documentation for external data sources (Censo Escolar, PNAD, QEdu).
+    """
+
+    def __init__(self, output_dir: Path):
+        self.output_dir = output_dir / "dados_externos"
+
+    def generate_all(self):
+        """
+        Generates all external data documentation files.
+        """
+        self._generate_censo_escolar()
+        self._generate_pnad()
+        self._generate_qedu()
+
+    def _generate_censo_escolar(self):
+        content = """📚 Censo Escolar - Atlas Brasil
+=====================================
+
+:Schema: ``raw``
+:Database: ``data-warehouse-tag``
+:Fonte: Atlas Brasil (atlasbrasil.org.br)
+:Período: 1991, 2000, 2010, 2011-2014
+:Granularidade: Municipal
+:Responsável: Equipe de Dados
+
+----
+
+Descrição
+---------
+
+Dados do **Censo Escolar brasileiro** extraídos do site do Atlas Brasil. O Atlas realiza um trabalho de agregação e enriquecimento dos dados originais do INEP (Instituto Nacional de Estudos e Pesquisas Educacionais Anísio Teixeira).
+
+Estes dados são utilizados para enriquecer nossa base de estudantes e fornecer contexto educacional em nível municipal.
+
+----
+
+Tabela: Atlas_CensoEscolar_2011a2014_TodosMunc
+----------------------------------------------
+
+Contém indicadores educacionais agregados por município para o período de 2011 a 2014.
+
+Principais Categorias de Dados
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**1. Matrículas por Rede (Pública/Privada)**
+
+* Ensino Fundamental (2013-2017)
+* Ensino Médio (2013-2017)
+
+**2. Taxa de Distorção Idade-Série**
+
+* Ensino Fundamental geral e por rede
+* Ensino Médio geral e por rede
+* Período: 2013-2017
+
+**3. Taxa de Evasão**
+
+* Ensino Fundamental e Médio
+* Desagregado por rede (pública/privada)
+* Período: 2013-2014
+
+**4. IDEB (Índice de Desenvolvimento da Educação Básica)**
+
+* Anos iniciais do Ensino Fundamental (2013, 2015, 2017)
+* Anos finais do Ensino Fundamental (2013, 2015, 2017)
+
+**5. Infraestrutura Escolar**
+
+* Percentual de alunos em escolas com laboratório de informática
+* Percentual de alunos em escolas com internet
+* Por nível de ensino (Fundamental/Médio)
+
+**6. Formação Docente**
+
+* Percentual de docentes com formação adequada
+* Desagregado por nível e rede de ensino
+
+**7. Indicadores de Escolarização da População**
+
+* Taxa de analfabetismo (15+, 18+, 25+ anos)
+* Média de anos de estudo
+* Taxa de frequência líquida (básico, fundamental, médio, superior)
+* Percentual de conclusão por faixa etária
+
+**8. Desagregações Demográficas (Censo 2013-2014)**
+
+* Por raça/cor (Branco/Negro)
+* Por sexo (Homem/Mulher)
+* Por localização (Rural/Urbano)
+
+----
+
+Estrutura de Colunas
+--------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 15 55
+
+   * - Campo
+     - Tipo
+     - Descrição
+   * - ``Territorialidades``
+     - varchar(150)
+     - Nome do município
+   * - ``DeMatrculasDaRedePblicaNoEnsinoFundamental[Ano]``
+     - real
+     - Percentual de matrículas na rede pública - Ensino Fundamental
+   * - ``DeMatrculasDaRedePblicaNoEnsinoMdio[Ano]``
+     - real
+     - Percentual de matrículas na rede pública - Ensino Médio
+   * - ``TaxaDeDistoroIdadeSrieNoFundamental[Ano]``
+     - real
+     - Taxa de distorção idade-série no Fundamental
+   * - ``TaxaDeEvasoNoEnsinoFundamental[Ano]``
+     - real
+     - Taxa de evasão no Ensino Fundamental
+   * - ``IdebAnosIniciaisDoEnsinoFundamental[Ano]``
+     - real
+     - IDEB dos anos iniciais
+   * - ``IdebAnosFinaisDoEnsinoFundamental[Ano]``
+     - real
+     - IDEB dos anos finais
+   * - ``DeDocentesDoFundamentalComFormaoAdequada[Ano]``
+     - real
+     - % de docentes com formação adequada
+   * - ``TaxaDeAnalfabetismo[Faixa][Ano]``
+     - real
+     - Taxa de analfabetismo por faixa etária
+   * - ``MdiaDeAnosDeEstudo[Ano]``
+     - real
+     - Média de anos de estudo da população
+
+.. note::
+   [Ano] representa os anos disponíveis (2012-2017, conforme a métrica)
+
+----
+
+Exemplos de Uso
+---------------
+
+**Consultar IDEB por município (2017)**
+
+.. code-block:: sql
+
+   SELECT 
+       Territorialidades,
+       IdebAnosIniciaisDoEnsinoFundamental2017,
+       IdebAnosFinaisDoEnsinoFundamental2017
+   FROM raw.Atlas_CensoEscolar_2011a2014_TodosMunc
+   WHERE IdebAnosIniciaisDoEnsinoFundamental2017 IS NOT NULL
+   ORDER BY IdebAnosIniciaisDoEnsinoFundamental2017 DESC;
+
+**Analisar evolução da taxa de distorção**
+
+.. code-block:: sql
+
+   SELECT 
+       Territorialidades,
+       TaxaDeDistoroIdadeSrieNoFundamental2013 AS Taxa_2013,
+       TaxaDeDistoroIdadeSrieNoFundamental2017 AS Taxa_2017,
+       (TaxaDeDistoroIdadeSrieNoFundamental2017 - 
+        TaxaDeDistoroIdadeSrieNoFundamental2013) AS Variacao
+   FROM raw.Atlas_CensoEscolar_2011a2014_TodosMunc
+   ORDER BY Variacao;
+
+----
+
+Observações Importantes
+-----------------------
+
+* **Granularidade**: Dados agregados a nível **municipal**
+* **Período**: Múltiplos anos (1991, 2000, 2010, 2011-2017 dependendo da métrica)
+* **Fonte confiável**: Dados oficiais processados pelo Atlas Brasil
+* **Uso**: Análises de contexto educacional, benchmarking municipal, séries históricas
+
+----
+
+:Schema: ``raw``
+:Database: ``data-warehouse-tag``
+:Responsável: Equipe de Dados
+"""
+        output_file = self.output_dir / "censo_escolar.rst"
+        output_file.write_text(content, encoding="utf-8")
+
+    def _generate_pnad(self):
+        content = """📊 PNAD - Pesquisa Nacional por Amostra de Domicílios
+======================================================
+
+:Schema: ``raw``
+:Database: ``data-warehouse-tag``
+:Fonte: IBGE - PNAD
+:Período: Múltiplos anos
+:Granularidade: Estadual
+:Responsável: Equipe de Dados
+
+----
+
+Descrição
+---------
+
+Dados da **Pesquisa Nacional por Amostra de Domicílios (PNAD)** realizada pelo IBGE. Estes dados são utilizados para enriquecer nossa base de estudantes com contexto socioeconômico e educacional em nível estadual.
+
+A PNAD é uma das principais pesquisas sobre características socioeconômicas da população brasileira.
+
+----
+
+Tabelas Disponíveis
+-------------------
+
+1. Atlas_PNAD_Estados_Total
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Indicadores gerais por estado, sem desagregações.
+
+**Principais Indicadores:**
+
+**Desenvolvimento Humano (IDH)**
+
+* ``IDHM``: Índice de Desenvolvimento Humano Municipal
+* ``IDHM_L``: IDH Longevidade
+* ``IDHM_E``: IDH Educação
+* ``IDHM_R``: IDH Renda
+* ``IDHMAD``: IDH ajustado por desigualdade
+
+**Longevidade**
+
+* ``ESPVIDA``: Esperança de vida ao nascer
+* ``MORT1``: Mortalidade infantil
+
+**Educação**
+
+* ``ANOSEST``: Anos médios de estudo
+* ``T_ANALF[Faixa]``: Taxa de analfabetismo (15+, 18+, 25+ anos)
+* ``T_FREQ[Faixa]``: Taxa de frequência escolar por faixa etária
+* ``T_FUND[Faixa]``: Taxa com Fundamental completo
+* ``T_MED[Faixa]``: Taxa com Médio completo
+* ``T_SUPER[Faixa]``: Taxa com Superior completo
+* ``T_ATRASO_2_[NIVEL]``: Taxa de atraso escolar (2+ anos)
+
+**Renda e Desigualdade**
+
+* ``RDPC``: Renda per capita
+* ``GINI``: Coeficiente de Gini
+* ``THEIL``: Índice de Theil
+* ``PIND``, ``PMPOB``, ``PPOB``: Proporção de extremamente pobres, pobres e vulneráveis
+
+**População**
+
+* Múltiplas colunas populacionais por faixa etária (POP5A6, POP6A14, etc.)
+
+----
+
+2. Atlas_PNAD_Estados_Total_Cor
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Mesmos indicadores da tabela anterior, desagregados por **raça/cor**.
+
+**Campo adicional:**
+
+* ``COR``: Classificação racial (Branco, Negro, etc.)
+
+----
+
+3. Atlas_PNAD_Estados_Total_Sexo
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Mesmos indicadores da tabela anterior, desagregados por **sexo**.
+
+**Campos adicionais:**
+
+* ``SEXO``: Masculino ou Feminino
+* ``IDHM_AJUSTADO``: IDH ajustado por sexo
+* ``IDHM_R_AJUSTADO``: IDH Renda ajustado
+
+----
+
+Estrutura Comum das Tabelas
+----------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 15 60
+
+   * - Campo
+     - Tipo
+     - Descrição
+   * - ``ANO``
+     - int
+     - Ano de referência
+   * - ``AGREGACAO``
+     - varchar(50)
+     - Tipo de agregação (Estado)
+   * - ``CODIGO``
+     - real/int
+     - Código IBGE do estado
+   * - ``NOME``
+     - varchar(50)
+     - Nome do estado
+   * - ``IDHM``
+     - real
+     - Índice de Desenvolvimento Humano Municipal
+   * - ``ESPVIDA``
+     - real
+     - Esperança de vida ao nascer
+   * - ``ANOSEST``
+     - real
+     - Média de anos de estudo
+   * - ``RDPC``
+     - real
+     - Renda per capita
+   * - ``GINI``
+     - real
+     - Coeficiente de Gini (desigualdade)
+   * - ``POPTOT``
+     - varchar(50)
+     - População total
+
+----
+
+Exemplos de Uso
+---------------
+
+**Comparar IDH entre estados**
+
+.. code-block:: sql
+
+   SELECT 
+       NOME,
+       ANO,
+       IDHM,
+       IDHM_E AS IDH_Educacao,
+       IDHM_R AS IDH_Renda,
+       IDHM_L AS IDH_Longevidade
+   FROM raw.Atlas_PNAD_Estados_Total
+   WHERE ANO = 2021
+   ORDER BY IDHM DESC;
+
+**Analisar desigualdade de gênero na educação**
+
+.. code-block:: sql
+
+   SELECT 
+       NOME,
+       ANO,
+       SEXO,
+       T_ANALF25M AS Taxa_Analfabetismo_25plus,
+       T_SUPER25M AS Taxa_Superior_25plus,
+       ANOSEST AS Media_Anos_Estudo
+   FROM raw.Atlas_PNAD_Estados_Total_Sexo
+   WHERE ANO = 2021
+   ORDER BY NOME, SEXO;
+
+**Desigualdade racial no acesso à educação**
+
+.. code-block:: sql
+
+   SELECT 
+       NOME,
+       ANO,
+       COR,
+       T_FREQ15A17 AS Taxa_Freq_15_17,
+       T_MED25M AS Taxa_Medio_Completo,
+       ANOSEST AS Media_Anos_Estudo
+   FROM raw.Atlas_PNAD_Estados_Total_Cor
+   WHERE ANO = 2021
+   ORDER BY NOME, COR;
+
+----
+
+Observações Importantes
+-----------------------
+
+* **Granularidade**: Dados agregados a nível **estadual** (não há dados municipais na PNAD)
+* **Desagregações**: Total, por Cor/Raça e por Sexo
+* **Uso**: Análises de contexto socioeconômico, estudos de desigualdade, benchmarking estadual
+* **Integração**: Usado para enriquecer análises de estudantes quando não há dados municipais disponíveis
+
+----
+
+:Schema: ``raw``
+:Database: ``data-warehouse-tag``
+:Responsável: Equipe de Dados
+"""
+        output_file = self.output_dir / "pnad.rst"
+        output_file.write_text(content, encoding="utf-8")
+
+    def _generate_qedu(self):
+        content = """📈 QEdu - Dados Educacionais
+============================
+
+:Schema: ``raw``
+:Database: ``data-warehouse-tag``
+:Fonte: QEdu (qedu.org.br)
+:Período: Múltiplos anos
+:Granularidade: Municipal
+:Responsável: Equipe de Dados
+
+----
+
+Descrição
+---------
+
+Dados do **QEdu**, plataforma que disponibiliza e analisa dados educacionais públicos do Brasil. Todos os dados estão na **versão mais atualizada disponível**.
+
+O QEdu processa dados do Censo Escolar, Prova Brasil e outras fontes oficiais, oferecendo indicadores educacionais consolidados.
+
+----
+
+Tabelas Disponíveis
+-------------------
+
+1. QeduAprendizadoTodosAnos
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Indicadores de **aprendizado adequado** baseados na Prova Brasil/SAEB, por município.
+
+**Estrutura:**
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 15 60
+
+   * - Campo
+     - Tipo
+     - Descrição
+   * - ``ibge_id``
+     - int
+     - Código IBGE do município
+   * - ``ano``
+     - int
+     - Ano de referência
+   * - ``ciclo_id``
+     - varchar(50)
+     - Ciclo escolar (Anos Iniciais/Finais)
+   * - ``dependencia_id``
+     - int
+     - Dependência administrativa (Pública/Privada)
+   * - ``lp_adequado``
+     - real
+     - % de alunos com aprendizado adequado em Língua Portuguesa
+   * - ``mt_adequado``
+     - real
+     - % de alunos com aprendizado adequado em Matemática
+   * - ``lp_insuficiente``
+     - real
+     - % em nível insuficiente - LP
+   * - ``lp_basico``
+     - real
+     - % em nível básico - LP
+   * - ``lp_proficiente``
+     - real
+     - % em nível proficiente - LP
+   * - ``lp_avancado``
+     - real
+     - % em nível avançado - LP
+   * - ``mt_insuficiente``
+     - real
+     - % em nível insuficiente - MT
+   * - ``mt_basico``
+     - real
+     - % em nível básico - MT
+   * - ``mt_proficiente``
+     - real
+     - % em nível proficiente - MT
+   * - ``mt_avancado``
+     - real
+     - % em nível avançado - MT
+
+**Níveis de Proficiência:**
+
+* **Insuficiente**: Não demonstrou conhecimentos básicos
+* **Básico**: Demonstrou desenvolvimento parcial
+* **Proficiente**: Demonstrou conhecimentos esperados
+* **Avançado**: Superou o esperado para a série
+
+----
+
+2. QeduIDEBTodosAnos
+~~~~~~~~~~~~~~~~~~~~
+
+Dados do **IDEB (Índice de Desenvolvimento da Educação Básica)** por município.
+
+**Estrutura:**
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 15 60
+
+   * - Campo
+     - Tipo
+     - Descrição
+   * - ``ibge_id``
+     - int
+     - Código IBGE do município
+   * - ``dependencia_id``
+     - int
+     - Dependência administrativa
+   * - ``ciclo_id``
+     - varchar(50)
+     - Ciclo escolar
+   * - ``ano``
+     - int
+     - Ano de referência
+   * - ``ideb``
+     - real
+     - Índice IDEB (0-10)
+   * - ``fluxo``
+     - real
+     - Taxa de aprovação
+   * - ``aprendizado``
+     - real
+     - Nota de aprendizado
+   * - ``nota_mt``
+     - real
+     - Nota de Matemática
+   * - ``nota_lp``
+     - real
+     - Nota de Língua Portuguesa
+
+.. note::
+   **Cálculo do IDEB:** IDEB = Aprendizado × Fluxo
+
+----
+
+3. QeduPermanenciaTodosAnos
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Análise de **permanência escolar** por coorte de nascimento.
+
+**Estrutura:**
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 15 60
+
+   * - Campo
+     - Tipo
+     - Descrição
+   * - ``ibge_id``
+     - int
+     - Código IBGE do município
+   * - ``ano_nascimento``
+     - int
+     - Ano de nascimento da coorte
+   * - ``ano_censo``
+     - int
+     - Ano do Censo analisado
+   * - ``permanencia``
+     - real
+     - % de estudantes que permaneceram na escola
+   * - ``fora``
+     - real
+     - % de estudantes fora da escola
+   * - ``Origem``
+     - varchar(50)
+     - Fonte dos dados
+
+----
+
+4. QeduTaxaDeDistorcaoTodosAnos
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Taxa de distorção idade-série** detalhada por ano escolar.
+
+**Principais campos:**
+
+* ``ef_1ano`` até ``ef_9ano``: Taxa de distorção por ano do EF
+* ``ef_total_ai``: Total anos iniciais EF
+* ``ef_total_af``: Total anos finais EF
+* ``ef_total``: Total Ensino Fundamental
+* ``em_1ano`` até ``em_4ano``: Taxa de distorção por ano do EM
+* ``em_total``: Total Ensino Médio
+
+----
+
+5. QeduTaxaDeRendimentoTodosAnos
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Taxas de aprovação, reprovação e abandono** por série.
+
+**Estrutura:**
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 15 60
+
+   * - Campo
+     - Tipo
+     - Descrição
+   * - ``ibge_id``
+     - int
+     - Código IBGE do município
+   * - ``ano``
+     - int
+     - Ano de referência
+   * - ``serie_id``
+     - int
+     - Identificador da série
+   * - ``matriculas``
+     - real
+     - Total de matrículas
+   * - ``aprovados``
+     - real
+     - Taxa de aprovação (%)
+   * - ``reprovados``
+     - real
+     - Taxa de reprovação (%)
+   * - ``abandonos``
+     - real
+     - Taxa de abandono (%)
+
+----
+
+Exemplos de Uso
+---------------
+
+**Municípios com melhor aprendizado em LP e MT**
+
+.. code-block:: sql
+
+   SELECT 
+       ibge_id,
+       ano,
+       ciclo_id,
+       lp_adequado,
+       mt_adequado,
+       (lp_adequado + mt_adequado) / 2 AS Media_Adequado
+   FROM raw.QeduAprendizadoTodosAnos
+   WHERE ano = 2021
+   ORDER BY Media_Adequado DESC
+   LIMIT 10;
+
+**Evolução do IDEB ao longo do tempo**
+
+.. code-block:: sql
+
+   SELECT 
+       ibge_id,
+       ciclo_id,
+       ano,
+       ideb,
+       fluxo,
+       aprendizado
+   FROM raw.QeduIDEBTodosAnos
+   WHERE ibge_id = 3550308  -- São Paulo
+   ORDER BY ano, ciclo_id;
+
+**Análise de distorção por dependência**
+
+.. code-block:: sql
+
+   SELECT 
+       ano,
+       dependencia_id,
+       AVG(ef_total) AS Media_Distorcao_EF,
+       AVG(em_total) AS Media_Distorcao_EM
+   FROM raw.QeduTaxaDeDistorcaoTodosAnos
+   GROUP BY ano, dependencia_id
+   ORDER BY ano, dependencia_id;
+
+**Taxa de abandono por série**
+
+.. code-block:: sql
+
+   SELECT 
+       ano,
+       serie_id,
+       dependencia_id,
+       AVG(abandonos) AS Taxa_Media_Abandono
+   FROM raw.QeduTaxaDeRendimentoTodosAnos
+   WHERE ano >= 2018
+   GROUP BY ano, serie_id, dependencia_id
+   ORDER BY ano, serie_id;
+
+----
+
+Observações Importantes
+-----------------------
+
+* **Granularidade**: Dados a nível **municipal**
+* **Periodicidade**: Dados do Censo Escolar (anual) e Prova Brasil (bienal)
+* **Fonte confiável**: QEdu processa dados oficiais do INEP
+* **Uso**: Análises de qualidade educacional, identificação de municípios/escolas em risco, monitoramento de políticas públicas
+* **Integração**: Complementa dados do software de gestão escolar com contexto municipal
+
+----
+
+:Schema: ``raw``
+:Database: ``data-warehouse-tag``
+:Responsável: Equipe de Dados
+"""
+        output_file = self.output_dir / "qedu.rst"
+        output_file.write_text(content, encoding="utf-8")
+
+
 class DocumentationOrchestrator:
     """
     Orchestrates the full documentation generation process:
@@ -857,6 +1564,10 @@ class DocumentationOrchestrator:
         er_gen.generate_visual_schema(tables, relationships)
         er_gen.generate_interactive(tables, relationships)
         Logger.success("Diagramas ER criados (3 tipos)")
+        Logger.info("Gerando documentação de Dados Externos...")
+        ext_gen = ExternalDataDocGenerator(self.docs_dir / "source")
+        ext_gen.generate_all()
+        Logger.success("Dados Externos documentados")
         Logger.info("Construindo HTML com Sphinx...")
         self._build_html()
         Logger.header("\n✅ DOCUMENTAÇÃO GERADA COM SUCESSO!")

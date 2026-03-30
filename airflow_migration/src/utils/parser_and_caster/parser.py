@@ -70,6 +70,23 @@ def clean_dataframe_for_sql(df: pd.DataFrame) -> pd.DataFrame:
         "discipline_15_fk",
         "edcenso_stage_vs_modality_fk",
         "Vaccine_id",
+        "grade_faults_1",
+        "grade_faults_2",
+        "grade_faults_3",
+        "grade_faults_4",
+        "grade_faults_5",
+        "grade_faults_6",
+        "grade_faults_7",
+        "grade_faults_8",
+        "given_classes_1",
+        "given_classes_2",
+        "given_classes_3",
+        "given_classes_4",
+        "given_classes_5",
+        "given_classes_6",
+        "given_classes_7",
+        "given_classes_8",
+        "final_concept",
     ]
 
     for col in problematic_columns:

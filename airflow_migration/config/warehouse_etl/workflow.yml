@@ -24,6 +24,11 @@ triggers:
     description: "Trigger execute by incremental_base_tables"
     incremental_reference_table: "f_student_class" 
 
+  full_load_one_time:
+    schedule_interval: None
+    description: "Trigger execute by Resume of usage of tag"
+    incremental_reference_table: "grade_results" 
+
 
 stages:
   - stage: 1
@@ -132,6 +137,14 @@ stages:
         model: "tables/student_identification.yml"
         depends_on: []
         trigger: "incremental_base_tables"
+        pool: "mysql_prod_pool"
+        env_skip:
+          - dev
+
+      - table_name: "grade_results" 
+        model: "tables/grade_results.yml"
+        depends_on: []
+        trigger: "full_load_one_time"
         pool: "mysql_prod_pool"
         env_skip:
           - dev

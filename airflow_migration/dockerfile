@@ -27,4 +27,25 @@ RUN curl -o /tmp/constraints.txt "https://raw.githubusercontent.com/apache/airfl
 
 COPY requirements.txt /tmp/requirements.txt
 
-RUN pip install --no-cache-dir -r /tmp/requirements.txt -c /tmp/constraints.txt
+# Step 1: Airflow providers + drivers — pinned by constraints (fast, no resolution needed)
+RUN pip install --no-cache-dir \
+    apache-airflow-providers-mysql \
+    apache-airflow-providers-odbc \
+    apache-airflow-providers-common-messaging \
+    pyodbc pymysql \
+    neo4j apache-airflow-providers-neo4j \
+    adlfs azure-storage-blob apache-airflow-providers-microsoft-azure \
+    -c /tmp/constraints.txt
+
+COPY requirements-locked.txt /tmp/requirements-locked.txt
+
+# Step 2: ML/AI packages
+RUN pip install --no-cache-dir \
+    sphinx sphinx-autoapi sphinx-rtd-theme \
+    scikit-learn xgboost lightgbm shap \
+    mlflow \
+    sentence-transformers \
+    langchain openai langchain-neo4j \
+    evidently \
+    "pyarrow>=14.0.0" "pandas<3.0.0" \
+    -c /tmp/requirements-locked.txt

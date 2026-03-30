@@ -18,5 +18,20 @@ mlflow
 shap
 
 sentence-transformers
-langchain
-openai
+langchain>=0.3.0
+openai>=1.50.0
+
+# Graph Database
+neo4j
+apache-airflow-providers-neo4j
+
+# ML Validation & Additional RAG
+evidently
+langchain-neo4j
+pyarrow>=14.0.0
+pandas<3.0.0
+
+# Azure Blob Storage
+adlfs
+azure-storage-blob
+apache-airflow-providers-microsoft-azure

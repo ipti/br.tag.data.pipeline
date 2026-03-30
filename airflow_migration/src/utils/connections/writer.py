@@ -487,6 +487,8 @@ class CopyAndLoader:
         upsert_config: Optional[UpsertConfig] = None,
         quality_check_pipeline: Optional[List[str]] = None,
         quality_check_params: Optional[Dict[str, Any]] = None,
+        transformation_pipeline: Optional[List[str]] = None,
+        transformation_params: Optional[Dict[str, Any]] = None,
     ) -> LoadResult:
         """
         Performs a data loading operation from a source to a target.
@@ -559,6 +561,29 @@ class CopyAndLoader:
                 return result
 
             df = pd.DataFrame(source_data)
+
+            if transformation_pipeline and not df.empty:
+                self.logger.info(
+                    f"Applying {len(transformation_pipeline)} transformations..."
+                )
+                for function_path in transformation_pipeline:
+                    try:
+                        module_path, function_name = function_path.rsplit(".", 1)
+                        module = importlib.import_module(module_path)
+                        transform_func = getattr(module, function_name)
+                        params = (transformation_params or {}).get(function_name, {})
+
+                        self.logger.debug(
+                            f"Execution transformations: {function_name} with params: {params}"
+                        )
+                        df = transform_func(df, self.logger, **params)
+
+                    except (ImportError, AttributeError, TypeError, Exception) as e:
+                        self.logger.error(
+                            f"Fails on transformation {function_path}: {e}"
+                        )
+                        raise
+
             if quality_check_pipeline and not df.empty:
                 self.logger.info(
                     f"Applying {len(quality_check_pipeline)} custom quality checks..."

@@ -30,7 +30,15 @@ x-airflow-common:
     AIRFLOW__WEBSERVER__SESSION_CACHE_PREFIX: airflow_session_
     AIRFLOW__CORE__MAX_SERIALIZED_DAG_UPDATES_PER_DAG: 50
 
-    
+
+    # Azure Blob Storage — ML Pipeline
+    AZURE_STORAGE_ACCOUNT_NAME: ${AZURE_STORAGE_ACCOUNT_NAME}
+    AZURE_STORAGE_ACCOUNT_KEY: ${AZURE_STORAGE_ACCOUNT_KEY}
+    AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
+    ML_BLOB_CONTAINER: "machine-learning"
+    ML_BLOB_BASE_URL: "az://machine-learning"
+    MLFLOW_ARTIFACT_URI: "az://machine-learning/mlflow_artifacts"
+
     # MySQL connection variables
     MYSQL_HOST: ${MYSQL_HOST:-mysql}
     MYSQL_PORT: ${MYSQL_PORT:-3306}
@@ -143,6 +151,26 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  mlflow:
+    <<: *airflow-common
+    container_name: mlflow
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - mlflow server --host 0.0.0.0 --port 5001
+    ports:
+      - "5001:5001"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
     restart: always
     depends_on:
       airflow-init:
