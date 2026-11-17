@@ -18,7 +18,7 @@ SELECT
     gr.updated_at
 FROM {{ database }}.student_identification si
 LEFT JOIN {{ database }}.student_enrollment se ON si.id = se.student_fk
-LEFT JOIN {{ database }}.grade_results gr ON se.student_fk = gr.enrollment_fk
+LEFT JOIN {{ database }}.grade_results gr ON gr.enrollment_fk = se.id
 LEFT JOIN {{ database }}.edcenso_discipline ed ON gr.discipline_fk = ed.id
 WHERE si.id IS NOT NULL
     AND se.school_inep_id_fk IS NOT NULL
